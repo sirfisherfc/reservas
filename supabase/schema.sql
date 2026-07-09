@@ -24,6 +24,23 @@ comment on table public.app_users is
   'Cadastro por e-mail feito pelo admin; auth_user_id é vinculado automaticamente no primeiro login (ver fn_claim_app_user).';
 
 -- =========================================================================
+-- access_requests — pedido de acesso de quem loga sem estar em app_users
+-- =========================================================================
+create table public.access_requests (
+  id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid not null unique references auth.users(id) on delete cascade,
+  email citext not null,
+  name text,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  requested_at timestamptz not null default now(),
+  reviewed_by_user_id uuid references public.app_users(id) on delete set null,
+  reviewed_at timestamptz,
+  role_granted text check (role_granted in ('admin', 'operator'))
+);
+
+create index idx_access_requests_status on public.access_requests(status);
+
+-- =========================================================================
 -- customers — CRM básico, separado das reservas
 -- =========================================================================
 create table public.customers (

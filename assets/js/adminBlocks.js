@@ -1,19 +1,19 @@
 import { supabase } from './supabaseClient.js';
 import { requireStaff, mountLayout } from './adminGuard.js';
-import { qs, qsa, showToast, formatDateBR, formatTimeBR, todayISO } from './utils.js';
+import { qs, qsa, showToast, formatDateBR, formatTimeBR, todayISO, weekdayIndex } from './utils.js';
 
 let appUser = null;
 
 async function init() {
   appUser = await requireStaff({ adminOnly: true });
   if (!appUser) return;
-  mountLayout(appUser, 'bloqueios');
+  await mountLayout(appUser, 'bloqueios');
 
   qs('#bd-date').min = todayISO();
   qs('#bs-date').min = todayISO();
 
   qs('#bd-add-btn').addEventListener('click', addBlockedDate);
-  qs('#bs-add-btn').addEventListener('click', addBlockedSlot);
+  qs('#bs-add-btn').addEventListener('click', addBlockedSlotRange);
 
   await Promise.all([loadBlockedDates(), loadBlockedSlots()]);
 }
@@ -117,57 +117,105 @@ async function loadBlockedSlots() {
     return;
   }
 
-  tbody.innerHTML = data.map((row) => `
-    <tr>
-      <td>${formatDateBR(row.date)}</td>
-      <td>${formatTimeBR(row.time_slot)}</td>
-      <td>${escapeHtml(row.reason || '—')}</td>
-      <td><button class="btn btn--outline btn--sm" data-id="${row.id}" type="button">Remover</button></td>
-    </tr>
-  `).join('');
+  // Agrupa por (data, motivo) para mostrar uma faixa bloqueada como uma única linha,
+  // já que cada horário da faixa é uma linha própria em blocked_time_slots.
+  const groups = new Map();
+  for (const row of data) {
+    const key = `${row.date}|${row.reason || ''}`;
+    if (!groups.has(key)) {
+      groups.set(key, { date: row.date, reason: row.reason, ids: [], times: [] });
+    }
+    const group = groups.get(key);
+    group.ids.push(row.id);
+    group.times.push(row.time_slot);
+  }
 
-  qsa('#bs-tbody button[data-id]').forEach((btn) => {
-    btn.addEventListener('click', () => removeBlockedSlot(btn.dataset.id));
+  tbody.innerHTML = Array.from(groups.values()).map((g) => {
+    const first = formatTimeBR(g.times[0]);
+    const last = formatTimeBR(g.times[g.times.length - 1]);
+    const rangeLabel = first === last ? first : `${first} – ${last} (${g.times.length} horários)`;
+    return `
+      <tr data-ids="${g.ids.join(',')}">
+        <td>${formatDateBR(g.date)}</td>
+        <td>${rangeLabel}</td>
+        <td>${escapeHtml(g.reason || '—')}</td>
+        <td><button class="btn btn--outline btn--sm" data-remove-group type="button">Remover todos</button></td>
+      </tr>
+    `;
+  }).join('');
+
+  qsa('#bs-tbody button[data-remove-group]').forEach((btn) => {
+    const ids = btn.closest('tr').dataset.ids.split(',');
+    btn.addEventListener('click', () => removeBlockedSlotGroup(ids));
   });
 }
 
-async function addBlockedSlot() {
+async function addBlockedSlotRange() {
   const date = qs('#bs-date').value;
-  const time = qs('#bs-time').value;
+  const startTime = qs('#bs-time-start').value;
+  const endTimeInput = qs('#bs-time-end').value;
+  const endTime = endTimeInput || startTime;
   const reason = qs('#bs-reason').value.trim();
 
-  if (!date || !time) {
-    showToast('Informe data e horário.', 'danger');
+  if (!date || !startTime) {
+    showToast('Informe data e horário inicial.', 'danger');
+    return;
+  }
+  if (endTime < startTime) {
+    showToast('O horário final deve ser igual ou depois do inicial.', 'danger');
     return;
   }
 
-  const { error } = await supabase.from('blocked_time_slots').insert({
+  const weekday = weekdayIndex(date);
+  const { data: rules, error: rulesError } = await supabase
+    .from('availability_rules')
+    .select('time_slot')
+    .eq('weekday', weekday)
+    .gte('time_slot', startTime)
+    .lte('time_slot', endTime);
+
+  if (rulesError) {
+    showToast(`Erro ao consultar a grade: ${rulesError.message}`, 'danger');
+    return;
+  }
+
+  if (!rules.length) {
+    showToast('Nenhum horário configurado na grade dentro dessa faixa.', 'danger');
+    return;
+  }
+
+  const rows = rules.map((r) => ({
     date,
-    time_slot: time,
+    time_slot: r.time_slot,
     reason: reason || null,
     created_by_user_id: appUser.id,
-  });
+  }));
+
+  const { error } = await supabase
+    .from('blocked_time_slots')
+    .upsert(rows, { onConflict: 'date,time_slot', ignoreDuplicates: true });
 
   if (error) {
-    showToast(`Erro ao bloquear horário: ${error.message}`, 'danger');
+    showToast(`Erro ao bloquear horários: ${error.message}`, 'danger');
     return;
   }
 
   qs('#bs-date').value = '';
-  qs('#bs-time').value = '';
+  qs('#bs-time-start').value = '';
+  qs('#bs-time-end').value = '';
   qs('#bs-reason').value = '';
-  showToast('Horário bloqueado com sucesso.');
+  showToast(`${rows.length} horário(s) bloqueado(s) com sucesso.`);
   await loadBlockedSlots();
 }
 
-async function removeBlockedSlot(id) {
-  if (!window.confirm('Remover este bloqueio de horário?')) return;
-  const { error } = await supabase.from('blocked_time_slots').delete().eq('id', id);
+async function removeBlockedSlotGroup(ids) {
+  if (!window.confirm(`Remover ${ids.length} bloqueio(s) de horário?`)) return;
+  const { error } = await supabase.from('blocked_time_slots').delete().in('id', ids);
   if (error) {
     showToast(`Erro ao remover: ${error.message}`, 'danger');
     return;
   }
-  showToast('Bloqueio removido.');
+  showToast('Bloqueio(s) removido(s).');
   await loadBlockedSlots();
 }
 

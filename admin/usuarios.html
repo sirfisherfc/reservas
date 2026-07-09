@@ -16,6 +16,20 @@
         <h1>Usuários internos</h1>
       </div>
 
+      <div class="card mb-16" id="requests-card">
+        <h2 class="section-title" style="margin-bottom:10px;">Solicitações de acesso pendentes</h2>
+        <p class="hint" style="margin-bottom:14px;">
+          Alguém fez login com Google sem estar cadastrado. Escolha o papel e aprove, ou recuse.
+        </p>
+        <div id="requests-alert"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nome</th><th>E-mail</th><th>Solicitado em</th><th>Papel</th><th></th></tr></thead>
+            <tbody id="requests-tbody"><tr><td colspan="5" class="empty-state">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="card mb-16">
         <h2 class="section-title" style="margin-bottom:10px;">Adicionar usuário</h2>
         <p class="hint" style="margin-bottom:14px;">

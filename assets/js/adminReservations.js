@@ -24,7 +24,7 @@ const TERMINAL_STATUSES = ['cancelada_cliente', 'cancelada_restaurante', 'compar
 async function init() {
   appUser = await requireStaff({ adminOnly: false });
   if (!appUser) return;
-  mountLayout(appUser, 'reservas');
+  await mountLayout(appUser, 'reservas');
 
   if (appUser.role !== 'admin') {
     qs('#export-csv-btn').classList.add('hidden');

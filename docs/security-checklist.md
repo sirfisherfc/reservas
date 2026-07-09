@@ -15,6 +15,7 @@ Itens marcados **[✔ verificado]** já foram testados nesta implementação —
 - [✔ verificado] Cancelar reserva pelo link público (token) e confirmar que a vaga é liberada (testado: criar, cancelar, e reservar novamente no mesmo horário).
 - [✔ verificado] Cancelar uma reserva já cancelada não gera erro nem duplica — retorna `already_cancelled: true`.
 - [✔ verificado] Honeypot preenchido é rejeitado silenciosamente (erro genérico, sem detalhar para o remetente que foi detecção de spam).
+- [✔ verificado] Bloqueio de horário por faixa (inicial/final) cria um bloqueio para cada horário já configurado na grade dentro do intervalo, de uma vez.
 - [ ] verificar] Layout mobile (visual — precisa de navegador).
 
 ## Segurança / permissões
@@ -26,7 +27,12 @@ Itens marcados **[✔ verificado]** já foram testados nesta implementação —
 - [✔ verificado] Nenhuma policy dá `DELETE` em `reservations` ou `reservation_status_history` para nenhum papel.
 - [✔ verificado] `service_role` não aparece em nenhum arquivo do frontend (`grep -r service_role assets/ index.html cancelar.html admin/` retorna vazio — só a anon/publishable key é usada).
 - [✔ verificado] Histórico de status é gravado automaticamente (testado: cancelamento gerou entrada com `changed_by_type = 'customer'`).
-- [ ] verificar] Login Google de um usuário **sem** linha em `app_users` cai na tela de "acesso negado" (precisa de uma conta Google real de teste).
+- [✔ verificado] Login Google de um usuário **sem** linha em `app_users` cria um pedido de acesso pendente (`fn_request_access`, idempotente — chamar de novo não duplica) e não cria `app_users` nenhum sozinho.
+- [✔ verificado] Admin aprova pedido de acesso (`fn_review_access_request`) → cria `app_users` ativo com o papel escolhido e marca o pedido como `approved`.
+- [✔ verificado] Admin recusa pedido de acesso → marca como `rejected` e **não** cria linha em `app_users`.
+- [✔ verificado] Apenas admin consegue chamar `fn_review_access_request` (checagem `fn_is_admin()` interna à função).
+- [ ] verificar] Login Google de um usuário sem cadastro mostra a tela "Aguardando aprovação" (não mais "acesso negado" — precisa de conta Google real de teste). Uma conta previamente cadastrada e **desativada** continua mostrando "conta desativada".
+- [ ] verificar] Contador de solicitações pendentes aparece ao lado de "Usuários" no menu lateral (admin).
 - [ ] verificar] Operador não vê os menus de Configurações/Bloqueios/Usuários (a UI já remove esses links via JS para quem não é admin — confirmar visualmente).
 - [ ] verificar] Operador não consegue alterar parâmetros nem gerenciar usuários mesmo tentando via URL direta (a proteção real é RLS + guarda de página, não apenas esconder o menu — vale um teste tentando acessar `admin/configuracoes.html` logado como operador: a página deve mostrar "acesso restrito a administradores").
 - [ ] verificar] Exportação CSV funciona e contém os dados esperados (visual).

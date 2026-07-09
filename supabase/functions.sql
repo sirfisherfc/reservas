@@ -75,6 +75,110 @@ end;
 $$;
 
 -- =========================================================================
+-- fn_request_access — idempotente. Quando alguém sem app_users faz login,
+-- registra (ou consulta) um pedido de acesso. Retorna o status atual da
+-- pessoa em relação ao painel: already_staff | deactivated | pending |
+-- approved | rejected.
+-- =========================================================================
+create or replace function public.fn_request_access()
+returns table (status text)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_email citext;
+  v_name text;
+  v_active boolean;
+  v_existing_status text;
+begin
+  if v_uid is null then
+    raise exception 'FORBIDDEN: Faça login para solicitar acesso.';
+  end if;
+
+  select au.active into v_active from public.app_users au where au.auth_user_id = v_uid;
+  if found then
+    return query select case when v_active then 'already_staff' else 'deactivated' end;
+    return;
+  end if;
+
+  select ar.status into v_existing_status from public.access_requests ar where ar.auth_user_id = v_uid;
+  if v_existing_status is not null then
+    return query select v_existing_status;
+    return;
+  end if;
+
+  select u.email, coalesce(u.raw_user_meta_data ->> 'full_name', u.raw_user_meta_data ->> 'name')
+    into v_email, v_name
+  from auth.users u where u.id = v_uid;
+
+  insert into public.access_requests (auth_user_id, email, name)
+  values (v_uid, v_email, v_name);
+
+  return query select 'pending'::text;
+end;
+$$;
+
+-- =========================================================================
+-- fn_review_access_request — só admin. Aprova (cria/ativa app_users com o
+-- papel escolhido) ou recusa.
+-- =========================================================================
+create or replace function public.fn_review_access_request(
+  p_request_id uuid,
+  p_approve boolean,
+  p_role text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_req public.access_requests%rowtype;
+  v_admin_id uuid;
+begin
+  if not public.fn_is_admin() then
+    raise exception 'FORBIDDEN: Apenas administradores podem revisar solicitações.';
+  end if;
+
+  select au.id into v_admin_id from public.app_users au
+  where au.auth_user_id = auth.uid() and au.active = true;
+
+  select * into v_req from public.access_requests where id = p_request_id;
+  if not found then
+    raise exception 'NOT_FOUND: Solicitação não encontrada.';
+  end if;
+
+  if v_req.status <> 'pending' then
+    raise exception 'INVALID_INPUT: Esta solicitação já foi revisada.';
+  end if;
+
+  if p_approve then
+    if p_role not in ('admin', 'operator') then
+      raise exception 'INVALID_INPUT: Selecione um papel válido.';
+    end if;
+
+    insert into public.app_users (auth_user_id, email, name, role, active)
+    values (v_req.auth_user_id, v_req.email, v_req.name, p_role, true)
+    on conflict (email) do update set
+      auth_user_id = excluded.auth_user_id,
+      role = excluded.role,
+      active = true,
+      name = coalesce(excluded.name, public.app_users.name);
+
+    update public.access_requests
+    set status = 'approved', reviewed_by_user_id = v_admin_id, reviewed_at = now(), role_granted = p_role
+    where id = p_request_id;
+  else
+    update public.access_requests
+    set status = 'rejected', reviewed_by_user_id = v_admin_id, reviewed_at = now()
+    where id = p_request_id;
+  end if;
+end;
+$$;
+
+-- =========================================================================
 -- Triggers genéricos
 -- =========================================================================
 create or replace function public.fn_set_updated_at()

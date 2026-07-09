@@ -41,26 +41,35 @@
 
       <div class="card">
         <h2 class="section-title" style="margin-bottom:10px;">Bloquear horário específico</h2>
-        <p class="hint" style="margin-bottom:14px;">Para uma faixa de horário em uma data específica (ex.: 19h do dia 24/12 reservado para evento).</p>
+        <p class="hint" style="margin-bottom:14px;">
+          Para uma faixa de horário numa data específica (ex.: das 19h às 21h do dia 24/12, reservado para evento).
+          Bloqueia todos os horários já configurados na grade daquele dia da semana dentro da faixa escolhida.
+          Para um único horário, deixe "até" igual ao "de".
+        </p>
         <div class="form-grid mb-16">
           <div class="form-field">
             <label for="bs-date">Data</label>
             <input type="date" id="bs-date" />
           </div>
           <div class="form-field">
-            <label for="bs-time">Horário</label>
-            <input type="time" id="bs-time" step="1800" />
+            <label for="bs-time-start">Horário inicial</label>
+            <input type="time" id="bs-time-start" step="1800" />
+          </div>
+          <div class="form-field">
+            <label for="bs-time-end">Horário final (inclusive)</label>
+            <input type="time" id="bs-time-end" step="1800" />
+            <p class="hint">Deixe em branco para bloquear só o horário inicial.</p>
           </div>
           <div class="form-field">
             <label for="bs-reason">Motivo</label>
             <input type="text" id="bs-reason" placeholder="Ex.: reserva de grupo grande" maxlength="200" />
           </div>
         </div>
-        <button class="btn btn--primary" id="bs-add-btn" type="button">Bloquear horário</button>
+        <button class="btn btn--primary" id="bs-add-btn" type="button">Bloquear faixa de horário</button>
 
         <div class="table-wrap mt-16">
           <table>
-            <thead><tr><th>Data</th><th>Horário</th><th>Motivo</th><th></th></tr></thead>
+            <thead><tr><th>Data</th><th>Faixa</th><th>Motivo</th><th></th></tr></thead>
             <tbody id="bs-tbody"><tr><td colspan="4" class="empty-state">Carregando…</td></tr></tbody>
           </table>
         </div>

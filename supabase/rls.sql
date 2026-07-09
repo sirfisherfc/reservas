@@ -12,6 +12,7 @@
 -- liberar o acesso. Faltar o "to" foi um bug real encontrado em teste manual.
 
 alter table public.app_users enable row level security;
+alter table public.access_requests enable row level security;
 alter table public.customers enable row level security;
 alter table public.reservations enable row level security;
 alter table public.reservation_status_history enable row level security;
@@ -31,6 +32,13 @@ create policy app_users_select_self_or_admin on public.app_users
 create policy app_users_write_admin on public.app_users
   for all to authenticated
   using (public.fn_is_admin()) with check (public.fn_is_admin());
+
+-- =========================================================================
+-- access_requests — próprio pedido ou admin; escrita só via RPC (owner)
+-- =========================================================================
+create policy access_requests_select_self_or_admin on public.access_requests
+  for select to authenticated
+  using ((select auth.uid()) = auth_user_id or public.fn_is_admin());
 
 -- =========================================================================
 -- customers — leitura para staff; escrita só via fn_create_reservation (owner)
@@ -122,6 +130,7 @@ grant usage on schema public to anon, authenticated;
 grant select on public.restaurant_settings to anon;
 
 grant select, insert, update, delete on public.app_users to authenticated;
+grant select on public.access_requests to authenticated;
 grant select on public.customers to authenticated;
 grant select, update on public.reservations to authenticated;
 grant select on public.reservation_status_history to authenticated;
@@ -140,6 +149,8 @@ revoke execute on function public.fn_set_updated_by() from public;
 revoke execute on function public.fn_set_created_by() from public;
 revoke execute on function public.fn_log_reservation_status_change() from public;
 revoke execute on function public.fn_claim_app_user() from public;
+revoke execute on function public.fn_request_access() from public;
+revoke execute on function public.fn_review_access_request(uuid, boolean, text) from public;
 revoke execute on function public.get_available_time_slots(date, int) from public;
 revoke execute on function public.fn_create_reservation(text, text, text, date, time, int, text, boolean, boolean, text, text) from public;
 revoke execute on function public.fn_cancel_reservation_public(text) from public;
@@ -159,6 +170,8 @@ grant execute on function public.fn_cancel_reservation_public(text) to anon, aut
 grant execute on function public.fn_update_reservation_status(uuid, text, text) to authenticated;
 grant execute on function public.fn_update_internal_notes(uuid, text) to authenticated;
 grant execute on function public.fn_claim_app_user() to authenticated;
+grant execute on function public.fn_request_access() to authenticated;
+grant execute on function public.fn_review_access_request(uuid, boolean, text) to authenticated;
 grant execute on function public.fn_is_admin() to authenticated;
 grant execute on function public.fn_is_active_staff() to authenticated;
 grant execute on function public.fn_current_app_user_id() to authenticated;

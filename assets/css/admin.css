@@ -119,6 +119,17 @@ a {
   padding: 0 10px;
 }
 
+.nav-badge {
+  display: inline-block;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 7px;
+  margin-left: 4px;
+}
+
 .sidebar__role {
   font-size: 0.75rem;
   opacity: 0.65;

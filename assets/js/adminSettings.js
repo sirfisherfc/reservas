@@ -24,7 +24,7 @@ let currentRules = [];
 async function init() {
   appUser = await requireStaff({ adminOnly: true });
   if (!appUser) return;
-  mountLayout(appUser, 'configuracoes');
+  await mountLayout(appUser, 'configuracoes');
 
   await loadSettings();
   renderWeekdayChips();

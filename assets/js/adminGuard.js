@@ -30,26 +30,68 @@ export async function requireStaff({ adminOnly = false } = {}) {
     .eq('auth_user_id', session.user.id)
     .maybeSingle();
 
-  if (error || !appUser || !appUser.active) {
-    renderDenied('Seu usuário Google não tem acesso autorizado a este painel. Peça para um administrador cadastrar seu e-mail em Usuários.');
+  if (error) {
+    renderDenied('Não foi possível verificar seu acesso agora. Tente novamente em instantes.');
     return null;
   }
 
-  if (adminOnly && appUser.role !== 'admin') {
-    renderDenied('Esta área é exclusiva para administradores.');
+  if (appUser && appUser.active) {
+    if (adminOnly && appUser.role !== 'admin') {
+      renderDenied('Esta área é exclusiva para administradores.');
+      return null;
+    }
+    return appUser;
+  }
+
+  if (appUser && !appUser.active) {
+    renderDenied('Sua conta foi desativada. Fale com um administrador para reativar o acesso.');
     return null;
   }
 
-  return appUser;
+  // Ninguém cadastrado para este login: registra (ou consulta) um pedido de acesso.
+  const { data: reqData, error: reqError } = await supabase.rpc('fn_request_access');
+  const status = reqError ? 'error' : (Array.isArray(reqData) ? reqData[0]?.status : reqData?.status);
+
+  if (status === 'already_staff') {
+    window.location.reload();
+    return null;
+  }
+
+  if (status === 'deactivated') {
+    renderDenied('Sua conta foi desativada. Fale com um administrador para reativar o acesso.');
+    return null;
+  }
+
+  if (status === 'error') {
+    renderDenied('Não foi possível registrar sua solicitação de acesso agora. Tente novamente em instantes.');
+    return null;
+  }
+
+  renderPendingAccess(status);
+  return null;
 }
 
-export function mountLayout(appUser, activeKey) {
+export async function mountLayout(appUser, activeKey) {
   const sidebar = document.getElementById('sidebar');
   if (!sidebar) return;
 
+  let pendingCount = 0;
+  if (appUser.role === 'admin') {
+    const { count } = await supabase
+      .from('access_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending');
+    pendingCount = count || 0;
+  }
+
   const links = NAV_ITEMS
     .filter((item) => !item.adminOnly || appUser.role === 'admin')
-    .map((item) => `<a href="${item.href}" class="${item.key === activeKey ? 'is-active' : ''}">${item.label}</a>`)
+    .map((item) => {
+      const badge = item.key === 'usuarios' && pendingCount > 0
+        ? ` <span class="nav-badge">${pendingCount}</span>`
+        : '';
+      return `<a href="${item.href}" class="${item.key === activeKey ? 'is-active' : ''}">${item.label}${badge}</a>`;
+    })
     .join('');
 
   sidebar.innerHTML = `
@@ -76,6 +118,30 @@ function renderDenied(message) {
       </div>
     </div>
   `;
+  document.getElementById('guard-logout-btn').addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    window.location.href = './index.html';
+  });
+}
+
+function renderPendingAccess(status) {
+  const isRejected = status === 'rejected';
+  const title = isRejected ? 'Solicitação recusada' : 'Aguardando aprovação';
+  const message = isRejected
+    ? 'Sua solicitação de acesso foi recusada. Fale com um administrador se acredita que isso é um engano.'
+    : 'Seu login foi reconhecido, mas ainda não há acesso liberado para este e-mail. Um administrador precisa aprovar sua solicitação em Usuários.';
+
+  document.body.innerHTML = `
+    <div class="login-screen">
+      <div class="login-card">
+        <h1>${title}</h1>
+        <p>${message}</p>
+        <button id="guard-recheck-btn" class="btn-google" type="button">Verificar novamente</button>
+        <button id="guard-logout-btn" class="btn-google" type="button" style="margin-top:10px;">Sair</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('guard-recheck-btn').addEventListener('click', () => window.location.reload());
   document.getElementById('guard-logout-btn').addEventListener('click', async () => {
     await supabase.auth.signOut();
     window.location.href = './index.html';

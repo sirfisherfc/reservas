@@ -5,7 +5,7 @@ import { qs, todayISO, addDaysISO, formatTimeBR, statusLabel } from './utils.js'
 async function init() {
   const appUser = await requireStaff({ adminOnly: false });
   if (!appUser) return;
-  mountLayout(appUser, 'dashboard');
+  await mountLayout(appUser, 'dashboard');
 
   const today = todayISO();
 

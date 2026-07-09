@@ -1,17 +1,17 @@
 import { supabase } from './supabaseClient.js';
 import { requireStaff, mountLayout } from './adminGuard.js';
-import { qs, qsa, showToast } from './utils.js';
+import { qs, qsa, showToast, formatDateTimeBR } from './utils.js';
 
 let appUser = null;
 
 async function init() {
   appUser = await requireStaff({ adminOnly: true });
   if (!appUser) return;
-  mountLayout(appUser, 'usuarios');
+  await mountLayout(appUser, 'usuarios');
 
   qs('#nu-add-btn').addEventListener('click', addUser);
 
-  await loadUsers();
+  await Promise.all([loadUsers(), loadRequests()]);
 }
 
 function escapeHtml(value) {
@@ -119,6 +119,76 @@ async function removeUser(id) {
   }
   showToast('Usuário removido.');
   await loadUsers();
+}
+
+// --- Solicitações de acesso pendentes ---
+
+async function loadRequests() {
+  const { data, error } = await supabase
+    .from('access_requests')
+    .select('id, name, email, requested_at')
+    .eq('status', 'pending')
+    .order('requested_at', { ascending: true });
+
+  const card = qs('#requests-card');
+  const tbody = qs('#requests-tbody');
+
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro: ${error.message}</td></tr>`;
+    return;
+  }
+
+  if (!data.length) {
+    card.classList.add('hidden');
+    return;
+  }
+
+  card.classList.remove('hidden');
+  tbody.innerHTML = data.map((r) => `
+    <tr data-id="${r.id}">
+      <td>${escapeHtml(r.name || '—')}</td>
+      <td>${escapeHtml(r.email)}</td>
+      <td>${formatDateTimeBR(r.requested_at)}</td>
+      <td>
+        <select data-field="role">
+          <option value="operator">Operador</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </td>
+      <td class="stack" style="flex-direction:row; gap:6px;">
+        <button class="btn btn--success btn--sm" data-approve type="button">Aprovar</button>
+        <button class="btn btn--outline btn--sm" data-reject type="button">Recusar</button>
+      </td>
+    </tr>
+  `).join('');
+
+  qsa('#requests-tbody tr[data-id]').forEach((row) => {
+    const id = row.dataset.id;
+    row.querySelector('[data-approve]').addEventListener('click', () => {
+      const role = row.querySelector('[data-field="role"]').value;
+      reviewRequest(id, true, role);
+    });
+    row.querySelector('[data-reject]').addEventListener('click', () => reviewRequest(id, false, null));
+  });
+}
+
+async function reviewRequest(id, approve, role) {
+  if (!approve && !window.confirm('Recusar esta solicitação de acesso?')) return;
+
+  const { error } = await supabase.rpc('fn_review_access_request', {
+    p_request_id: id,
+    p_approve: approve,
+    p_role: role,
+  });
+
+  if (error) {
+    qs('#requests-alert').innerHTML = `<div class="alert alert--danger">Erro: ${error.message}</div>`;
+    return;
+  }
+
+  qs('#requests-alert').innerHTML = '';
+  showToast(approve ? 'Acesso aprovado.' : 'Solicitação recusada.');
+  await Promise.all([loadRequests(), loadUsers()]);
 }
 
 init();

@@ -6,6 +6,12 @@
 
 Depois disso, o próprio admin cadastra os demais em **Usuários**: basta o e-mail do Google que a pessoa vai usar. O acesso é liberado automaticamente no primeiro login com esse e-mail — não é preciso nenhum ID técnico.
 
+### Solicitação de acesso (autoatendimento)
+
+Se alguém fizer login com Google sem estar cadastrado, em vez de um simples "acesso negado" o sistema registra um **pedido de acesso pendente** e mostra uma tela de "Aguardando aprovação" para a pessoa (com opção de verificar novamente depois). Esse pedido aparece na página **Usuários**, numa seção própria acima do cadastro manual, com um contador visível no menu lateral. O admin escolhe o papel (admin/operador) e aprova ou recusa ali mesmo — sem precisar que a pessoa passe o e-mail por fora.
+
+Uma conta que já existiu e foi **desativada** por um admin não entra nesse fluxo de solicitação — continua mostrando "conta desativada", já que isso foi uma decisão deliberada, não uma pessoa nova pedindo acesso.
+
 ## Perfis
 
 | Ação | Admin | Operador |
@@ -27,7 +33,7 @@ Reservas nunca são apagadas fisicamente — apenas mudam de status. O históric
 - **Dashboard** — indicadores do dia (reservas, confirmadas, canceladas, no-show, compareceu, pessoas previstas por horário) e lista rápida das próximas reservas de hoje.
 - **Reservas** — lista com filtros (hoje / amanhã / próximos 7 dias / todas, status, busca por nome/telefone/código), criação manual, detalhe com histórico e ações de status.
 - **Configurações** (admin) — parâmetros gerais do site e a grade de horários recorrente por dia da semana.
-- **Bloqueios** (admin) — bloqueio pontual de um dia inteiro ou de um horário específico numa data (eventos, manutenção, datas comemorativas).
+- **Bloqueios** (admin) — bloqueio pontual de um dia inteiro ou de uma faixa de horário (inicial/final) numa data específica (eventos, manutenção, datas comemorativas). A faixa bloqueia de uma vez todos os horários já configurados na grade daquele dia da semana dentro do intervalo escolhido.
 - **Usuários** (admin) — cadastro e gestão de administradores/operadores.
 
 ## Configurações disponíveis

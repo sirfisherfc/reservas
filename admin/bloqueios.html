@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bloqueios — Painel Sir Fisher Praia</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌅</text></svg>" />
+  <link rel="stylesheet" href="../assets/css/admin.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main">
+      <div class="page-header">
+        <h1>Bloqueios</h1>
+      </div>
+
+      <div class="card mb-16">
+        <h2 class="section-title" style="margin-bottom:10px;">Bloquear um dia inteiro</h2>
+        <p class="hint" style="margin-bottom:14px;">Use para eventos, manutenção, datas comemorativas ou operação interna.</p>
+        <div class="form-grid mb-16">
+          <div class="form-field">
+            <label for="bd-date">Data</label>
+            <input type="date" id="bd-date" />
+          </div>
+          <div class="form-field">
+            <label for="bd-reason">Motivo</label>
+            <input type="text" id="bd-reason" placeholder="Ex.: evento privado" maxlength="200" />
+          </div>
+        </div>
+        <button class="btn btn--primary" id="bd-add-btn" type="button">Bloquear dia</button>
+
+        <div class="table-wrap mt-16">
+          <table>
+            <thead><tr><th>Data</th><th>Motivo</th><th></th></tr></thead>
+            <tbody id="bd-tbody"><tr><td colspan="3" class="empty-state">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title" style="margin-bottom:10px;">Bloquear horário específico</h2>
+        <p class="hint" style="margin-bottom:14px;">Para uma faixa de horário em uma data específica (ex.: 19h do dia 24/12 reservado para evento).</p>
+        <div class="form-grid mb-16">
+          <div class="form-field">
+            <label for="bs-date">Data</label>
+            <input type="date" id="bs-date" />
+          </div>
+          <div class="form-field">
+            <label for="bs-time">Horário</label>
+            <input type="time" id="bs-time" step="1800" />
+          </div>
+          <div class="form-field">
+            <label for="bs-reason">Motivo</label>
+            <input type="text" id="bs-reason" placeholder="Ex.: reserva de grupo grande" maxlength="200" />
+          </div>
+        </div>
+        <button class="btn btn--primary" id="bs-add-btn" type="button">Bloquear horário</button>
+
+        <div class="table-wrap mt-16">
+          <table>
+            <thead><tr><th>Data</th><th>Horário</th><th>Motivo</th><th></th></tr></thead>
+            <tbody id="bs-tbody"><tr><td colspan="4" class="empty-state">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="../assets/js/adminBlocks.js"></script>
+</body>
+</html>

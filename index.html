@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sir Fisher Praia — Reservas</title>
+  <meta name="description" content="Reserve sua mesa no Sir Fisher Praia. Confirmação automática e imediata." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌅</text></svg>" />
+  <link rel="stylesheet" href="./assets/css/style.css" />
+</head>
+<body>
+
+  <header class="hero">
+    <div class="container">
+      <h1>Reserve sua experiência no Sir Fisher Praia</h1>
+      <p>Garanta sua reserva e aproveite nosso clima à beira-mar. A posição das mesas é organizada conforme disponibilidade no momento da chegada.</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="section container">
+      <h2 class="section-title">Antes de reservar</h2>
+      <div class="rule-grid">
+        <div class="rule-card">
+          <span class="rule-card__icon">⏱️</span>
+          <p><strong><span class="tolerance-label">15</span> minutos de tolerância.</strong> Após esse prazo, a reserva poderá ser liberada.</p>
+        </div>
+        <div class="rule-card">
+          <span class="rule-card__icon">🪑</span>
+          <p><strong>Não garantimos posição de mesa.</strong> A organização depende da disponibilidade no momento da chegada.</p>
+        </div>
+        <div class="rule-card">
+          <span class="rule-card__icon">🌊</span>
+          <p><strong>Reservamos apenas parte da nossa capacidade.</strong> O restante das mesas funciona por ordem de chegada.</p>
+        </div>
+        <div class="rule-card">
+          <span class="rule-card__icon">💬</span>
+          <p><strong>Grupos acima de <span id="max-party-label">10</span> pessoas:</strong> atendimento pelo WhatsApp.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section container" id="reserva">
+      <h2 class="section-title">Fazer reserva</h2>
+
+      <div id="form-alert-area"></div>
+
+      <form id="reservation-form" class="card" novalidate>
+
+        <div class="form-field hp-field" aria-hidden="true">
+          <label for="website">Não preencha este campo</label>
+          <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
+        </div>
+
+        <div class="form-row form-row--split">
+          <div class="form-field">
+            <label for="name">Nome</label>
+            <input type="text" id="name" name="name" maxlength="120" required autocomplete="name" />
+          </div>
+          <div class="form-field">
+            <label for="phone">Telefone/WhatsApp</label>
+            <input type="tel" id="phone" name="phone" maxlength="20" required autocomplete="tel" inputmode="tel" placeholder="(21) 99999-9999" />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" name="email" maxlength="160" required autocomplete="email" />
+        </div>
+
+        <div class="form-row form-row--split">
+          <div class="form-field">
+            <label for="party_size">Quantidade de pessoas</label>
+            <input type="number" id="party_size" name="party_size" min="2" max="10" step="1" required />
+            <p class="hint" id="party-size-hint">Mínimo 2 pessoas.</p>
+          </div>
+          <div class="form-field">
+            <label for="date">Data</label>
+            <input type="date" id="date" name="date" required />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label>Horário</label>
+          <div id="slots-container">
+            <p class="hint">Selecione data e quantidade de pessoas para ver os horários disponíveis.</p>
+          </div>
+        </div>
+
+        <div id="whatsapp-cta" class="alert alert--info hidden">
+          Para reservas acima de <span class="max-party-label">10</span> pessoas, fale com nossa equipe pelo WhatsApp para verificarmos disponibilidade.
+          <div style="margin-top:10px;">
+            <a id="whatsapp-cta-link" class="btn btn--whatsapp" href="#" target="_blank" rel="noopener">Falar no WhatsApp</a>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="notes">Observações (opcional)</label>
+          <textarea id="notes" name="notes" maxlength="500" placeholder="Alguma observação para sua visita?"></textarea>
+          <p class="hint">Consideramos observações sempre que possível, mas não garantimos o atendimento do pedido.</p>
+        </div>
+
+        <div class="alert alert--info" style="font-size:0.88rem;">
+          <strong>Antes de confirmar, leia com atenção:</strong>
+          <ol style="margin:8px 0 0; padding-left:18px;">
+            <li>Temos <span class="tolerance-label">15</span> minutos de tolerância para chegada. Após esse prazo, a reserva poderá ser liberada.</li>
+            <li>Não garantimos posição de mesa. A organização depende da disponibilidade no momento da chegada.</li>
+            <li>Reservamos apenas parte da nossa capacidade. O restante das mesas funciona por ordem de chegada.</li>
+            <li>Reservas acima de <span class="max-party-label">10</span> pessoas devem ser feitas pelo WhatsApp.</li>
+            <li>Para melhor organização da casa, lugares reservados e não ocupados em até <span class="hold-release-label">1 hora</span> poderão ser liberados para outros clientes.</li>
+          </ol>
+        </div>
+
+        <div class="form-field checkbox-field">
+          <input type="checkbox" id="accept_policy" name="accept_policy" required />
+          <label for="accept_policy">Li e aceito as regras acima para minha reserva.</label>
+        </div>
+
+        <div class="form-field checkbox-field">
+          <input type="checkbox" id="marketing_opt_in" name="marketing_opt_in" />
+          <label for="marketing_opt_in">Aceito receber novidades e promoções exclusivas do Sir Fisher.</label>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn btn--primary">Confirmar reserva</button>
+      </form>
+
+      <div id="success-panel" class="card hidden text-center">
+        <h2 class="section-title">Reserva confirmada 🎉</h2>
+        <p>Enviamos os dados da sua reserva para conferência. Chegue com até 15 minutos de tolerância para manter sua reserva ativa.</p>
+        <div class="success-code" id="success-code">SF-XXXXXX</div>
+        <ul class="summary-list" id="success-summary"></ul>
+        <div class="stack">
+          <a id="success-whatsapp" class="btn btn--whatsapp" href="#" target="_blank" rel="noopener">Falar no WhatsApp</a>
+          <a id="success-cancel-link" class="btn btn--outline" href="#">Cancelar esta reserva</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer container">
+    <p><strong>Sir Fisher Praia</strong> — reservas online</p>
+    <p>Precisa de ajuda? <a id="footer-whatsapp" href="#" target="_blank" rel="noopener">Fale conosco pelo WhatsApp</a></p>
+  </footer>
+
+  <script type="module" src="./assets/js/reservations.js"></script>
+</body>
+</html>

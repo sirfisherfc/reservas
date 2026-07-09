@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Usuários — Painel Sir Fisher Praia</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌅</text></svg>" />
+  <link rel="stylesheet" href="../assets/css/admin.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main">
+      <div class="page-header">
+        <h1>Usuários internos</h1>
+      </div>
+
+      <div class="card mb-16">
+        <h2 class="section-title" style="margin-bottom:10px;">Adicionar usuário</h2>
+        <p class="hint" style="margin-bottom:14px;">
+          Cadastre o e-mail do Google que a pessoa vai usar para entrar. O acesso é liberado automaticamente
+          no primeiro login com esse e-mail — não é preciso saber nenhum ID técnico.
+        </p>
+        <div class="form-grid mb-16">
+          <div class="form-field">
+            <label for="nu-name">Nome</label>
+            <input type="text" id="nu-name" maxlength="120" />
+          </div>
+          <div class="form-field">
+            <label for="nu-email">E-mail (Google)</label>
+            <input type="email" id="nu-email" maxlength="160" />
+          </div>
+          <div class="form-field">
+            <label for="nu-role">Papel</label>
+            <select id="nu-role">
+              <option value="operator">Operador</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn--primary" id="nu-add-btn" type="button">Adicionar usuário</button>
+      </div>
+
+      <div id="users-alert"></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Ativo</th><th>Status login</th><th></th></tr></thead>
+          <tbody id="users-tbody"><tr><td colspan="6" class="empty-state">Carregando…</td></tr></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="../assets/js/adminUsers.js"></script>
+</body>
+</html>

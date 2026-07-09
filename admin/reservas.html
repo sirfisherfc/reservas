@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reservas — Painel Sir Fisher Praia</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌅</text></svg>" />
+  <link rel="stylesheet" href="../assets/css/admin.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main">
+      <div class="page-header">
+        <h1>Reservas</h1>
+        <div class="stack" style="flex-direction:row; gap:8px;">
+          <button id="export-csv-btn" class="btn btn--outline" type="button">Exportar CSV</button>
+          <button id="new-reservation-btn" class="btn btn--primary" type="button">+ Nova reserva</button>
+        </div>
+      </div>
+
+      <div class="chip-group" id="range-chips">
+        <button class="chip is-active" data-range="today" type="button">Hoje</button>
+        <button class="chip" data-range="tomorrow" type="button">Amanhã</button>
+        <button class="chip" data-range="next7" type="button">Próximos 7 dias</button>
+        <button class="chip" data-range="all" type="button">Todas</button>
+      </div>
+
+      <div class="filter-bar">
+        <input type="date" id="filter-date" title="Filtrar por data específica" />
+        <select id="filter-status">
+          <option value="">Todos os status</option>
+          <option value="confirmada">Confirmada</option>
+          <option value="compareceu">Compareceu</option>
+          <option value="no_show">Não compareceu</option>
+          <option value="desistiu">Desistiu</option>
+          <option value="cancelada_cliente">Cancelada (cliente)</option>
+          <option value="cancelada_restaurante">Cancelada (restaurante)</option>
+          <option value="recusada">Recusada</option>
+        </select>
+        <input type="text" id="filter-search" placeholder="Buscar por nome, telefone ou código" />
+      </div>
+
+      <div id="reservations-alert"></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Data</th>
+              <th>Horário</th>
+              <th>Cliente</th>
+              <th>Telefone</th>
+              <th>Pessoas</th>
+              <th>Status</th>
+              <th>Origem</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="reservations-tbody">
+            <tr><td colspan="9" class="empty-state">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <div id="modal-mount"></div>
+
+  <script type="module" src="../assets/js/adminReservations.js"></script>
+</body>
+</html>

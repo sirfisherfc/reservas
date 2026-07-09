@@ -16,6 +16,7 @@ Itens marcados **[✔ verificado]** já foram testados nesta implementação —
 - [✔ verificado] Cancelar uma reserva já cancelada não gera erro nem duplica — retorna `already_cancelled: true`.
 - [✔ verificado] Honeypot preenchido é rejeitado silenciosamente (erro genérico, sem detalhar para o remetente que foi detecção de spam).
 - [✔ verificado] Bloqueio de horário por faixa (inicial/final) cria um bloqueio para cada horário já configurado na grade dentro do intervalo, de uma vez.
+- [✔ verificado] Janela de ocupação (margem antes + duração depois): reserva às 19h com padrões (60min/120min) ocupa 18h–21h; horários dentro da janela mostram a ocupação corretamente, fora dela não. Testado inclusive no horário mais tardio da grade (22h30) para confirmar que a aritmética não quebra perto da meia-noite.
 - [ ] verificar] Layout mobile (visual — precisa de navegador).
 
 ## Segurança / permissões

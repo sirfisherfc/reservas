@@ -11,6 +11,8 @@ const SETTINGS_META = [
   { key: 'advance_booking_days', label: 'Dias de antecedência permitidos', type: 'number' },
   { key: 'tolerance_minutes', label: 'Tolerância de chegada (minutos)', type: 'number' },
   { key: 'hold_release_minutes', label: 'Liberação da mesa após (minutos sem check-in)', type: 'number' },
+  { key: 'table_duration_minutes', label: 'Duração média da mesa após a reserva (minutos)', type: 'number' },
+  { key: 'pre_buffer_minutes', label: 'Margem de segurança antes da reserva (minutos)', type: 'number' },
   { key: 'whatsapp_number', label: 'Número de WhatsApp (só dígitos, com DDI+DDD)', type: 'text' },
   { key: 'whatsapp_message_template', label: 'Mensagem padrão do WhatsApp', type: 'text' },
 ];

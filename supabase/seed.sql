@@ -11,7 +11,9 @@ insert into public.restaurant_settings (key, value, description, is_public) valu
   ('tolerance_minutes', '15', 'Tolerância de chegada, em minutos, antes da reserva poder ser liberada.', true),
   ('hold_release_minutes', '60', 'Minutos sem check-in após os quais a mesa pode ser liberada.', true),
   ('whatsapp_number', '""', 'Número de WhatsApp do restaurante (só dígitos, com DDI+DDD). Preencher no painel.', true),
-  ('whatsapp_message_template', '"Olá! Gostaria de falar sobre uma reserva no Sir Fisher Praia."', 'Mensagem padrão usada nos links de WhatsApp.', true)
+  ('whatsapp_message_template', '"Olá! Gostaria de falar sobre uma reserva no Sir Fisher Praia."', 'Mensagem padrão usada nos links de WhatsApp.', true),
+  ('table_duration_minutes', '120', 'Tempo médio, em minutos, que uma mesa fica ocupada após o horário da reserva.', false),
+  ('pre_buffer_minutes', '60', 'Margem de segurança, em minutos, bloqueada antes do horário da reserva.', false)
 on conflict (key) do nothing;
 
 -- Grade de horários de exemplo (todos os dias da semana): almoço 12:00–15:00 e

@@ -313,6 +313,8 @@ declare
   v_max_party int;
   v_cutoff time;
   v_advance_days int;
+  v_duration_minutes int;
+  v_pre_buffer_minutes int;
   v_weekday int;
 begin
   if p_date is null or p_party_size is null or p_party_size <= 0 then
@@ -325,8 +327,10 @@ begin
     coalesce((select value from public.restaurant_settings where key = 'min_party_size') #>> '{}', '2')::int,
     coalesce((select value from public.restaurant_settings where key = 'max_party_size') #>> '{}', '10')::int,
     coalesce((select value from public.restaurant_settings where key = 'same_day_cutoff_time') #>> '{}', '12:00')::time,
-    coalesce((select value from public.restaurant_settings where key = 'advance_booking_days') #>> '{}', '60')::int
-  into v_min_party, v_max_party, v_cutoff, v_advance_days;
+    coalesce((select value from public.restaurant_settings where key = 'advance_booking_days') #>> '{}', '60')::int,
+    coalesce((select value from public.restaurant_settings where key = 'table_duration_minutes') #>> '{}', '120')::int,
+    coalesce((select value from public.restaurant_settings where key = 'pre_buffer_minutes') #>> '{}', '60')::int
+  into v_min_party, v_max_party, v_cutoff, v_advance_days, v_duration_minutes, v_pre_buffer_minutes;
 
   if not v_is_staff then
     if p_party_size < v_min_party then
@@ -349,6 +353,11 @@ begin
 
   v_weekday := extract(dow from p_date);
 
+  -- Cada reserva ocupa uma janela (margem antes + duração depois), não só o
+  -- horário exato. Horários vizinhos cuja janela cobre este time_slot contam
+  -- contra o limite de pessoas/reservas configurado para ele. Usamos
+  -- aritmética de data+hora (timestamp), não só "time", para não quebrar perto
+  -- da meia-noite (ex.: 22:30 + 2h de duração = 00:30 do dia seguinte).
   return query
     select
       r.time_slot,
@@ -367,8 +376,10 @@ begin
       select sum(res.party_size) as people_booked, count(*) as reservations_booked
       from public.reservations res
       where res.reservation_date = p_date
-        and res.reservation_time = r.time_slot
         and res.status = 'confirmada'
+        and (p_date + r.time_slot) between
+            ((p_date + res.reservation_time) - (v_pre_buffer_minutes || ' minutes')::interval)
+            and ((p_date + res.reservation_time) + (v_duration_minutes || ' minutes')::interval)
     ) booked on true
     where r.weekday = v_weekday
       and r.enabled = true
@@ -387,6 +398,8 @@ $$;
 -- corte de mesmo dia, janela de antecedência) são flexibilizados, pois nesse
 -- caso um humano já mediou o pedido (ex.: grupo grande combinado por telefone).
 -- Bloqueios de data/horário e limites físicos de capacidade valem sempre.
+-- Ocupação considera janela de tempo (margem antes + duração depois), não só
+-- o horário exato — ver comentário no bloco de checagem de limite abaixo.
 -- =========================================================================
 create or replace function public.fn_create_reservation(
   p_name text,
@@ -422,6 +435,8 @@ declare
   v_max_party int;
   v_cutoff time;
   v_advance_days int;
+  v_duration_minutes int;
+  v_pre_buffer_minutes int;
   v_weekday int;
   v_rule public.availability_rules%rowtype;
   v_people_booked int;
@@ -475,8 +490,10 @@ begin
     coalesce((select value from public.restaurant_settings where key = 'min_party_size') #>> '{}', '2')::int,
     coalesce((select value from public.restaurant_settings where key = 'max_party_size') #>> '{}', '10')::int,
     coalesce((select value from public.restaurant_settings where key = 'same_day_cutoff_time') #>> '{}', '12:00')::time,
-    coalesce((select value from public.restaurant_settings where key = 'advance_booking_days') #>> '{}', '60')::int
-  into v_min_party, v_max_party, v_cutoff, v_advance_days;
+    coalesce((select value from public.restaurant_settings where key = 'advance_booking_days') #>> '{}', '60')::int,
+    coalesce((select value from public.restaurant_settings where key = 'table_duration_minutes') #>> '{}', '120')::int,
+    coalesce((select value from public.restaurant_settings where key = 'pre_buffer_minutes') #>> '{}', '60')::int
+  into v_min_party, v_max_party, v_cutoff, v_advance_days, v_duration_minutes, v_pre_buffer_minutes;
 
   if not v_is_staff then
     if p_party_size < v_min_party then
@@ -530,13 +547,22 @@ begin
     raise exception 'SLOT_BLOCKED: Este horário não está disponível.';
   end if;
 
-  -- Trava por (data, horário): serializa concorrência para impedir overbooking.
-  perform pg_advisory_xact_lock(hashtext(p_date::text || p_time::text));
+  -- Trava por dia inteiro: uma reserva pode afetar o cômputo de vários horários
+  -- vizinhos ao mesmo tempo (janela de ocupação abaixo), então a serialização
+  -- precisa ser por data, não mais só pelo horário exato.
+  perform pg_advisory_xact_lock(hashtext(p_date::text));
 
+  -- Mesma lógica de janela de ocupação (margem antes + duração depois) do
+  -- get_available_time_slots, usando aritmética de timestamp para não quebrar
+  -- perto da meia-noite.
   select coalesce(sum(res.party_size), 0), count(*)
     into v_people_booked, v_reservations_booked
   from public.reservations res
-  where res.reservation_date = p_date and res.reservation_time = p_time and res.status = 'confirmada';
+  where res.reservation_date = p_date
+    and res.status = 'confirmada'
+    and (p_date + p_time) between
+        ((p_date + res.reservation_time) - (v_pre_buffer_minutes || ' minutes')::interval)
+        and ((p_date + res.reservation_time) + (v_duration_minutes || ' minutes')::interval);
 
   if v_people_booked + p_party_size > v_rule.max_people then
     raise exception 'SLOT_FULL_PEOPLE: Este horário já atingiu o limite de pessoas.';

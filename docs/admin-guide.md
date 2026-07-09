@@ -45,9 +45,14 @@ Tudo em **Configurações > Parâmetros gerais** é editável sem mexer em códi
 - Horário de corte para reserva no mesmo dia.
 - Dias de antecedência permitidos para reserva.
 - Tolerância de chegada (minutos) e tempo de liberação da mesa sem check-in.
+- Duração média da mesa após a reserva e margem de segurança antes da reserva (ver "Janela de ocupação" abaixo).
 - Número de WhatsApp e mensagem padrão usada nos links.
 
 **Grade de horários**: escolha o dia da semana e edite, por horário, se está habilitado, o máximo de pessoas e o máximo de reservas simultâneas. Para fechar um dia da semana inteiro (ex.: às segundas), desabilite todos os horários daquele dia. Para bloquear um horário recorrente só em alguns dias (ex.: sábado e domingo às 17h30), desabilite apenas essa linha nesses dias. Bloqueios pontuais (uma data específica) ficam em **Bloqueios**, não aqui.
+
+### Janela de ocupação (duração + margem de segurança)
+
+Cada reserva ocupa uma janela de tempo, não só o horário exato: **margem de segurança antes** + **duração da mesa depois**. Com os padrões (60 min / 120 min), uma reserva às 18h ocupa a casa das 17h às 20h — ou seja, reservas em horários vizinhos (17h30, 19h, 19h30...) competem pelo mesmo limite de pessoas/reservas configurado na grade para esses horários, porque as janelas se sobrepõem. Isso evita que o sistema aceite reservas demais em horários próximos, mesmo que cada um individualmente pareça ter vaga. Ajuste os dois valores em Configurações conforme a realidade da casa (mesas que giram mais rápido podem reduzir a duração, por exemplo).
 
 ### Regra importante sobre reservas manuais (painel)
 

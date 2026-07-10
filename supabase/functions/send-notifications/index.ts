@@ -71,6 +71,7 @@ function escapeHtml(s: string): string {
 }
 
 interface Payload {
+  type?: string;
   public_code?: string;
   name?: string;
   email?: string;
@@ -81,6 +82,7 @@ interface Payload {
 }
 
 function buildEmailHtml(p: Payload): string {
+  const isReminder = p.type === "reservation_reminder";
   const name = escapeHtml(p.name ?? "");
   const code = escapeHtml(p.public_code ?? "");
   const dateStr = escapeHtml(formatDateBR(p.date ?? ""));
@@ -103,6 +105,12 @@ function buildEmailHtml(p: Payload): string {
       </td></tr>`
     : "";
 
+  const reminderNotice = isReminder
+    ? `<tr><td style="padding:28px 32px 0;">
+        <p style="margin:0 0 14px;font-size:16px;line-height:1.6;">Lembrete: sua reserva é amanhã. Estamos ansiosos para receber você!</p>
+      </td></tr>`
+    : "";
+
   return `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f4f2ee;font-family:Arial,Helvetica,sans-serif;color:#2b2b2b;">
@@ -116,7 +124,8 @@ function buildEmailHtml(p: Payload): string {
           <div style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:.5px;">Sir Fisher Praia</div>
           <div style="color:#9fc6c2;font-size:13px;margin-top:2px;">Confirmação de reserva</div>
         </td></tr>
-        <tr><td style="padding:28px 32px 8px;">
+        ${reminderNotice}
+        <tr><td style="padding:${isReminder ? "14px" : "28px"} 32px 8px;">
           <p style="margin:0 0 14px;font-size:16px;">Olá${name ? ", " + name : ""}! 👋</p>
           <p style="margin:0 0 18px;font-size:15px;line-height:1.6;">
             Sua reserva está <strong style="color:#0f3d3e;">confirmada</strong>. Estamos ansiosos para receber você!
@@ -162,12 +171,12 @@ Deno.serve(async (req) => {
     return json({ error: `claim: ${claimErr.message}` }, 500);
   }
 
-  const rows = (claimed ?? []) as Array<{ id: string; payload: Payload }>;
+  const rows = (claimed ?? []) as Array<{ id: string; type: string; payload: Payload }>;
   let sent = 0;
   let failed = 0;
 
   for (const row of rows) {
-    const p = row.payload ?? {};
+    const p = { ...(row.payload ?? {}), type: row.type };
     try {
       if (!p.email) throw new Error("payload sem e-mail");
       const res = await fetch("https://api.resend.com/emails", {

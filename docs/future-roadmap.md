@@ -13,9 +13,9 @@ botão de cancelamento, e o status vira `sent`/`failed` com o erro registrado.
 
 Mesma ideia do e-mail (`channel='whatsapp'` na fila), mas via API oficial do WhatsApp Business (Meta) ou um provedor (ex.: Twilio, Z-API) — normalmente pago por mensagem. Na fase 1, existe só o botão/link manual de WhatsApp (`wa.me`) espalhado pelo site.
 
-## Lembrete no dia da reserva
+## Lembrete por e-mail — IMPLEMENTADO
 
-Dependeria de um cron (ex.: Supabase Cron/pg_cron, ou Edge Function agendada) rodando algumas horas antes do horário de cada reserva confirmada do dia, reaproveitando o canal de e-mail/WhatsApp acima.
+O Supabase Cron executa diariamente às 10h no horário de Fortaleza e enfileira um e-mail para cada reserva confirmada do dia seguinte. A fila impede lembretes duplicados e a Edge Function existente faz o envio pelo Resend.
 
 ## Pesquisa pós-visita
 

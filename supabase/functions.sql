@@ -869,3 +869,72 @@ drop trigger if exists trg_notification_queue_send on public.notification_queue;
 create trigger trg_notification_queue_send
 after insert on public.notification_queue
 for each row execute function public.tg_notification_queue_send();
+
+-- Lembretes: enfileira um e-mail por reserva confirmada do dia seguinte.
+-- O job roda às 13:00 UTC, equivalente a 10:00 em Fortaleza.
+create or replace function public.fn_enqueue_reservation_reminders(
+  p_reference_date date default ((now() at time zone 'America/Fortaleza')::date)
+)
+returns integer
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_count integer;
+begin
+  with inserted as (
+    insert into public.notification_queue (reservation_id, type, channel, status, payload)
+    select
+      r.id,
+      'reservation_reminder',
+      'email',
+      'pending',
+      jsonb_build_object(
+        'public_code', r.public_code,
+        'name', r.customer_name_snapshot,
+        'email', r.customer_email_snapshot,
+        'date', r.reservation_date,
+        'time', r.reservation_time,
+        'party_size', r.party_size,
+        'cancel_token', null
+      )
+    from public.reservations r
+    where r.status = 'confirmada'
+      and r.reservation_date = p_reference_date + 1
+      and r.customer_email_snapshot is not null
+      and not exists (
+        select 1
+        from public.notification_queue q
+        where q.reservation_id = r.id
+          and q.type = 'reservation_reminder'
+      )
+    returning id
+  )
+  select count(*) into v_count from inserted;
+
+  return v_count;
+end;
+$$;
+
+revoke all on function public.fn_enqueue_reservation_reminders(date) from public, anon, authenticated;
+grant execute on function public.fn_enqueue_reservation_reminders(date) to service_role;
+
+create extension if not exists pg_cron;
+
+do $$
+declare
+  v_jobid bigint;
+begin
+  select jobid into v_jobid from cron.job where jobname = 'enqueue-reservation-reminders';
+  if v_jobid is not null then
+    perform cron.unschedule(v_jobid);
+  end if;
+
+  perform cron.schedule(
+    'enqueue-reservation-reminders',
+    '0 13 * * *',
+    'select public.fn_enqueue_reservation_reminders();'
+  );
+end;
+$$;

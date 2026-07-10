@@ -104,8 +104,11 @@ async function init() {
     phoneInput.value = maskPhoneBR(phoneInput.value);
   });
 
-  partySizeInput.addEventListener('input', debounce(handleAvailabilityInputs, 250));
-  dateInput.addEventListener('input', debounce(handleAvailabilityInputs, 250));
+  const refreshAvailability = debounce(handleAvailabilityInputs, 250);
+  partySizeInput.addEventListener('input', refreshAvailability);
+  dateInput.addEventListener('input', refreshAvailability);
+  // O seletor nativo de data do Safari/iOS confirma a escolha via `change`.
+  dateInput.addEventListener('change', refreshAvailability);
 
   form.addEventListener('submit', handleSubmit);
 }

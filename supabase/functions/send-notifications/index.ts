@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           from: RESEND_FROM,
           to: [p.email],
-          subject: `Reserva confirmada — ${p.public_code ?? "Sir Fisher Praia"}`,
+          subject: `${row.type === "reservation_reminder" ? "Lembrete da sua reserva" : "Reserva confirmada"} — ${p.public_code ?? "Sir Fisher Praia"}`,
           html: buildEmailHtml(p),
         }),
       });

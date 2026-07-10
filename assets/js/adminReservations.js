@@ -72,13 +72,13 @@ function getDateRange() {
 
 async function loadReservations() {
   const tbody = qs('#reservations-tbody');
-  tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Carregando…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Carregando…</td></tr>';
   qs('#reservations-alert').innerHTML = '';
 
   const range = getDateRange();
   let query = supabase
     .from('reservations')
-    .select('id, public_code, reservation_date, reservation_time, party_size, status, source, customer_name_snapshot, customer_phone_snapshot')
+    .select('id, public_code, reservation_date, reservation_time, party_size, status, source, customer_name_snapshot, customer_phone_snapshot, customer_notes')
     .order('reservation_date', { ascending: true })
     .order('reservation_time', { ascending: true })
     .limit(500);
@@ -114,7 +114,7 @@ function renderTable() {
   });
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Nenhuma reserva encontrada.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Nenhuma reserva encontrada.</td></tr>';
     return;
   }
 
@@ -125,6 +125,7 @@ function renderTable() {
       <td>${formatTimeBR(r.reservation_time)}</td>
       <td>${escapeHtml(r.customer_name_snapshot)}</td>
       <td>${escapeHtml(r.customer_phone_snapshot)}</td>
+      <td class="notes-cell">${r.customer_notes ? escapeHtml(r.customer_notes) : '<span class="text-soft">—</span>'}</td>
       <td>${r.party_size}</td>
       <td>${renderStatusCell(r)}</td>
       <td>${r.source === 'admin' ? 'Painel' : 'Site'}</td>
@@ -507,6 +508,7 @@ function exportCSV() {
     { key: 'reservation_time', label: 'Horário' },
     { key: 'customer_name_snapshot', label: 'Cliente' },
     { key: 'customer_phone_snapshot', label: 'Telefone' },
+    { key: 'customer_notes', label: 'Observação' },
     { key: 'party_size', label: 'Pessoas' },
     { key: 'status', label: 'Status' },
     { key: 'source', label: 'Origem' },

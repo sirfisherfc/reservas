@@ -144,23 +144,37 @@ async function handleAvailabilityInputs() {
   const { slots, error } = await fetchAvailableSlots(date, size);
 
   if (error) {
-    slotsContainer.innerHTML = '';
-    showAlert(friendlyMessage({ message: error + ':' }));
+    renderNoAvailability(date, size, error);
     return;
   }
 
   currentSlots = slots;
 
   if (!slots.length) {
-    const waHref = buildWaLink(`Olá! Gostaria de verificar disponibilidade no ${RESTAURANT_NAME} para ${size} pessoas no dia ${date}.`) || '#';
+    renderNoAvailability(date, size, null);
+    return;
+  }
+
+  renderSlots(slotsContainer, currentSlots, selectedTime, selectSlot);
+}
+
+function renderNoAvailability(date, size, errorCode) {
+  const waHref = buildWaLink(`Olá! Gostaria de verificar disponibilidade no ${RESTAURANT_NAME} para ${size} pessoas no dia ${date}.`) || '#';
+
+  if (errorCode === 'SAME_DAY_CUTOFF' && date === todayISO()) {
+    const cutoff = String(settings?.same_day_cutoff_time || '12:00').slice(0, 5);
     slotsContainer.innerHTML = `
-      <p class="hint">Nenhum horário disponível para essa data e quantidade de pessoas.</p>
+      <p class="hint">Reservas para o mesmo dia são aceitas somente até ${cutoff}. Após esse horário não conseguimos mais confirmar reserva online, mas temos mesas para atendimento por ordem de chegada — venha nos visitar!</p>
       <a class="btn btn--whatsapp" style="margin-top:8px;" href="${waHref}" target="_blank" rel="noopener">Falar no WhatsApp</a>
     `;
     return;
   }
 
-  renderSlots(slotsContainer, currentSlots, selectedTime, selectSlot);
+  const message = errorCode ? friendlyMessage({ message: `${errorCode}:` }) : 'Nenhum horário disponível para essa data e quantidade de pessoas.';
+  slotsContainer.innerHTML = `
+    <p class="hint">${message}</p>
+    <a class="btn btn--whatsapp" style="margin-top:8px;" href="${waHref}" target="_blank" rel="noopener">Falar no WhatsApp</a>
+  `;
 }
 
 function selectSlot(time) {

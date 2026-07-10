@@ -330,6 +330,23 @@ td.notes-cell {
 .badge--admin { background: #f1e2ff; color: #6b21a8; }
 .badge--operator { background: #e3edfb; color: #1d4f91; }
 
+.status-select {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.status-select:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 /* Filters */
 
 .filter-bar {

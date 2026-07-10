@@ -126,7 +126,7 @@ function renderTable() {
       <td>${escapeHtml(r.customer_name_snapshot)}</td>
       <td>${escapeHtml(r.customer_phone_snapshot)}</td>
       <td>${r.party_size}</td>
-      <td><span class="badge badge--${r.status}">${statusLabel(r.status)}</span></td>
+      <td>${renderStatusCell(r)}</td>
       <td>${r.source === 'admin' ? 'Painel' : 'Site'}</td>
       <td><button class="btn btn--outline btn--sm" data-id="${r.id}" type="button">Ver</button></td>
     </tr>
@@ -135,6 +135,42 @@ function renderTable() {
   qsa('#reservations-tbody button[data-id]').forEach((btn) => {
     btn.addEventListener('click', () => openDetailModal(btn.dataset.id));
   });
+
+  qsa('#reservations-tbody select[data-status-select]').forEach((select) => {
+    select.addEventListener('change', () => handleInlineStatusChange(select));
+  });
+}
+
+function renderStatusCell(r) {
+  if (TERMINAL_STATUSES.includes(r.status)) {
+    return `<span class="badge badge--${r.status}">${statusLabel(r.status)}</span>`;
+  }
+  const options = [`<option value="${r.status}">${statusLabel(r.status)}</option>`]
+    .concat(STATUS_ACTIONS.map((a) => `<option value="${a.status}">${a.label}</option>`))
+    .join('');
+  return `<select class="status-select" data-status-select data-id="${r.id}" data-current="${r.status}">${options}</select>`;
+}
+
+async function handleInlineStatusChange(select) {
+  const id = select.dataset.id;
+  const current = select.dataset.current;
+  const newStatus = select.value;
+  if (newStatus === current) return;
+
+  if (!window.confirm(`Alterar status para "${statusLabel(newStatus)}"?`)) {
+    select.value = current;
+    return;
+  }
+
+  select.disabled = true;
+  const ok = await changeStatus(id, newStatus);
+  select.disabled = false;
+
+  if (ok) {
+    await loadReservations();
+  } else {
+    select.value = current;
+  }
 }
 
 function escapeHtml(value) {
@@ -265,7 +301,14 @@ function renderDetailModal(res, history) {
     const actionsEl = qs('#status-actions');
     actionsEl.innerHTML = STATUS_ACTIONS.map((a) => `<button class="chip" data-status="${a.status}" type="button">${a.label}</button>`).join('');
     qsa('#status-actions button').forEach((btn) => {
-      btn.addEventListener('click', () => changeStatus(res.id, btn.dataset.status));
+      btn.addEventListener('click', async () => {
+        const note = qs('#status-note-input')?.value.trim() || null;
+        const ok = await changeStatus(res.id, btn.dataset.status, note);
+        if (ok) {
+          closeModal();
+          await loadReservations();
+        }
+      });
     });
   }
 
@@ -301,8 +344,7 @@ async function saveReservationEdit(id) {
   await loadReservations();
 }
 
-async function changeStatus(id, newStatus) {
-  const note = qs('#status-note-input')?.value.trim() || null;
+async function changeStatus(id, newStatus, note = null) {
   const { error } = await supabase.rpc('fn_update_reservation_status', {
     p_reservation_id: id,
     p_new_status: newStatus,
@@ -310,11 +352,10 @@ async function changeStatus(id, newStatus) {
   });
   if (error) {
     showToast(`Erro ao alterar status: ${error.message}`, 'danger');
-    return;
+    return false;
   }
   showToast('Status atualizado.');
-  closeModal();
-  await loadReservations();
+  return true;
 }
 
 // --- Nova reserva manual ---

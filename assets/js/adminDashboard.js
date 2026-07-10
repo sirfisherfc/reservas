@@ -211,6 +211,7 @@ function renderCalendarGrid(grid, gridStart, gridEnd, month, byDate) {
     const iso = toISODate(cursor);
     const stats = byDate.get(iso);
     const classes = ['cal-day'];
+    if (stats) classes.push('cal-day--has-reservas');
     if (cursor.getMonth() !== month) classes.push('cal-day--muted');
     if (iso === today) classes.push('cal-day--today');
 
@@ -219,8 +220,8 @@ function renderCalendarGrid(grid, gridStart, gridEnd, month, byDate) {
         <div class="cal-day__num">${cursor.getDate()}</div>
         ${stats ? `
           <div class="cal-day__stats">
-            <span>${stats.reservas} res.</span>
-            <span>${stats.pessoas} pes.</span>
+            <div class="cal-day__count">${stats.reservas} <span class="cal-day__count-label">${stats.reservas === 1 ? 'reserva' : 'reservas'}</span></div>
+            <div class="cal-day__people">${stats.pessoas} pessoas</div>
           </div>
         ` : ''}
       </div>

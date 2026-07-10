@@ -317,51 +317,89 @@ a {
 
 .cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(96px, 1fr));
-  gap: 6px;
-  min-width: 700px;
+  grid-template-columns: repeat(7, minmax(112px, 1fr));
+  gap: 8px;
+  min-width: 780px;
 }
 
 .cal-weekday {
   text-align: center;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   color: var(--color-text-soft);
-  padding: 4px 0 8px;
+  padding: 4px 0 10px;
 }
 
 .cal-day {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  min-height: 74px;
-  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  min-height: 94px;
+  padding: 10px 12px;
   background: #fff;
+  transition: background-color 0.15s ease;
+}
+
+/* Estilo "salmão" clarinho para dias com reserva */
+.cal-day--has-reservas {
+  background: #fdeadf;
+  border-color: #f2c8ac;
 }
 
 .cal-day--muted {
   background: #faf8f4;
   color: var(--color-text-soft);
-  opacity: 0.6;
+  opacity: 0.55;
 }
 
+.cal-day--muted.cal-day--has-reservas {
+  background: #f7e6da;
+}
+
+/* Dia de hoje: cor forte, sempre por cima do estilo salmão */
 .cal-day--today {
-  border-color: var(--color-secondary);
-  border-width: 2px;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.cal-day--today .cal-day__num,
+.cal-day--today .cal-day__count,
+.cal-day--today .cal-day__count-label,
+.cal-day--today .cal-day__people {
+  color: #fff;
 }
 
 .cal-day__num {
-  font-weight: 700;
-  font-size: 0.85rem;
-  margin-bottom: 4px;
+  font-weight: 800;
+  font-size: 1.05rem;
+  margin-bottom: 6px;
+  color: var(--color-text);
 }
 
 .cal-day__stats {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+}
+
+.cal-day__count {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  line-height: 1.2;
+}
+
+.cal-day__count-label {
   font-size: 0.72rem;
+  font-weight: 600;
+  color: inherit;
+}
+
+.cal-day__people {
+  font-size: 0.8rem;
+  font-weight: 600;
   color: var(--color-text-soft);
 }
 

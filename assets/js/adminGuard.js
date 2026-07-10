@@ -95,7 +95,10 @@ export async function mountLayout(appUser, activeKey) {
     .join('');
 
   sidebar.innerHTML = `
-    <div class="sidebar__brand">Sir Fisher Praia</div>
+    <div class="sidebar__brand">
+      <img src="../assets/img/logo-icon.png" alt="" class="sidebar__brand-logo" width="536" height="528" />
+      <span>Sir Fisher Praia</span>
+    </div>
     <div class="sidebar__role">${appUser.role === 'admin' ? 'Administrador' : 'Operador'} · ${appUser.name || appUser.email}</div>
     ${links}
     <div class="sidebar__spacer"></div>
@@ -112,6 +115,7 @@ function renderDenied(message) {
   document.body.innerHTML = `
     <div class="login-screen">
       <div class="login-card">
+        <img src="../assets/img/logo-emblem.png" alt="" class="login-card__logo" width="654" height="700" />
         <h1>Acesso negado</h1>
         <p>${message}</p>
         <button id="guard-logout-btn" class="btn-google" type="button">Sair e tentar outra conta</button>
@@ -134,6 +138,7 @@ function renderPendingAccess(status) {
   document.body.innerHTML = `
     <div class="login-screen">
       <div class="login-card">
+        <img src="../assets/img/logo-emblem.png" alt="" class="login-card__logo" width="654" height="700" />
         <h1>${title}</h1>
         <p>${message}</p>
         <button id="guard-recheck-btn" class="btn-google" type="button">Verificar novamente</button>

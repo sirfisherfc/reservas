@@ -74,6 +74,20 @@ p {
   color: var(--color-text-soft);
 }
 
+/* Masthead */
+
+.masthead {
+  background: var(--color-bg);
+  padding: 18px 0 6px;
+  text-align: center;
+}
+
+.masthead__logo {
+  height: 56px;
+  width: auto;
+  margin: 0 auto;
+}
+
 /* Hero */
 
 .hero {

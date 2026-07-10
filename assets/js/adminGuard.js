@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', href: './dashboard.html', adminOnly: false },
   { key: 'reservas', label: 'Reservas', href: './reservas.html', adminOnly: false },
   { key: 'configuracoes', label: 'Configurações', href: './configuracoes.html', adminOnly: true },
+  { key: 'mailing', label: 'Mailing', href: './mailing.html', adminOnly: true },
   { key: 'bloqueios', label: 'Bloqueios', href: './bloqueios.html', adminOnly: true },
   { key: 'usuarios', label: 'Usuários', href: './usuarios.html', adminOnly: true },
 ];

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mailing — Painel Sir Fisher Praia</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" type="image/png" href="../assets/img/favicon.png" />
+  <link rel="stylesheet" href="../assets/css/admin.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main">
+      <div class="page-header">
+        <h1>Mailing</h1>
+        <button id="export-csv-btn" class="btn btn--outline" type="button">Exportar CSV</button>
+      </div>
+
+      <div class="filter-bar">
+        <select id="filter-marketing">
+          <option value="">Todos os clientes</option>
+          <option value="opt_in">Só quem aceitou novidades</option>
+        </select>
+        <input type="text" id="filter-search" placeholder="Buscar por nome, telefone ou e-mail" />
+      </div>
+
+      <div id="mailing-alert"></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Telefone</th>
+              <th>E-mail</th>
+              <th>Reservas</th>
+              <th>Última reserva</th>
+              <th>Novidades</th>
+            </tr>
+          </thead>
+          <tbody id="mailing-tbody">
+            <tr><td colspan="6" class="empty-state">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="../assets/js/adminMailing.js"></script>
+</body>
+</html>

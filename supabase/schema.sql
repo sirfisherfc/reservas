@@ -173,7 +173,7 @@ create table public.notification_queue (
   reservation_id uuid references public.reservations(id) on delete cascade,
   type text not null,
   channel text not null check (channel in ('email', 'whatsapp', 'system')),
-  status text not null default 'pending' check (status in ('pending', 'sent', 'failed', 'skipped')),
+  status text not null default 'pending' check (status in ('pending', 'processing', 'sent', 'failed', 'skipped')),
   payload jsonb,
   error text,
   created_at timestamptz not null default now(),

@@ -13,6 +13,7 @@ Site de reservas para o restaurante Sir Fisher Praia. HTML/CSS/JS puro (sem buil
 - [`docs/supabase.md`](docs/supabase.md) — banco de dados, RLS, Google OAuth, primeiro admin.
 - [`docs/github-pages.md`](docs/github-pages.md) — publicação.
 - [`docs/admin-guide.md`](docs/admin-guide.md) — manual do painel.
+- [`docs/email.md`](docs/email.md) — e-mail de confirmação automático (Resend + Edge Function).
 - [`docs/privacidade-dados.md`](docs/privacidade-dados.md) — quais dados são salvos e por quê.
 - [`docs/security-checklist.md`](docs/security-checklist.md) — checklist de testes manuais.
 - [`docs/future-roadmap.md`](docs/future-roadmap.md) — fase 2 (não implementada).
@@ -24,5 +25,6 @@ index.html, cancelar.html   — site público
 admin/                      — painel administrativo
 assets/css/, assets/js/     — estilos e módulos JS
 supabase/                   — schema.sql, functions.sql, rls.sql, seed.sql
+supabase/functions/         — Edge Functions (send-notifications: e-mail de confirmação)
 docs/                       — documentação
 ```

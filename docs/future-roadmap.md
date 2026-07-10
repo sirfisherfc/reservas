@@ -2,15 +2,12 @@
 
 Itens fora do escopo da primeira entrega, por exigirem serviço externo, custo recorrente, ou simplesmente não serem essenciais para o lançamento.
 
-## E-mail de confirmação automático
+## E-mail de confirmação automático — ✅ IMPLEMENTADO
 
-**Estrutura já criada**: toda vez que uma reserva é criada, um registro é inserido em `notification_queue` (`type='reservation_confirmation'`, `channel='email'`, `status='pending'`, com os dados da reserva em `payload`). Falta:
-
-1. Uma Supabase Edge Function (ou cron externo) que leia registros `pending` dessa fila.
-2. Um provedor de envio de e-mail transacional (ex.: Resend, SendGrid, Postmark — todos têm camada gratuita limitada, mas exigem cadastro/API key própria).
-3. Atualizar o registro para `sent`/`failed` após o envio, preenchendo `sent_at`/`error`.
-
-Motivo de não ter entrado na fase 1: exige um serviço externo e uma Edge Function, o que aumenta a complexidade e o custo de manutenção do que foi pedido para o lançamento inicial.
+Implementado via Edge Function `send-notifications` + Resend. Ver
+[`docs/email.md`](email.md) para o passo a passo de configuração (domínio,
+secrets e webhook). A fila `notification_queue` alimenta o envio, o e-mail inclui
+botão de cancelamento, e o status vira `sent`/`failed` com o erro registrado.
 
 ## WhatsApp automático
 

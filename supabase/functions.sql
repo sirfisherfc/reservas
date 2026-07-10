@@ -617,10 +617,18 @@ begin
     v_token_hash, v_source, v_actor_app_user_id, p_accepted_policy, p_marketing_opt_in
   ) returning reservations.id into v_reservation_id;
 
+  -- Enfileira a confirmação por e-mail (enviada pela Edge Function send-notifications).
+  -- O token de cancelamento vai no payload para montar o link "Cancelar reserva" no
+  -- e-mail. Só o hash fica em reservations; o token cru existe aqui até o envio.
+  -- A fila é admin/service_role apenas (ver rls.sql), inacessível ao anon.
   insert into public.notification_queue (reservation_id, type, channel, status, payload)
   values (
     v_reservation_id, 'reservation_confirmation', 'email', 'pending',
-    jsonb_build_object('public_code', v_public_code, 'email', p_email, 'date', p_date, 'time', p_time, 'party_size', p_party_size)
+    jsonb_build_object(
+      'public_code', v_public_code, 'name', p_name, 'email', p_email,
+      'date', p_date, 'time', p_time, 'party_size', p_party_size,
+      'cancel_token', v_token
+    )
   );
 
   return query select
@@ -754,3 +762,110 @@ begin
   end if;
 end;
 $$;
+
+-- =========================================================================
+-- fn_claim_pending_notifications — reivindica em lote itens da fila de e-mail
+-- =========================================================================
+-- Usada pela Edge Function send-notifications. Marca as linhas como 'processing'
+-- de forma atômica (FOR UPDATE SKIP LOCKED) e as retorna, evitando envio em
+-- duplicidade quando webhook e cron rodam ao mesmo tempo. Também recupera linhas
+-- presas em 'processing' há mais de 10 minutos (ex.: função caiu no meio).
+-- Restrita a service_role (a Edge Function usa a service role key).
+create or replace function public.fn_claim_pending_notifications(p_limit int default 25)
+returns setof public.notification_queue
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  update public.notification_queue q
+  set status = 'processing'
+  where q.id in (
+    select id from public.notification_queue
+    where channel = 'email'
+      and (
+        status = 'pending'
+        or (status = 'processing' and created_at < now() - interval '10 minutes')
+      )
+    order by created_at
+    limit greatest(1, least(p_limit, 100))
+    for update skip locked
+  )
+  returning q.*;
+$$;
+
+revoke all on function public.fn_claim_pending_notifications(int) from public, anon, authenticated;
+grant execute on function public.fn_claim_pending_notifications(int) to service_role;
+
+-- Atualiza o resultado do envio sem depender das políticas RLS da fila.
+-- Só a Edge Function (service_role) pode chamá-la.
+create or replace function public.fn_finalize_notification(
+  p_id uuid,
+  p_status text,
+  p_error text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if p_status not in ('sent', 'failed') then
+    raise exception 'INVALID_NOTIFICATION_STATUS';
+  end if;
+
+  update public.notification_queue
+     set status = p_status,
+         sent_at = case when p_status = 'sent' then now() else sent_at end,
+         error = case when p_status = 'sent' then null else p_error end
+   where id = p_id;
+
+  if not found then
+    raise exception 'NOTIFICATION_NOT_FOUND';
+  end if;
+end;
+$$;
+
+revoke all on function public.fn_finalize_notification(uuid, text, text) from public, anon, authenticated;
+grant execute on function public.fn_finalize_notification(uuid, text, text) to service_role;
+
+-- =========================================================================
+-- Gatilho: dispara a Edge Function send-notifications ao enfileirar e-mail
+-- =========================================================================
+-- Pré-requisitos (configurados uma vez por projeto, fora deste arquivo):
+--   1. create extension if not exists pg_net;
+--   2. Um segredo no Vault chamado 'notify_secret' com o mesmo valor do
+--      NOTIFY_SECRET setado nos secrets da Edge Function:
+--        select vault.create_secret('<valor>', 'notify_secret');
+--   3. Ajustar a URL abaixo para o ref do seu projeto Supabase.
+-- Usa pg_net (assíncrono) e lê o segredo do Vault para não deixá-lo em texto
+-- na definição da função. Ver docs/email.md.
+create or replace function public.tg_notification_queue_send()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_secret text;
+begin
+  if new.channel = 'email' and new.status = 'pending' then
+    select decrypted_secret into v_secret
+    from vault.decrypted_secrets where name = 'notify_secret';
+
+    perform net.http_post(
+      url := 'https://lucpxoynpvogkvzepagi.supabase.co/functions/v1/send-notifications',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'x-notify-secret', coalesce(v_secret, '')
+      ),
+      body := '{}'::jsonb
+    );
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_notification_queue_send on public.notification_queue;
+create trigger trg_notification_queue_send
+after insert on public.notification_queue
+for each row execute function public.tg_notification_queue_send();

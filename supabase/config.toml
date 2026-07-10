@@ -385,6 +385,12 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Edge Function que envia as confirmações de reserva por e-mail (via Resend).
+# verify_jwt=false porque ela é disparada por Database Webhook / cron, não por um
+# usuário logado — a proteção é o header x-notify-secret conferido dentro da função.
+[functions.send-notifications]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

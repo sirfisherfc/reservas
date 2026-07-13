@@ -15,7 +15,7 @@
 //   RESEND_API_KEY   — chave do Resend (re_...)                       [obrigatório]
 //   NOTIFY_SECRET    — segredo compartilhado com quem dispara a função [obrigatório]
 //   RESEND_FROM      — remetente. Padrão: "Sir Fisher Praia <reservas@sirfisher.com.br>"
-//   PUBLIC_SITE_URL  — URL pública do site (ex.: https://sirfisherfc.github.io/reservas)
+//   PUBLIC_SITE_URL  — URL pública do site (ex.: https://reservas.sirfisher.com.br)
 //                      usada para montar o link de cancelamento. Se vazia, o e-mail
 //                      sai sem o botão de cancelar.
 //   SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY — injetados automaticamente.
@@ -118,7 +118,7 @@ function buildEmailHtml(p: Payload): string {
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);">
         <tr><td align="center" style="background:#ffffff;padding:22px 32px 18px;">
-          <img src="https://sirfisherfc.github.io/reservas/assets/img/logo-horizontal.png" alt="Sir Fisher Praia" width="210" style="display:block;width:210px;max-width:100%;height:auto;margin:0;border:0;outline:none;text-decoration:none;" />
+          <img src="https://reservas.sirfisher.com.br/assets/img/logo-horizontal.png" alt="Sir Fisher Praia" width="210" style="display:block;width:210px;max-width:100%;height:auto;margin:0;border:0;outline:none;text-decoration:none;" />
         </td></tr>
         <tr><td style="background:#0f3d3e;padding:20px 32px;">
           <div style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:.5px;">Sir Fisher Praia</div>

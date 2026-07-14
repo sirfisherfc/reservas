@@ -12,6 +12,10 @@ let currentRange = 'today';
 let filterDebounceTimer;
 let nrDebounceTimer;
 
+const PAGE_SIZE = 50;
+let currentLimit = PAGE_SIZE;
+let hasMore = false;
+
 const STATUS_ACTIONS = [
   { status: 'compareceu', label: 'Compareceu' },
   { status: 'no_show', label: 'Não compareceu' },
@@ -33,6 +37,10 @@ async function init() {
   wireFilters();
   qs('#new-reservation-btn').addEventListener('click', openNewReservationModal);
   qs('#export-csv-btn').addEventListener('click', exportCSV);
+  qs('#load-more-btn').addEventListener('click', () => {
+    currentLimit += PAGE_SIZE;
+    loadReservations();
+  });
 
   await loadReservations();
 }
@@ -44,15 +52,24 @@ function wireFilters() {
       chip.classList.add('is-active');
       currentRange = chip.dataset.range;
       qs('#filter-date').value = '';
+      currentLimit = PAGE_SIZE;
+      qs('#sort-field').value = currentRange === 'all' ? 'created_at-desc' : 'reservation_date-asc';
       loadReservations();
     });
   });
 
-  qs('#filter-date').addEventListener('change', loadReservations);
+  qs('#filter-date').addEventListener('change', () => {
+    currentLimit = PAGE_SIZE;
+    loadReservations();
+  });
   qs('#filter-status').addEventListener('change', renderTable);
   qs('#filter-search').addEventListener('input', () => {
     clearTimeout(filterDebounceTimer);
     filterDebounceTimer = setTimeout(renderTable, 200);
+  });
+  qs('#sort-field').addEventListener('change', () => {
+    currentLimit = PAGE_SIZE;
+    loadReservations();
   });
 }
 
@@ -72,19 +89,26 @@ function getDateRange() {
 
 async function loadReservations() {
   const tbody = qs('#reservations-tbody');
-  tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Carregando…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="11" class="empty-state">Carregando…</td></tr>';
   qs('#reservations-alert').innerHTML = '';
 
   const range = getDateRange();
+  const [sortField, sortDir] = qs('#sort-field').value.split('-');
+  const ascending = sortDir === 'asc';
+
   let query = supabase
     .from('reservations')
-    .select('id, public_code, reservation_date, reservation_time, party_size, status, source, customer_name_snapshot, customer_phone_snapshot, customer_notes')
-    .order('reservation_date', { ascending: true })
-    .order('reservation_time', { ascending: true })
-    .limit(500);
+    .select('id, public_code, reservation_date, reservation_time, party_size, status, source, customer_name_snapshot, customer_phone_snapshot, customer_notes, created_at')
+    .order(sortField, { ascending });
+
+  if (sortField === 'reservation_date') {
+    query = query.order('reservation_time', { ascending });
+  }
 
   if (range) {
-    query = query.gte('reservation_date', range.from).lte('reservation_date', range.to);
+    query = query.gte('reservation_date', range.from).lte('reservation_date', range.to).limit(500);
+  } else {
+    query = query.range(0, currentLimit - 1);
   }
 
   const { data, error } = await query;
@@ -96,6 +120,8 @@ async function loadReservations() {
   }
 
   allRows = data || [];
+  hasMore = !range && allRows.length === currentLimit;
+  qs('#load-more-btn').classList.toggle('hidden', !hasMore);
   renderTable();
 }
 
@@ -114,7 +140,7 @@ function renderTable() {
   });
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Nenhuma reserva encontrada.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" class="empty-state">Nenhuma reserva encontrada.</td></tr>';
     return;
   }
 
@@ -129,6 +155,7 @@ function renderTable() {
       <td>${r.party_size}</td>
       <td>${renderStatusCell(r)}</td>
       <td>${r.source === 'admin' ? 'Painel' : 'Site'}</td>
+      <td>${formatDateTimeBR(r.created_at)}</td>
       <td><button class="btn btn--outline btn--sm" data-id="${r.id}" type="button">Ver</button></td>
     </tr>
   `).join('');
@@ -512,6 +539,7 @@ function exportCSV() {
     { key: 'party_size', label: 'Pessoas' },
     { key: 'status', label: 'Status' },
     { key: 'source', label: 'Origem' },
+    { key: 'created_at', label: 'Cadastrada em' },
   ];
   const csv = toCSV(allRows, columns);
   downloadTextFile(`reservas_${todayISO()}.csv`, csv);

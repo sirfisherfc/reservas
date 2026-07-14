@@ -40,6 +40,12 @@
           <option value="recusada">Recusada</option>
         </select>
         <input type="text" id="filter-search" placeholder="Buscar por nome, telefone ou código" />
+        <select id="sort-field" title="Ordenar por">
+          <option value="reservation_date-asc">Data da reserva (mais antiga primeiro)</option>
+          <option value="reservation_date-desc">Data da reserva (mais recente primeiro)</option>
+          <option value="created_at-desc">Data de cadastro (mais recentes primeiro)</option>
+          <option value="created_at-asc">Data de cadastro (mais antigas primeiro)</option>
+        </select>
       </div>
 
       <div id="reservations-alert"></div>
@@ -57,13 +63,18 @@
               <th>Pessoas</th>
               <th>Status</th>
               <th>Origem</th>
+              <th>Cadastrada em</th>
               <th></th>
             </tr>
           </thead>
           <tbody id="reservations-tbody">
-            <tr><td colspan="10" class="empty-state">Carregando…</td></tr>
+            <tr><td colspan="11" class="empty-state">Carregando…</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="stack" style="align-items:center; margin-top:12px;">
+        <button id="load-more-btn" class="btn btn--outline hidden" type="button">Carregar mais</button>
       </div>
     </main>
   </div>

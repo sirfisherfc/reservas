@@ -39,7 +39,8 @@ body {
   margin: 0;
   font-family: var(--font-base);
   color: var(--color-text);
-  background: var(--color-bg);
+  background: linear-gradient(160deg, var(--color-accent) 0%, var(--color-primary) 48%, var(--color-secondary) 100%);
+  min-height: 100vh;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }

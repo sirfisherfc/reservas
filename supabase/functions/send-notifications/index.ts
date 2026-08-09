@@ -118,7 +118,7 @@ function buildEmailHtml(p: Payload): string {
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);">
         <tr><td align="center" style="background:#ffffff;padding:22px 32px 18px;">
-          <img src="https://reservas.sirfisher.com.br/assets/img/logo-horizontal.png" alt="Sir Fisher Praia" width="210" style="display:block;width:210px;max-width:100%;height:auto;margin:0;border:0;outline:none;text-decoration:none;" />
+          <img src="https://www.sirfisher.com.br/assets/img/logo-horizontal.png" alt="Sir Fisher Praia" width="210" style="display:block;width:210px;max-width:100%;height:auto;margin:0;border:0;outline:none;text-decoration:none;" />
         </td></tr>
         <tr><td style="background:#0f3d3e;padding:20px 32px;">
           <div style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:.5px;">Sir Fisher Praia</div>

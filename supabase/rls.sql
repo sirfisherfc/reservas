@@ -21,6 +21,7 @@ alter table public.availability_rules enable row level security;
 alter table public.blocked_dates enable row level security;
 alter table public.blocked_time_slots enable row level security;
 alter table public.notification_queue enable row level security;
+alter table public.ad_conversion_events enable row level security;
 
 -- =========================================================================
 -- app_users
@@ -123,6 +124,11 @@ create policy notification_queue_admin on public.notification_queue
   using (public.fn_is_admin()) with check (public.fn_is_admin());
 
 -- =========================================================================
+-- ad_conversion_events -- no browser access; processed by the Edge Function
+-- using service_role.
+-- =========================================================================
+
+-- =========================================================================
 -- GRANTS de tabela (base necessária para RLS filtrar; anon só recebe o mínimo)
 -- =========================================================================
 grant usage on schema public to anon, authenticated;
@@ -152,19 +158,22 @@ revoke execute on function public.fn_claim_app_user() from public;
 revoke execute on function public.fn_request_access() from public;
 revoke execute on function public.fn_review_access_request(uuid, boolean, text) from public;
 revoke execute on function public.get_available_time_slots(date, int) from public;
-revoke execute on function public.fn_create_reservation(text, text, text, date, time, int, text, boolean, boolean, text, text) from public;
+revoke execute on function public.fn_create_reservation(text, text, text, date, time, int, jsonb, text, boolean, boolean, text, text) from public;
 revoke execute on function public.fn_cancel_reservation_public(text) from public;
 revoke execute on function public.fn_update_reservation_status(uuid, text, text) from public;
 revoke execute on function public.fn_update_internal_notes(uuid, text) from public;
 revoke execute on function public.fn_is_admin() from public;
 revoke execute on function public.fn_is_active_staff() from public;
 revoke execute on function public.fn_current_app_user_id() from public;
+revoke execute on function public.fn_enqueue_openai_ads_visit() from public;
+revoke execute on function public.fn_claim_pending_openai_ads_conversions(int) from public;
+revoke execute on function public.fn_finalize_openai_ads_conversion(uuid, text, text) from public;
 
 -- fn_set_updated_at / fn_set_updated_by / fn_set_created_by / fn_log_reservation_status_change
 -- são funções de trigger: ninguém precisa (nem consegue) chamá-las diretamente via RPC.
 
 grant execute on function public.get_available_time_slots(date, int) to anon, authenticated;
-grant execute on function public.fn_create_reservation(text, text, text, date, time, int, text, boolean, boolean, text, text) to anon, authenticated;
+grant execute on function public.fn_create_reservation(text, text, text, date, time, int, jsonb, text, boolean, boolean, text, text) to anon, authenticated;
 grant execute on function public.fn_cancel_reservation_public(text) to anon, authenticated;
 
 grant execute on function public.fn_update_reservation_status(uuid, text, text) to authenticated;

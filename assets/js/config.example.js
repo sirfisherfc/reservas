@@ -14,3 +14,8 @@ export const RESTAURANT_NAME = 'Sir Fisher Praia';
 // Número de WhatsApp para contato manual (fase 1), formato internacional só com dígitos.
 // Ex.: 55 21 99999-9999 -> "5521999999999"
 export const WHATSAPP_NUMBER = '';
+
+// ID público do Pixel criado em ChatGPT Ads > Conversions. Deixe vazio até a
+// política de privacidade/consentimento estar atualizada e o Pixel ser ativado.
+// A chave da Conversions API nunca entra neste arquivo.
+export const OPENAI_ADS_PIXEL_ID = '';

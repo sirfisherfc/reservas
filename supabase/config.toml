@@ -391,6 +391,11 @@ deno_version = 2
 [functions.send-notifications]
 verify_jwt = false
 
+# Conversions API da OpenAI. A função também valida o usuário do painel ou o
+# segredo OPENAI_ADS_TRIGGER_SECRET para permitir webhook/cron de reenvio.
+[functions.send-openai-ads-conversions]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

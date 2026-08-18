@@ -81,6 +81,17 @@ create table public.reservations (
   internal_notes text check (internal_notes is null or length(internal_notes) <= 2000),
   cancellation_token_hash text unique,
   source text not null check (source in ('public_site', 'admin')),
+  openai_oppref text check (openai_oppref is null or length(openai_oppref) <= 1024),
+  utm_source text check (utm_source is null or length(utm_source) <= 255),
+  utm_medium text check (utm_medium is null or length(utm_medium) <= 255),
+  utm_campaign text check (utm_campaign is null or length(utm_campaign) <= 255),
+  utm_content text check (utm_content is null or length(utm_content) <= 255),
+  utm_term text check (utm_term is null or length(utm_term) <= 255),
+  chatgpt_campaign_id text check (chatgpt_campaign_id is null or length(chatgpt_campaign_id) <= 255),
+  chatgpt_ad_group_id text check (chatgpt_ad_group_id is null or length(chatgpt_ad_group_id) <= 255),
+  chatgpt_ad_id text check (chatgpt_ad_id is null or length(chatgpt_ad_id) <= 255),
+  attribution_landing_url text check (attribution_landing_url is null or length(attribution_landing_url) <= 2000),
+  attribution_captured_at timestamptz,
   created_by_user_id uuid references public.app_users(id) on delete set null,
   updated_by_user_id uuid references public.app_users(id) on delete set null,
   accepted_policy boolean not null default false,
@@ -94,6 +105,29 @@ create table public.reservations (
 create index idx_reservations_date_time on public.reservations(reservation_date, reservation_time);
 create index idx_reservations_status on public.reservations(status);
 create index idx_reservations_customer on public.reservations(customer_id);
+create index idx_reservations_openai_oppref on public.reservations(openai_oppref) where openai_oppref is not null;
+
+-- =========================================================================
+-- ad_conversion_events -- durable outbox for server-side ad conversions
+-- =========================================================================
+create table public.ad_conversion_events (
+  id uuid primary key default gen_random_uuid(),
+  reservation_id uuid not null references public.reservations(id) on delete cascade,
+  provider text not null check (provider in ('openai_ads')),
+  event_name text not null check (event_name in ('visit_realized')),
+  event_id text not null unique,
+  status text not null default 'pending' check (status in ('pending', 'processing', 'sent', 'failed')),
+  attempts int not null default 0 check (attempts >= 0),
+  last_attempt_at timestamptz,
+  sent_at timestamptz,
+  last_error text,
+  created_at timestamptz not null default now(),
+  unique (reservation_id, provider, event_name)
+);
+
+create index idx_ad_conversion_events_pending
+  on public.ad_conversion_events(status, created_at)
+  where status in ('pending', 'failed');
 
 -- =========================================================================
 -- reservation_status_history — log imutável (só o trigger grava)

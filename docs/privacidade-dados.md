@@ -4,6 +4,8 @@ Resumo dos dados coletados pelo site de reservas do Sir Fisher Praia e para que 
 
 ## Dados coletados na reserva pública
 
+Quando a pessoa chega por um link de campanha, tambem guardamos UTMs, identificadores do anuncio e o identificador opaco `oppref` do ChatGPT Ads. Esses dados servem para medir reservas e comparecimentos atribuidos ao anuncio; nao substituem nem habilitam o aceite de marketing.
+
 - **Nome, e-mail, telefone/WhatsApp** — necessários para confirmar e, se preciso, entrar em contato sobre a reserva.
 - **Data, horário, quantidade de pessoas** — dados da própria reserva.
 - **Observação (opcional)** — texto livre do cliente; consideramos quando possível, mas não é garantido.

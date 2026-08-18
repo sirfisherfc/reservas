@@ -5,6 +5,9 @@ import {
   setLoading, debounce, formatDateBR, formatTimeBR,
 } from './utils.js';
 import { WHATSAPP_NUMBER, RESTAURANT_NAME } from './config.js';
+import {
+  initOpenAIAdsPixel, measureReservationPageViewed, measureReservationConfirmed, reservationAttribution,
+} from './attribution.js';
 
 const form = qs('#reservation-form');
 const alertArea = qs('#form-alert-area');
@@ -76,6 +79,8 @@ function buildWaLink(message) {
 }
 
 async function init() {
+  initOpenAIAdsPixel();
+  measureReservationPageViewed();
   settings = await fetchPublicSettings();
 
   const min = Number(settings.min_party_size) || 2;
@@ -226,6 +231,7 @@ async function handleSubmit(evt) {
     p_marketing_opt_in: marketingOptIn,
     p_accepted_policy: acceptPolicy,
     p_honeypot: honeypot || null,
+    p_attribution: reservationAttribution(),
   });
 
   setLoading(submitBtn, false);
@@ -236,6 +242,7 @@ async function handleSubmit(evt) {
   }
 
   const result = Array.isArray(data) ? data[0] : data;
+  measureReservationConfirmed();
   showSuccess(result);
 }
 

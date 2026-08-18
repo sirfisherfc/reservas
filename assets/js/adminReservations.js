@@ -98,7 +98,7 @@ async function loadReservations() {
 
   let query = supabase
     .from('reservations')
-    .select('id, public_code, reservation_date, reservation_time, party_size, status, source, customer_name_snapshot, customer_phone_snapshot, customer_notes, created_at')
+    .select('id, public_code, reservation_date, reservation_time, party_size, status, source, openai_oppref, utm_source, utm_campaign, chatgpt_campaign_id, customer_name_snapshot, customer_phone_snapshot, customer_notes, created_at')
     .order(sortField, { ascending });
 
   if (sortField === 'reservation_date') {
@@ -154,7 +154,7 @@ function renderTable() {
       <td class="notes-cell">${r.customer_notes ? escapeHtml(r.customer_notes) : '<span class="text-soft">—</span>'}</td>
       <td>${r.party_size}</td>
       <td>${renderStatusCell(r)}</td>
-      <td>${r.source === 'admin' ? 'Painel' : 'Site'}</td>
+      <td>${reservationOriginLabel(r)}</td>
       <td>${formatDateTimeBR(r.created_at)}</td>
       <td><button class="btn btn--outline btn--sm" data-id="${r.id}" type="button">Ver</button></td>
     </tr>
@@ -177,6 +177,12 @@ function renderStatusCell(r) {
     .concat(STATUS_ACTIONS.map((a) => `<option value="${a.status}">${a.label}</option>`))
     .join('');
   return `<select class="status-select" data-status-select data-id="${r.id}" data-current="${r.status}">${options}</select>`;
+}
+
+function reservationOriginLabel(reservation) {
+  if (reservation.openai_oppref) return 'ChatGPT Ads';
+  if (reservation.utm_source) return escapeHtml(reservation.utm_source);
+  return reservation.source === 'admin' ? 'Painel' : 'Site';
 }
 
 async function handleInlineStatusChange(select) {
@@ -382,6 +388,18 @@ async function changeStatus(id, newStatus, note = null) {
     showToast(`Erro ao alterar status: ${error.message}`, 'danger');
     return false;
   }
+
+  if (newStatus === 'compareceu') {
+    const { data, error: conversionError } = await supabase.functions.invoke('send-openai-ads-conversions');
+    if (conversionError) {
+      showToast('Comparecimento salvo. O evento de anúncios ficou pendente para reenvio.', 'info');
+    } else if (data?.configured === false) {
+      showToast('Comparecimento salvo. A medição do ChatGPT Ads ainda não está configurada.', 'info');
+    } else if (data?.failed) {
+      showToast('Comparecimento salvo. O evento de anúncios ficou pendente para nova tentativa.', 'info');
+    }
+  }
+
   showToast('Status atualizado.');
   return true;
 }
@@ -508,6 +526,7 @@ async function submitNewReservation(evt) {
     p_accepted_policy: true,
     p_honeypot: null,
     p_internal_notes: qs('#nr-internal-notes').value.trim() || null,
+    p_attribution: {},
   });
 
   setLoading(btn, false);
@@ -539,6 +558,10 @@ function exportCSV() {
     { key: 'party_size', label: 'Pessoas' },
     { key: 'status', label: 'Status' },
     { key: 'source', label: 'Origem' },
+    { key: 'openai_oppref', label: 'OpenAI oppref' },
+    { key: 'utm_source', label: 'UTM source' },
+    { key: 'utm_campaign', label: 'UTM campanha' },
+    { key: 'chatgpt_campaign_id', label: 'ChatGPT campaign ID' },
     { key: 'created_at', label: 'Cadastrada em' },
   ];
   const csv = toCSV(allRows, columns);

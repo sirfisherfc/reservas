@@ -408,6 +408,7 @@ create or replace function public.fn_create_reservation(
   p_date date,
   p_time time,
   p_party_size int,
+  p_attribution jsonb,
   p_notes text default null,
   p_marketing_opt_in boolean default false,
   p_accepted_policy boolean default false,
@@ -448,6 +449,17 @@ declare
   v_reservation_id uuid;
   v_recent_count int;
   v_phone_digits text;
+  v_oppref text;
+  v_utm_source text;
+  v_utm_medium text;
+  v_utm_campaign text;
+  v_utm_content text;
+  v_utm_term text;
+  v_campaign_id text;
+  v_ad_group_id text;
+  v_ad_id text;
+  v_landing_url text;
+  v_captured_at timestamptz;
 begin
   if p_honeypot is not null and length(trim(p_honeypot)) > 0 then
     raise exception 'HONEYPOT: Não foi possível concluir sua reserva.';
@@ -479,6 +491,35 @@ begin
   if p_party_size is null or p_party_size <= 0 or p_party_size > 1000 then
     raise exception 'INVALID_PARTY_SIZE: Quantidade de pessoas inválida.';
   end if;
+
+  if p_attribution is null or jsonb_typeof(p_attribution) <> 'object' then
+    p_attribution := '{}'::jsonb;
+  end if;
+  v_oppref := nullif(trim(p_attribution->>'oppref'), '');
+  v_utm_source := nullif(trim(p_attribution->>'utm_source'), '');
+  v_utm_medium := nullif(trim(p_attribution->>'utm_medium'), '');
+  v_utm_campaign := nullif(trim(p_attribution->>'utm_campaign'), '');
+  v_utm_content := nullif(trim(p_attribution->>'utm_content'), '');
+  v_utm_term := nullif(trim(p_attribution->>'utm_term'), '');
+  v_campaign_id := nullif(trim(p_attribution->>'campaign_id'), '');
+  v_ad_group_id := nullif(trim(p_attribution->>'ad_group_id'), '');
+  v_ad_id := nullif(trim(p_attribution->>'ad_id'), '');
+  v_landing_url := nullif(trim(p_attribution->>'landing_url'), '');
+
+  if coalesce(length(v_oppref), 0) > 1024
+    or greatest(coalesce(length(v_utm_source), 0), coalesce(length(v_utm_medium), 0),
+      coalesce(length(v_utm_campaign), 0), coalesce(length(v_utm_content), 0),
+      coalesce(length(v_utm_term), 0), coalesce(length(v_campaign_id), 0),
+      coalesce(length(v_ad_group_id), 0), coalesce(length(v_ad_id), 0)) > 255
+    or coalesce(length(v_landing_url), 0) > 2000 then
+    raise exception 'INVALID_INPUT: Dados de origem invalidos.';
+  end if;
+
+  begin
+    v_captured_at := nullif(trim(p_attribution->>'captured_at'), '')::timestamptz;
+  exception when invalid_datetime_format then
+    v_captured_at := null;
+  end;
 
   if not v_is_staff then
     p_internal_notes := null;
@@ -610,11 +651,15 @@ begin
   insert into public.reservations (
     public_code, customer_id, customer_name_snapshot, customer_email_snapshot, customer_phone_snapshot,
     reservation_date, reservation_time, party_size, status, customer_notes, internal_notes,
-    cancellation_token_hash, source, created_by_user_id, accepted_policy, marketing_opt_in
+    cancellation_token_hash, source, openai_oppref, utm_source, utm_medium, utm_campaign,
+    utm_content, utm_term, chatgpt_campaign_id, chatgpt_ad_group_id, chatgpt_ad_id,
+    attribution_landing_url, attribution_captured_at, created_by_user_id, accepted_policy, marketing_opt_in
   ) values (
     v_public_code, v_customer_id, p_name, p_email, p_phone,
     p_date, p_time, p_party_size, 'confirmada', p_notes, p_internal_notes,
-    v_token_hash, v_source, v_actor_app_user_id, p_accepted_policy, p_marketing_opt_in
+    v_token_hash, v_source, v_oppref, v_utm_source, v_utm_medium, v_utm_campaign,
+    v_utm_content, v_utm_term, v_campaign_id, v_ad_group_id, v_ad_id,
+    v_landing_url, v_captured_at, v_actor_app_user_id, p_accepted_policy, p_marketing_opt_in
   ) returning reservations.id into v_reservation_id;
 
   -- Enfileira a confirmação por e-mail (enviada pela Edge Function send-notifications).
@@ -735,6 +780,90 @@ $$;
 -- =========================================================================
 -- fn_update_internal_notes — admin/operador
 -- =========================================================================
+-- =========================================================================
+-- OpenAI Ads conversion outbox -- queues a physical visit after attendance is
+-- marked. The Edge Function sends it with the original oppref and retries.
+-- =========================================================================
+create or replace function public.fn_enqueue_openai_ads_visit()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if new.status = 'compareceu'
+    and old.status is distinct from new.status
+    and new.openai_oppref is not null then
+    insert into public.ad_conversion_events (reservation_id, provider, event_name, event_id)
+    values (new.id, 'openai_ads', 'visit_realized', 'sf-vr-' || new.id::text)
+    on conflict (reservation_id, provider, event_name) do nothing;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger trg_enqueue_openai_ads_visit
+  after update of status on public.reservations
+  for each row execute function public.fn_enqueue_openai_ads_visit();
+
+create or replace function public.fn_claim_pending_openai_ads_conversions(p_limit int default 25)
+returns table (
+  queue_id uuid,
+  event_id text,
+  oppref text,
+  occurred_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  return query
+  with candidates as (
+    select e.id
+    from public.ad_conversion_events e
+    where e.provider = 'openai_ads'
+      and e.status in ('pending', 'failed')
+      and e.attempts < 10
+    order by e.created_at
+    limit greatest(1, least(coalesce(p_limit, 25), 1000))
+    for update skip locked
+  )
+  update public.ad_conversion_events e
+  set status = 'processing',
+      attempts = e.attempts + 1,
+      last_attempt_at = now(),
+      last_error = null
+  from public.reservations r
+  where e.id in (select id from candidates)
+    and r.id = e.reservation_id
+  returning e.id, e.event_id, r.openai_oppref, e.created_at;
+end;
+$$;
+
+create or replace function public.fn_finalize_openai_ads_conversion(
+  p_id uuid,
+  p_status text,
+  p_error text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if p_status not in ('sent', 'failed') then
+    raise exception 'INVALID_INPUT: Status de evento invalido.';
+  end if;
+
+  update public.ad_conversion_events
+  set status = p_status,
+      sent_at = case when p_status = 'sent' then now() else sent_at end,
+      last_error = case when p_status = 'failed' then left(coalesce(p_error, 'erro desconhecido'), 2000) else null end
+  where id = p_id and status = 'processing';
+end;
+$$;
+
 create or replace function public.fn_update_internal_notes(
   p_reservation_id uuid,
   p_internal_notes text default null

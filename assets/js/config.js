@@ -12,4 +12,4 @@ export const WHATSAPP_NUMBER = '5585988544274';
 
 // ID público do Pixel de mensuração do ChatGPT Ads. A chave da Conversions API
 // fica apenas nos secrets da Edge Function, nunca no site.
-export const OPENAI_ADS_PIXEL_ID = '';
+export const OPENAI_ADS_PIXEL_ID = 'EeuuYrh8KtQu1TPmmwWctv';

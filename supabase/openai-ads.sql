@@ -38,70 +38,11 @@ create index if not exists idx_ad_conversion_events_pending
 
 alter table public.ad_conversion_events enable row level security;
 
--- This overload preserves the existing reservation RPC while the site starts
--- sending the additional p_attribution argument.
-create or replace function public.fn_create_reservation(
-  p_name text,
-  p_email text,
-  p_phone text,
-  p_date date,
-  p_time time,
-  p_party_size int,
-  p_attribution jsonb,
-  p_notes text,
-  p_marketing_opt_in boolean,
-  p_accepted_policy boolean,
-  p_honeypot text,
-  p_internal_notes text
-)
-returns table (
-  id uuid,
-  public_code text,
-  cancellation_token text,
-  reservation_date date,
-  reservation_time time,
-  party_size int,
-  status text
-)
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-declare
-  v_attribution jsonb := coalesce(p_attribution, '{}'::jsonb);
-begin
-  if jsonb_typeof(v_attribution) <> 'object' then
-    v_attribution := '{}'::jsonb;
-  end if;
-
-  return query
-  with created as (
-    select * from public.fn_create_reservation(
-      p_name, p_email, p_phone, p_date, p_time, p_party_size, p_notes,
-      p_marketing_opt_in, p_accepted_policy, p_honeypot, p_internal_notes
-    )
-  ), updated as (
-    update public.reservations r
-    set openai_oppref = nullif(trim(v_attribution->>'oppref'), ''),
-        utm_source = nullif(trim(v_attribution->>'utm_source'), ''),
-        utm_medium = nullif(trim(v_attribution->>'utm_medium'), ''),
-        utm_campaign = nullif(trim(v_attribution->>'utm_campaign'), ''),
-        utm_content = nullif(trim(v_attribution->>'utm_content'), ''),
-        utm_term = nullif(trim(v_attribution->>'utm_term'), ''),
-        chatgpt_campaign_id = nullif(trim(v_attribution->>'campaign_id'), ''),
-        chatgpt_ad_group_id = nullif(trim(v_attribution->>'ad_group_id'), ''),
-        chatgpt_ad_id = nullif(trim(v_attribution->>'ad_id'), ''),
-        attribution_landing_url = nullif(trim(v_attribution->>'landing_url'), ''),
-        attribution_captured_at = nullif(trim(v_attribution->>'captured_at'), '')::timestamptz
-    from created c
-    where r.id = c.id
-    returning r.id
-  )
-  select c.id, c.public_code, c.cancellation_token, c.reservation_date,
-    c.reservation_time, c.party_size, c.status
-  from created c;
-end;
-$$;
+-- A versão de fn_create_reservation com p_attribution vive em functions.sql
+-- (fonte única). Aqui existia um wrapper de 12 argumentos SEM valores default:
+-- como o site público não envia p_internal_notes, o PostgREST não conseguia
+-- resolver a chamada e devolvia 404 (PGRST202) em toda reserva. Não recriar
+-- este wrapper: rode functions.sql para atualizar a função.
 
 create or replace function public.fn_enqueue_openai_ads_visit()
 returns trigger

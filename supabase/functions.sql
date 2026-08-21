@@ -408,7 +408,7 @@ create or replace function public.fn_create_reservation(
   p_date date,
   p_time time,
   p_party_size int,
-  p_attribution jsonb,
+  p_attribution jsonb default '{}'::jsonb,
   p_notes text default null,
   p_marketing_opt_in boolean default false,
   p_accepted_policy boolean default false,

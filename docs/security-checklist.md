@@ -44,7 +44,10 @@ Os testes de negócio foram feitos chamando as funções diretamente:
 
 ```sql
 select * from public.get_available_time_slots(current_date + 3, 4);
-select * from public.fn_create_reservation('Nome','email@x.com','21999999999', current_date+3, '12:00', 4, null, false, true, null, null);
+select * from public.fn_create_reservation(
+  p_name => 'Nome', p_email => 'email@x.com', p_phone => '21999999999',
+  p_date => current_date + 3, p_time => '12:00', p_party_size => 4,
+  p_accepted_policy => true);
 select * from public.fn_cancel_reservation_public('TOKEN-RETORNADO-ACIMA');
 ```
 

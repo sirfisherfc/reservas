@@ -4,6 +4,7 @@ import { fetchAvailableSlots } from './availability.js';
 import {
   qs, qsa, todayISO, addDaysISO, formatDateBR, formatTimeBR, formatDateTimeBR,
   statusLabel, showToast, toCSV, downloadTextFile, setLoading, maskPhoneBR,
+  getQueryParam, reservationOriginLabel,
 } from './utils.js';
 
 let appUser = null;
@@ -25,6 +26,24 @@ const STATUS_ACTIONS = [
 
 const TERMINAL_STATUSES = ['cancelada_cliente', 'cancelada_restaurante', 'compareceu', 'no_show', 'desistiu', 'recusada'];
 
+// Admin altera qualquer status para qualquer outro, inclusive reabrindo uma
+// reserva já encerrada — é a rede de segurança para corrigir marcação errada.
+// O operador continua limitado a STATUS_ACTIONS a partir de uma reserva ativa.
+// 'cancelada_cliente' fica fora da lista: esse status só nasce do próprio
+// cliente, pelo link de cancelamento, e fn_update_reservation_status o recusa.
+const ADMIN_STATUS_OPTIONS = ['confirmada', 'compareceu', 'no_show', 'desistiu', 'cancelada_restaurante', 'recusada'];
+
+function canEditAnyStatus() {
+  return appUser?.role === 'admin';
+}
+
+function statusTargetsFor(currentStatus) {
+  if (!canEditAnyStatus()) return STATUS_ACTIONS;
+  return ADMIN_STATUS_OPTIONS
+    .filter((status) => status !== currentStatus)
+    .map((status) => ({ status, label: statusLabel(status) }));
+}
+
 async function init() {
   appUser = await requireStaff({ adminOnly: false });
   if (!appUser) return;
@@ -35,6 +54,7 @@ async function init() {
   }
 
   wireFilters();
+  applyDateFromQuery();
   qs('#new-reservation-btn').addEventListener('click', openNewReservationModal);
   qs('#export-csv-btn').addEventListener('click', exportCSV);
   qs('#load-more-btn').addEventListener('click', () => {
@@ -43,6 +63,18 @@ async function init() {
   });
 
   await loadReservations();
+}
+
+// Entrada vinda do calendário do dashboard (reservas.html?date=AAAA-MM-DD).
+// getDateRange() já dá prioridade ao #filter-date, então basta preencher o campo
+// e desmarcar os atalhos de período para a tela não parecer estar em "Hoje".
+function applyDateFromQuery() {
+  const date = getQueryParam('date');
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+
+  qs('#filter-date').value = date;
+  qsa('#range-chips .chip').forEach((chip) => chip.classList.remove('is-active'));
+  qs('#sort-field').value = 'reservation_date-asc';
 }
 
 function wireFilters() {
@@ -154,7 +186,7 @@ function renderTable() {
       <td class="notes-cell">${r.customer_notes ? escapeHtml(r.customer_notes) : '<span class="text-soft">—</span>'}</td>
       <td>${r.party_size}</td>
       <td>${renderStatusCell(r)}</td>
-      <td>${reservationOriginLabel(r)}</td>
+      <td>${escapeHtml(reservationOriginLabel(r))}</td>
       <td>${formatDateTimeBR(r.created_at)}</td>
       <td><button class="btn btn--outline btn--sm" data-id="${r.id}" type="button">Ver</button></td>
     </tr>
@@ -170,19 +202,13 @@ function renderTable() {
 }
 
 function renderStatusCell(r) {
-  if (TERMINAL_STATUSES.includes(r.status)) {
+  if (TERMINAL_STATUSES.includes(r.status) && !canEditAnyStatus()) {
     return `<span class="badge badge--${r.status}">${statusLabel(r.status)}</span>`;
   }
   const options = [`<option value="${r.status}">${statusLabel(r.status)}</option>`]
-    .concat(STATUS_ACTIONS.map((a) => `<option value="${a.status}">${a.label}</option>`))
+    .concat(statusTargetsFor(r.status).map((a) => `<option value="${a.status}">${a.label}</option>`))
     .join('');
-  return `<select class="status-select" data-status-select data-id="${r.id}" data-current="${r.status}">${options}</select>`;
-}
-
-function reservationOriginLabel(reservation) {
-  if (reservation.openai_oppref) return 'ChatGPT Ads';
-  if (reservation.utm_source) return escapeHtml(reservation.utm_source);
-  return reservation.source === 'admin' ? 'Painel' : 'Site';
+  return `<select class="status-select status-select--${r.status}" data-status-select data-id="${r.id}" data-current="${r.status}">${options}</select>`;
 }
 
 async function handleInlineStatusChange(select) {
@@ -247,6 +273,7 @@ async function openDetailModal(id) {
 function renderDetailModal(res, history) {
   const mount = qs('#modal-mount');
   const isTerminal = TERMINAL_STATUSES.includes(res.status);
+  const canChangeStatus = !isTerminal || canEditAnyStatus();
 
   mount.innerHTML = `
     <div class="modal-backdrop" id="detail-backdrop">
@@ -289,13 +316,14 @@ function renderDetailModal(res, history) {
           <button class="btn btn--outline btn--sm mt-16" id="save-notes-btn" type="button">Salvar observação</button>
         </div>
 
-        ${!isTerminal ? `
+        ${canChangeStatus ? `
           <div class="mb-16">
             <label for="status-note-input">Alterar status — nota opcional</label>
             <input type="text" id="status-note-input" placeholder="Ex.: cliente avisou que chegaria atrasado" style="margin-bottom:10px;" />
             <div class="chip-group" id="status-actions"></div>
+            ${isTerminal ? '<p class="hint">Esta reserva já está encerrada. Alterar o status agora fica registrado no histórico abaixo.</p>' : ''}
           </div>
-        ` : '<p class="text-soft">Esta reserva está em um status final.</p>'}
+        ` : '<p class="text-soft">Esta reserva está em um status final. Peça a um administrador para reabri-la.</p>'}
 
         <div>
           <label>Histórico</label>
@@ -331,9 +359,10 @@ function renderDetailModal(res, history) {
     showToast(error ? 'Erro ao salvar observação.' : 'Observação salva.', error ? 'danger' : 'info');
   });
 
-  if (!isTerminal) {
+  if (canChangeStatus) {
     const actionsEl = qs('#status-actions');
-    actionsEl.innerHTML = STATUS_ACTIONS.map((a) => `<button class="chip" data-status="${a.status}" type="button">${a.label}</button>`).join('');
+    actionsEl.innerHTML = statusTargetsFor(res.status)
+      .map((a) => `<button class="chip" data-status="${a.status}" type="button">${a.label}</button>`).join('');
     qsa('#status-actions button').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const note = qs('#status-note-input')?.value.trim() || null;

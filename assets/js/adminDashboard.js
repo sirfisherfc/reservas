@@ -1,6 +1,9 @@
 import { supabase } from './supabaseClient.js';
 import { requireStaff, mountLayout } from './adminGuard.js';
-import { qs, todayISO, addDaysISO, toISODate, formatTimeBR, statusLabel } from './utils.js';
+import {
+  qs, qsa, todayISO, addDaysISO, toISODate, formatDateBR, formatTimeBR,
+  statusLabel, reservationOriginLabel,
+} from './utils.js';
 
 const WEEKDAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const CANCELLED_STATUSES = ['cancelada_cliente', 'cancelada_restaurante', 'recusada'];
@@ -70,6 +73,86 @@ async function init() {
 
   wireCalendarControls();
   await loadCalendarMonth();
+
+  wireOriginControls();
+  await loadOriginBreakdown();
+}
+
+// --- Origem das reservas ---
+
+function wireOriginControls() {
+  qsa('#origin-range-chips .chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      qsa('#origin-range-chips .chip').forEach((c) => c.classList.remove('is-active'));
+      chip.classList.add('is-active');
+      loadOriginBreakdown();
+    });
+  });
+}
+
+function selectedOriginDays() {
+  const active = qs('#origin-range-chips .chip.is-active');
+  return Number(active?.dataset.days) || 30;
+}
+
+async function loadOriginBreakdown() {
+  const el = qs('#origin-list');
+  el.innerHTML = '<p class="text-soft">Carregando…</p>';
+
+  const days = selectedOriginDays();
+
+  // Recorte por created_at (quando a reserva foi feita), não por data da
+  // reserva: origem é sobre a captação do cliente, não sobre quando ele janta.
+  const from = `${addDaysISO(-days)}T00:00:00`;
+
+  const { data, error } = await supabase
+    .from('reservations')
+    .select('source, openai_oppref, utm_source, party_size, status')
+    .gte('created_at', from);
+
+  if (error) {
+    el.innerHTML = `<div class="alert alert--danger">Não foi possível carregar as origens: ${error.message}</div>`;
+    return;
+  }
+
+  const rows = (data || []).filter((r) => !CANCELLED_STATUSES.includes(r.status));
+
+  if (!rows.length) {
+    el.innerHTML = `<p class="text-soft">Nenhuma reserva nos últimos ${days} dias.</p>`;
+    return;
+  }
+
+  const byOrigin = new Map();
+  for (const r of rows) {
+    const key = reservationOriginLabel(r);
+    const entry = byOrigin.get(key) || { reservas: 0, pessoas: 0 };
+    entry.reservas += 1;
+    entry.pessoas += r.party_size;
+    byOrigin.set(key, entry);
+  }
+
+  const entries = Array.from(byOrigin.entries()).sort((a, b) => b[1].reservas - a[1].reservas);
+  const totalReservas = rows.length;
+
+  el.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Origem</th><th>Reservas</th><th>%</th><th>Pessoas</th></tr></thead>
+        <tbody>
+          ${entries.map(([origin, stats]) => `
+            <tr>
+              <td>${escapeHtml(origin)}</td>
+              <td>${stats.reservas}</td>
+              <td>${Math.round((stats.reservas / totalReservas) * 100)}%</td>
+              <td>${stats.pessoas}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p class="hint">Últimos ${days} dias, pela data em que a reserva foi feita. Não considera reservas canceladas.
+    "ChatGPT Ads" é clique em anúncio pago; "chatgpt.com" é indicação orgânica do ChatGPT, sem anúncio.</p>
+  `;
 }
 
 function renderStats(items) {
@@ -215,8 +298,12 @@ function renderCalendarGrid(grid, gridStart, gridEnd, month, byDate) {
     if (cursor.getMonth() !== month) classes.push('cal-day--muted');
     if (iso === today) classes.push('cal-day--today');
 
+    const label = stats
+      ? `${formatDateBR(iso)} — ${stats.reservas} ${stats.reservas === 1 ? 'reserva' : 'reservas'}, ${stats.pessoas} pessoas`
+      : `${formatDateBR(iso)} — sem reservas`;
+
     html += `
-      <div class="${classes.join(' ')}">
+      <button type="button" class="${classes.join(' ')}" data-date="${iso}" title="Ver as reservas deste dia" aria-label="${label}">
         <div class="cal-day__num">${cursor.getDate()}</div>
         ${stats ? `
           <div class="cal-day__stats">
@@ -224,12 +311,20 @@ function renderCalendarGrid(grid, gridStart, gridEnd, month, byDate) {
             <div class="cal-day__people">${stats.pessoas} pessoas</div>
           </div>
         ` : ''}
-      </div>
+      </button>
     `;
     cursor.setDate(cursor.getDate() + 1);
   }
 
   grid.innerHTML = html;
+
+  // Cada dia abre a tela de Reservas já filtrada nele — de lá dá para mudar
+  // status, ver detalhes e exportar, sem duplicar essa interface aqui.
+  qsa('#calendar-grid .cal-day').forEach((cell) => {
+    cell.addEventListener('click', () => {
+      window.location.href = `./reservas.html?date=${encodeURIComponent(cell.dataset.date)}`;
+    });
+  });
 }
 
 init();

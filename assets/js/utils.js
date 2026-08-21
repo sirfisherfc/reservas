@@ -152,3 +152,16 @@ const STATUS_LABELS = {
 export function statusLabel(status) {
   return STATUS_LABELS[status] || status;
 }
+
+// Origem da reserva, na ordem em que a informação é confiável:
+// 1. openai_oppref só existe quando houve clique em anúncio pago do ChatGPT;
+// 2. utm_source cobre o resto do tráfego identificado — atenção: o ChatGPT
+//    carimba `utm_source=chatgpt.com` nos links que mostra organicamente, o que
+//    NÃO é anúncio (por isso o oppref vem antes);
+// 3. sem nada disso, distingue reserva feita pelo painel da feita pelo site.
+// Retorna texto cru: quem exibe em HTML precisa escapar.
+export function reservationOriginLabel(reservation) {
+  if (reservation.openai_oppref) return 'ChatGPT Ads';
+  if (reservation.utm_source) return reservation.utm_source;
+  return reservation.source === 'admin' ? 'Painel' : 'Site';
+}

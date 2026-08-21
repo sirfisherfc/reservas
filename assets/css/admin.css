@@ -454,13 +454,22 @@ td.notes-cell {
   white-space: nowrap;
 }
 
-.badge--confirmada { background: var(--color-success-bg); color: var(--color-success); }
-.badge--compareceu { background: #e3edfb; color: #1d4f91; }
+/* A mesma paleta serve para a tarja e para o seletor de status da tabela, para
+   a cor da linha continuar dizendo o status mesmo quando ele e editavel. */
+.badge--confirmada,
+.status-select--confirmada { background: var(--color-success-bg); color: var(--color-success); }
+.badge--compareceu,
+.status-select--compareceu { background: #e3edfb; color: #1d4f91; }
 .badge--cancelada_cliente,
 .badge--cancelada_restaurante,
 .badge--desistiu,
-.badge--recusada { background: var(--color-danger-bg); color: var(--color-danger); }
-.badge--no_show { background: var(--color-warning-bg); color: var(--color-warning); }
+.badge--recusada,
+.status-select--cancelada_cliente,
+.status-select--cancelada_restaurante,
+.status-select--desistiu,
+.status-select--recusada { background: var(--color-danger-bg); color: var(--color-danger); }
+.badge--no_show,
+.status-select--no_show { background: var(--color-warning-bg); color: var(--color-warning); }
 
 .badge--admin { background: #f1e2ff; color: #6b21a8; }
 .badge--operator { background: #e3edfb; color: #1d4f91; }
@@ -469,8 +478,6 @@ td.notes-cell {
   padding: 4px 8px;
   border-radius: 999px;
   border: 1px solid var(--color-border);
-  background: var(--color-success-bg);
-  color: var(--color-success);
   font-size: 0.8rem;
   font-weight: 700;
   font-family: inherit;
@@ -690,3 +697,57 @@ td.notes-cell {
 
 .mt-16 { margin-top: 16px; }
 .mb-16 { margin-bottom: 16px; }
+
+/* Dia do calendário como botão: abre a tela de Reservas filtrada naquele dia.
+   O <button> zera fonte/alinhamento próprios para herdar o visual de .cal-day. */
+button.cal-day {
+  display: block;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.cal-day:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+button.cal-day:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* `button.cal-day` tem especificidade maior que `.cal-day--muted` e apagaria a
+   cor suave dos dias de outro mes; devolvemos ela aqui. */
+button.cal-day.cal-day--muted {
+  color: var(--color-text-soft);
+}
+
+/* Cabeçalho de tabela clicável para ordenar (Mailing) */
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.th-sort:hover {
+  color: var(--color-text);
+}
+
+.th-sort.is-active {
+  color: var(--color-primary);
+}
+
+.th-sort__arrow {
+  font-size: 0.72em;
+}

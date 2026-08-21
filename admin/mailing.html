@@ -30,13 +30,13 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Telefone</th>
-              <th>E-mail</th>
-              <th>Reservas</th>
-              <th>Última reserva</th>
-              <th>Novidades</th>
+            <tr id="mailing-head">
+              <th><button class="th-sort" data-sort="name" type="button">Nome<span class="th-sort__arrow"></span></button></th>
+              <th><button class="th-sort" data-sort="phone" type="button">Telefone<span class="th-sort__arrow"></span></button></th>
+              <th><button class="th-sort" data-sort="email" type="button">E-mail<span class="th-sort__arrow"></span></button></th>
+              <th><button class="th-sort" data-sort="reservation_count" type="button">Reservas<span class="th-sort__arrow"></span></button></th>
+              <th><button class="th-sort" data-sort="last_reservation_date" type="button">Última reserva<span class="th-sort__arrow"></span></button></th>
+              <th><button class="th-sort" data-sort="marketing_opt_in" type="button">Novidades<span class="th-sort__arrow"></span></button></th>
             </tr>
           </thead>
           <tbody id="mailing-tbody">

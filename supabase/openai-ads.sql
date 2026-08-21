@@ -116,4 +116,11 @@ revoke execute on function public.fn_claim_pending_openai_ads_conversions(int) f
 revoke execute on function public.fn_finalize_openai_ads_conversion(uuid, text, text) from public;
 grant execute on function public.fn_create_reservation(text, text, text, date, time, int, jsonb, text, boolean, boolean, text, text) to anon, authenticated;
 
+-- A Edge Function send-openai-ads-conversions roda como service_role: sem estes
+-- grants ela recebe 401 na checagem de staff (leitura de app_users) e não
+-- consegue processar a fila de conversoes.
+grant execute on function public.fn_claim_pending_openai_ads_conversions(int) to service_role;
+grant execute on function public.fn_finalize_openai_ads_conversion(uuid, text, text) to service_role;
+grant select on public.app_users to service_role;
+
 notify pgrst, 'reload schema';

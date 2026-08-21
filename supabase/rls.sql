@@ -184,3 +184,14 @@ grant execute on function public.fn_review_access_request(uuid, boolean, text) t
 grant execute on function public.fn_is_admin() to authenticated;
 grant execute on function public.fn_is_active_staff() to authenticated;
 grant execute on function public.fn_current_app_user_id() to authenticated;
+
+-- =========================================================================
+-- GRANTS de service_role — usados apenas pelas Edge Functions (a chave vive
+-- nos secrets do Supabase, nunca no navegador). O padrão do projeto é que o
+-- service_role NÃO tenha acesso direto a tabela e trabalhe via funções
+-- SECURITY DEFINER; a exceção é app_users, que a função de conversões lê para
+-- validar o usuário do painel que disparou o envio.
+-- =========================================================================
+grant execute on function public.fn_claim_pending_openai_ads_conversions(int) to service_role;
+grant execute on function public.fn_finalize_openai_ads_conversion(uuid, text, text) to service_role;
+grant select on public.app_users to service_role;

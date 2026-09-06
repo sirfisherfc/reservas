@@ -50,6 +50,27 @@ function limitedValue(value, max = 255) {
   return typeof value === 'string' && value.length <= max ? value : null;
 }
 
+// O client_id do GA4 mora no cookie _ga ("GA1.1.1393530077.1788738227"); o
+// identificador da sessao mora em _ga_<container> ("GS1.1.s1788738226$o1$..."),
+// onde <container> e o ID de medicao sem o prefixo "G-". Guardar os dois na
+// reserva e o que permite cruzar a linha do banco com a sessao do GA4 — e e o
+// que a Measurement Protocol exige para registrar o comparecimento depois.
+const GA_MEASUREMENT_ID = 'G-F40Z5Y9QT6';
+
+function gaClientId() {
+  const raw = readCookie('_ga');
+  if (!raw) return null;
+  const parts = raw.split('.');
+  return parts.length >= 4 ? parts.slice(-2).join('.') : null;
+}
+
+function gaSessionId() {
+  const raw = readCookie(`_ga_${GA_MEASUREMENT_ID.replace(/^G-/, '')}`);
+  if (!raw) return null;
+  const match = /(?:^|\.)s(\d+)/.exec(raw);
+  return match ? match[1] : null;
+}
+
 export function captureAttribution() {
   const params = new URLSearchParams(window.location.search);
   const incoming = {};
@@ -60,18 +81,36 @@ export function captureAttribution() {
     if (value) incoming[key] = value;
   });
 
+  const stored = loadStoredAttribution();
+
+  // Chegada com campanha: sobrescreve, porque e a origem mais recente e mais
+  // especifica que temos.
   if (Object.keys(incoming).length) {
     const attribution = {
-      ...loadStoredAttribution(),
+      ...stored,
       ...incoming,
       landing_url: window.location.href.slice(0, 2000),
+      referrer: (document.referrer || '').slice(0, 2000) || null,
       captured_at: new Date().toISOString(),
     };
     persistAttribution(attribution);
     return attribution;
   }
 
-  return loadStoredAttribution();
+  // Sem campanha na URL: registra o primeiro toque, mas nunca por cima de uma
+  // atribuicao ja gravada. Uma volta direta ao site dias depois nao pode apagar
+  // o anuncio que trouxe a pessoa da primeira vez.
+  if (!stored.captured_at) {
+    const firstTouch = {
+      landing_url: window.location.href.slice(0, 2000),
+      referrer: (document.referrer || '').slice(0, 2000) || null,
+      captured_at: new Date().toISOString(),
+    };
+    persistAttribution(firstTouch);
+    return firstTouch;
+  }
+
+  return stored;
 }
 
 export function reservationAttribution() {
@@ -87,7 +126,12 @@ export function reservationAttribution() {
     ad_group_id: limitedValue(a.ad_group_id),
     ad_id: limitedValue(a.ad_id),
     landing_url: limitedValue(a.landing_url, 2000),
+    referrer: limitedValue(a.referrer, 2000),
     captured_at: limitedValue(a.captured_at),
+    // Lidos na hora do envio, nao do storage: a essa altura o GA4 ja gravou os
+    // cookies, e o que vale e a sessao em que a reserva realmente aconteceu.
+    ga_client_id: limitedValue(gaClientId(), 64),
+    ga_session_id: limitedValue(gaSessionId(), 64),
   };
 }
 

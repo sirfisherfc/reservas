@@ -459,6 +459,9 @@ declare
   v_ad_group_id text;
   v_ad_id text;
   v_landing_url text;
+  v_referrer text;
+  v_ga_client_id text;
+  v_ga_session_id text;
   v_captured_at timestamptz;
 begin
   if p_honeypot is not null and length(trim(p_honeypot)) > 0 then
@@ -505,6 +508,16 @@ begin
   v_ad_group_id := nullif(trim(p_attribution->>'ad_group_id'), '');
   v_ad_id := nullif(trim(p_attribution->>'ad_id'), '');
   v_landing_url := nullif(trim(p_attribution->>'landing_url'), '');
+  v_referrer := nullif(trim(p_attribution->>'referrer'), '');
+  v_ga_client_id := nullif(trim(p_attribution->>'ga_client_id'), '');
+  v_ga_session_id := nullif(trim(p_attribution->>'ga_session_id'), '');
+
+  -- Identificadores do GA4 sao curtos por natureza ("1393530077.1788738227").
+  -- Truncar em vez de rejeitar: um valor estranho no cookie nao pode derrubar
+  -- uma reserva legitima.
+  v_ga_client_id := left(v_ga_client_id, 64);
+  v_ga_session_id := left(v_ga_session_id, 64);
+  v_referrer := left(v_referrer, 2000);
 
   if coalesce(length(v_oppref), 0) > 1024
     or greatest(coalesce(length(v_utm_source), 0), coalesce(length(v_utm_medium), 0),
@@ -653,13 +666,15 @@ begin
     reservation_date, reservation_time, party_size, status, customer_notes, internal_notes,
     cancellation_token_hash, source, openai_oppref, utm_source, utm_medium, utm_campaign,
     utm_content, utm_term, chatgpt_campaign_id, chatgpt_ad_group_id, chatgpt_ad_id,
-    attribution_landing_url, attribution_captured_at, created_by_user_id, accepted_policy, marketing_opt_in
+    attribution_landing_url, attribution_captured_at, attribution_referrer,
+    ga_client_id, ga_session_id, created_by_user_id, accepted_policy, marketing_opt_in
   ) values (
     v_public_code, v_customer_id, p_name, p_email, p_phone,
     p_date, p_time, p_party_size, 'confirmada', p_notes, p_internal_notes,
     v_token_hash, v_source, v_oppref, v_utm_source, v_utm_medium, v_utm_campaign,
     v_utm_content, v_utm_term, v_campaign_id, v_ad_group_id, v_ad_id,
-    v_landing_url, v_captured_at, v_actor_app_user_id, p_accepted_policy, p_marketing_opt_in
+    v_landing_url, v_captured_at, v_referrer,
+    v_ga_client_id, v_ga_session_id, v_actor_app_user_id, p_accepted_policy, p_marketing_opt_in
   ) returning reservations.id into v_reservation_id;
 
   -- Enfileira a confirmação por e-mail (enviada pela Edge Function send-notifications).

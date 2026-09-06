@@ -119,6 +119,26 @@ export function measureReservationPageViewed() {
   });
 }
 
+// Receita media por pessoa: ticket de R$ 76,00 dividido por 1,3 pessoas por
+// pagamento, conforme 12 meses do painel financeiro. Serve para dar ordem de
+// grandeza ao valor da conversao no GA4; nao e faturamento apurado.
+const REVENUE_PER_GUEST_BRL = 58;
+
+// Espelha a reserva no GA4. O pixel da OpenAI continua sendo tratado em
+// measureReservationConfirmed(); aqui a mesma conversao chega ao GA4 com valor,
+// que e o que permite comparar canais por receita e nao apenas por volume.
+export function measureReservationConfirmedGA4(result) {
+  if (typeof window.gtag !== 'function' || !result) return;
+
+  const partySize = Number(result.party_size) || 0;
+  window.gtag('event', 'reservation_confirmed', {
+    currency: 'BRL',
+    value: partySize * REVENUE_PER_GUEST_BRL,
+    party_size: partySize,
+    reservation_code: result.public_code || null,
+  });
+}
+
 export function measureReservationConfirmed() {
   if (typeof window.oaiq !== 'function') return;
   window.oaiq('measure', 'appointment_scheduled', { type: 'customer_action' });

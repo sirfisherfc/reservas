@@ -6,7 +6,8 @@ import {
 } from './utils.js';
 import { WHATSAPP_NUMBER, RESTAURANT_NAME } from './config.js';
 import {
-  initOpenAIAdsPixel, measureReservationPageViewed, measureReservationConfirmed, reservationAttribution,
+  initOpenAIAdsPixel, measureReservationPageViewed, measureReservationConfirmed,
+  measureReservationConfirmedGA4, reservationAttribution,
 } from './attribution.js';
 
 const form = qs('#reservation-form');
@@ -83,13 +84,15 @@ async function init() {
   measureReservationPageViewed();
   settings = await fetchPublicSettings();
 
-  const min = Number(settings.min_party_size) || 2;
+  const min = Number(settings.min_party_size) || 1;
   const max = Number(settings.max_party_size) || 10;
   const advanceDays = Number(settings.advance_booking_days) || 60;
 
   partySizeInput.min = min;
   partySizeInput.max = max;
-  qs('#party-size-hint').textContent = `Mínimo ${min} pessoas.`;
+  qs('#party-size-hint').textContent = min > 1
+    ? `Mínimo ${min} pessoas.`
+    : 'A partir de 1 pessoa.';
   applyMaxPartyLabels(max);
   applyToleranceLabels(Number(settings.tolerance_minutes) || 15);
   applyHoldReleaseLabels(Number(settings.hold_release_minutes) || 60);
@@ -243,6 +246,7 @@ async function handleSubmit(evt) {
 
   const result = Array.isArray(data) ? data[0] : data;
   measureReservationConfirmed();
+  measureReservationConfirmedGA4(result);
   showSuccess(result);
 }
 

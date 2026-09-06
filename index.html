@@ -7,6 +7,18 @@
   <meta name="description" content="Reserve sua mesa no Sir Fisher Praia. Confirmação automática e imediata." />
   <link rel="icon" type="image/png" href="https://www.sirfisher.com.br/assets/img/favicon.png" />
   <link rel="stylesheet" href="./assets/css/style.css" />
+  <!-- Google tag (gtag.js). Mesma propriedade do site institucional. O linker
+       preserva a sessao quando o visitante salta de www.sirfisher.com.br para
+       este subdominio, para que a reserva seja creditada ao canal de origem. -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-F40Z5Y9QT6"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-F40Z5Y9QT6', {
+      linker: { domains: ['sirfisher.com.br', 'www.sirfisher.com.br', 'reservas.sirfisher.com.br'] }
+    });
+  </script>
 </head>
 <body>
 
@@ -75,8 +87,8 @@
         <div class="form-row form-row--split">
           <div class="form-field">
             <label for="party_size">Quantidade de pessoas</label>
-            <input type="number" id="party_size" name="party_size" min="2" max="10" step="1" required />
-            <p class="hint" id="party-size-hint">Mínimo 2 pessoas.</p>
+            <input type="number" id="party_size" name="party_size" min="1" max="10" step="1" required />
+            <p class="hint" id="party-size-hint">A partir de 1 pessoa.</p>
           </div>
           <div class="form-field">
             <label for="date">Data</label>

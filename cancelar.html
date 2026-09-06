@@ -7,6 +7,18 @@
   <meta name="robots" content="noindex" />
   <link rel="icon" type="image/png" href="https://www.sirfisher.com.br/assets/img/favicon.png" />
   <link rel="stylesheet" href="./assets/css/style.css" />
+  <!-- Google tag (gtag.js). Mesma propriedade do site institucional. O linker
+       preserva a sessao quando o visitante salta de www.sirfisher.com.br para
+       este subdominio, para que a reserva seja creditada ao canal de origem. -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-F40Z5Y9QT6"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-F40Z5Y9QT6', {
+      linker: { domains: ['sirfisher.com.br', 'www.sirfisher.com.br', 'reservas.sirfisher.com.br'] }
+    });
+  </script>
 </head>
 <body>
 

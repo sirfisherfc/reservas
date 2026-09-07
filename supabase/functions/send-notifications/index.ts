@@ -79,6 +79,8 @@ interface Payload {
   time?: string;
   party_size?: number;
   cancel_token?: string;
+  whatsapp?: string;
+  tolerance?: number;
 }
 
 function buildEmailHtml(p: Payload): string {
@@ -105,9 +107,39 @@ function buildEmailHtml(p: Payload): string {
       </td></tr>`
     : "";
 
+  // O lembrete de vespera precisa PEDIR uma acao. A versao anterior so avisava,
+  // e 29 lembretes enviados nao moveram os 43% de no-show. Sem link de
+  // cancelamento (a tabela guarda so o hash do token, nunca o token em texto),
+  // o WhatsApp e o unico canal de resposta que ja existe e e monitorado.
+  const wa = (p.whatsapp ?? "").replace(/\D/g, "");
+  const waLink = (msg: string) =>
+    wa ? `https://wa.me/${wa}?text=${encodeURIComponent(msg)}` : "";
+
+  const confirmUrl = waLink(
+    `Ola! Confirmo a reserva ${p.public_code ?? ""} de ${formatDateBR(p.date ?? "")} as ${formatTimeBR(p.time ?? "")}.`,
+  );
+  const changeUrl = waLink(
+    `Ola! Preciso alterar ou cancelar a reserva ${p.public_code ?? ""} de ${formatDateBR(p.date ?? "")}.`,
+  );
+
   const reminderNotice = isReminder
     ? `<tr><td style="padding:28px 32px 0;">
-        <p style="margin:0 0 14px;font-size:16px;line-height:1.6;">Lembrete: sua reserva é amanhã. Estamos ansiosos para receber você!</p>
+        <p style="margin:0 0 14px;font-size:16px;line-height:1.6;"><strong>Sua reserva é amanhã.</strong> Pode confirmar que vem?</p>
+      </td></tr>`
+    : "";
+
+  const reminderActions = isReminder && wa
+    ? `<tr><td style="padding:8px 32px 4px;">
+        <a href="${confirmUrl}" style="display:inline-block;padding:12px 22px;background:#0f3d3e;border-radius:6px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;">
+          Confirmar presença
+        </a>
+        <a href="${changeUrl}" style="display:inline-block;margin-left:10px;padding:12px 20px;border:1px solid #c0392b;border-radius:6px;color:#c0392b;text-decoration:none;font-size:14px;font-weight:600;">
+          Não vou poder ir
+        </a>
+        <p style="margin:14px 0 0;color:#888;font-size:12px;line-height:1.5;">
+          Se não puder vir, avisar libera a mesa para outra pessoa — leva 10 segundos e ajuda muito.
+          Guardamos a mesa por ${Number(p.tolerance ?? 15)} minutos após o horário.
+        </p>
       </td></tr>`
     : "";
 
@@ -128,7 +160,9 @@ function buildEmailHtml(p: Payload): string {
         <tr><td style="padding:${isReminder ? "14px" : "28px"} 32px 8px;">
           <p style="margin:0 0 14px;font-size:16px;">Olá${name ? ", " + name : ""}! 👋</p>
           <p style="margin:0 0 18px;font-size:15px;line-height:1.6;">
-            Sua reserva está <strong style="color:#0f3d3e;">confirmada</strong>. Estamos ansiosos para receber você!
+            ${isReminder
+              ? `Estamos guardando sua mesa. Uma confirmação rápida ajuda a gente a organizar o salão.`
+              : `Sua reserva está <strong style="color:#0f3d3e;">confirmada</strong>. Estamos ansiosos para receber você!`}
           </p>
         </td></tr>
         <tr><td style="padding:0 32px 8px;">
@@ -141,12 +175,15 @@ function buildEmailHtml(p: Payload): string {
             </td></tr>
           </table>
         </td></tr>
+        ${reminderActions}
         <tr><td style="padding:20px 32px 4px;font-size:13px;color:#666;line-height:1.6;">
           Guarde o código da reserva. Em caso de imprevisto, avise-nos com antecedência.
         </td></tr>
         ${cancelBlock}
         <tr><td style="padding:18px 32px 28px;border-top:1px solid #eee;color:#999;font-size:12px;line-height:1.6;">
-          Sir Fisher Praia — este é um e-mail automático de confirmação, não é necessário respondê-lo.
+          ${isReminder
+            ? `Sir Fisher Praia — Av. Beira Mar 3421, Meireles. Responder pelo WhatsApp é o caminho mais rápido.`
+            : `Sir Fisher Praia — este é um e-mail automático de confirmação, não é necessário respondê-lo.`}
         </td></tr>
       </table>
     </td></tr>
@@ -188,7 +225,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           from: RESEND_FROM,
           to: [p.email],
-          subject: `${row.type === "reservation_reminder" ? "Lembrete da sua reserva" : "Reserva confirmada"} — ${p.public_code ?? "Sir Fisher Praia"}`,
+          subject: `${row.type === "reservation_reminder" ? "Sua reserva é amanhã — pode confirmar?" : "Reserva confirmada"} — ${p.public_code ?? "Sir Fisher Praia"}`,
           html: buildEmailHtml(p),
         }),
       });

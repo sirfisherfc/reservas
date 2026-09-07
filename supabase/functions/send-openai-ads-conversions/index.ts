@@ -19,6 +19,8 @@ const CONVERSIONS_API_KEY = Deno.env.get("OPENAI_ADS_CONVERSIONS_API_KEY") ?? ""
 const TRIGGER_SECRET = Deno.env.get("OPENAI_ADS_TRIGGER_SECRET") ?? "";
 const GA4_MEASUREMENT_ID = Deno.env.get("GA4_MEASUREMENT_ID") ?? "";
 const GA4_API_SECRET = Deno.env.get("GA4_API_SECRET") ?? "";
+const META_PIXEL_ID = Deno.env.get("META_PIXEL_ID") ?? "";
+const META_CAPI_TOKEN = Deno.env.get("META_CAPI_TOKEN") ?? "";
 
 // Mesma constante do front (assets/js/attribution.js): ticket de R$ 76,00
 // dividido por 1,3 pessoas por pagamento. Ordem de grandeza para comparar
@@ -207,6 +209,100 @@ async function processGa4Queue(): Promise<QueueResult> {
   return { configured: true, processed: rows.length, sent, failed };
 }
 
+// ---------------------------------------------------------------------------
+// Meta Conversions API
+// ---------------------------------------------------------------------------
+// O Meta exige que identificadores de pessoa cheguem em SHA-256. O dado bruto
+// nunca sai deste servidor: e lido do banco, normalizado e transformado em hash
+// aqui dentro.
+async function sha256Hex(value: string): Promise<string> {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function normalizeEmail(raw: string | null): string | null {
+  const v = (raw ?? "").trim().toLowerCase();
+  return v.includes("@") ? v : null;
+}
+
+// O Meta espera so digitos, com codigo do pais. Os telefones daqui vem como
+// 11 digitos (DDD + numero) ou 10 nos fixos antigos; nesses casos falta o 55.
+function normalizePhone(raw: string | null): string | null {
+  let d = (raw ?? "").replace(/\D/g, "");
+  if (d.length === 10 || d.length === 11) d = "55" + d;
+  return d.length >= 12 && d.length <= 15 ? d : null;
+}
+
+async function processMetaQueue(): Promise<QueueResult> {
+  if (!META_PIXEL_ID || !META_CAPI_TOKEN) return IDLE;
+
+  const { data, error } = await admin.rpc("fn_claim_pending_meta_conversions", { p_limit: 25 });
+  if (error) return { ...IDLE, configured: true, error: `claim: ${error.message}` };
+
+  const rows = (data ?? []) as Array<{
+    queue_id: string;
+    event_id: string;
+    email: string | null;
+    phone: string | null;
+    fbp: string | null;
+    fbc: string | null;
+    party_size: number | null;
+    landing_url: string | null;
+    occurred_at: string;
+  }>;
+
+  const endpoint = `https://graph.facebook.com/v21.0/${encodeURIComponent(META_PIXEL_ID)}/events`
+    + `?access_token=${encodeURIComponent(META_CAPI_TOKEN)}`;
+
+  const { sent, failed } = await drain(rows, async (row) => {
+    const userData: Record<string, unknown> = {};
+    const email = normalizeEmail(row.email);
+    const phone = normalizePhone(row.phone);
+    if (email) userData.em = [await sha256Hex(email)];
+    if (phone) userData.ph = [await sha256Hex(phone)];
+    if (row.fbp) userData.fbp = row.fbp;
+    if (row.fbc) userData.fbc = row.fbc;
+
+    // Sem nenhum identificador o Meta devolve 2804050 e a linha ficaria em
+    // retry eterno. Falhar cedo, com mensagem clara, e melhor.
+    if (Object.keys(userData).length === 0) {
+      throw new Error("reservation has no usable Meta identifier (email, phone, fbp or fbc)");
+    }
+
+    // A CAPI descarta eventos com mais de 7 dias.
+    const occurredMs = Date.parse(row.occurred_at);
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const eventTimeMs = Number.isFinite(occurredMs) && occurredMs > sevenDaysAgo ? occurredMs : Date.now();
+
+    const guests = Number(row.party_size) || 0;
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        data: [{
+          event_name: "Schedule",
+          event_time: Math.floor(eventTimeMs / 1000),
+          // Mesmo id enviado pelo Pixel no navegador. E o que evita contar a
+          // reserva duas vezes.
+          event_id: row.event_id,
+          action_source: "website",
+          event_source_url: row.landing_url ?? "https://reservas.sirfisher.com.br/",
+          user_data: userData,
+          custom_data: { value: guests * REVENUE_PER_GUEST_BRL, currency: "BRL", num_guests: guests },
+        }],
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Meta ${response.status}: ${text.slice(0, 1200)}`);
+    }
+  });
+
+  return { configured: true, processed: rows.length, sent, failed };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
@@ -214,14 +310,15 @@ Deno.serve(async (req) => {
 
   const openaiAds = await processOpenAiQueue();
   const ga4 = await processGa4Queue();
+  const meta = await processMetaQueue();
 
   // O painel admin le `configured` e `failed` do nivel raiz, entao eles seguem
   // como totais somados. O detalhe por provedor vai em `providers`.
   return json({
-    configured: openaiAds.configured || ga4.configured,
-    processed: openaiAds.processed + ga4.processed,
-    sent: openaiAds.sent + ga4.sent,
-    failed: openaiAds.failed + ga4.failed,
-    providers: { openai_ads: openaiAds, ga4 },
+    configured: openaiAds.configured || ga4.configured || meta.configured,
+    processed: openaiAds.processed + ga4.processed + meta.processed,
+    sent: openaiAds.sent + ga4.sent + meta.sent,
+    failed: openaiAds.failed + ga4.failed + meta.failed,
+    providers: { openai_ads: openaiAds, ga4, meta },
   });
 });

@@ -19,6 +19,18 @@
       linker: { domains: ['sirfisher.com.br', 'www.sirfisher.com.br', 'reservas.sirfisher.com.br'] }
     });
   </script>
+  <!-- Meta Pixel. O mesmo dataset da Conversions API: os eventos do navegador e
+       os do servidor sao unidos pelo event_id, para a reserva nao contar duas
+       vezes. Ver supabase/meta-capi.sql no repositorio de reservas. -->
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '948509834960152');
+    fbq('track', 'PageView');
+  </script>
 </head>
 <body>
 

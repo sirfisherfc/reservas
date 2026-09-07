@@ -7,7 +7,7 @@ import {
 import { WHATSAPP_NUMBER, RESTAURANT_NAME } from './config.js';
 import {
   initOpenAIAdsPixel, measureReservationPageViewed, measureReservationConfirmed,
-  measureReservationConfirmedGA4, reservationAttribution,
+  measureReservationConfirmedGA4, measureReservationConfirmedMeta, reservationAttribution,
 } from './attribution.js';
 
 const form = qs('#reservation-form');
@@ -247,6 +247,7 @@ async function handleSubmit(evt) {
   const result = Array.isArray(data) ? data[0] : data;
   measureReservationConfirmed();
   measureReservationConfirmedGA4(result);
+  measureReservationConfirmedMeta(result);
   showSuccess(result);
 }
 

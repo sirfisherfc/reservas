@@ -133,43 +133,69 @@ p {
 
 /* Rule cards */
 
-.rule-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-
-@media (min-width: 560px) {
-  .rule-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.rule-card {
-  background: var(--color-surface);
+/* Regras da reserva, recolhidas.
+   Antes eram nove avisos restritivos antes do "sim": quatro cards ocupando a
+   primeira tela e cinco itens numerados junto do aceite — e os quatro cards
+   repetiam os itens 1 a 4. Agora sao cinco regras, uma vez so, a um clique.
+   O checkbox de aceite continua obrigatorio: a protecao juridica nao mudou. */
+.rules {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 16px 18px;
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
+  background: var(--color-surface);
+  margin: 4px 0 6px;
 }
 
-.rule-card__icon {
-  font-size: 1.3rem;
+.rules__summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 16px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  list-style: none;
+}
+
+/* O triangulo padrao do Safari/iOS so some com este seletor. */
+.rules__summary::-webkit-details-marker { display: none; }
+
+.rules__summary::after {
+  content: "+";
+  font-weight: 400;
+  font-size: 1.25rem;
   line-height: 1;
+  color: var(--color-secondary);
   flex: none;
 }
 
-.rule-card p {
-  margin: 0;
-  font-size: 0.94rem;
+.rules[open] .rules__summary::after { content: "2"; }
+
+.rules__hint {
+  font-weight: 400;
+  font-size: 0.8rem;
   color: var(--color-text-soft);
+  margin-left: auto;
+  padding-right: 4px;
 }
 
-.rule-card strong {
-  color: var(--color-text);
+.rules[open] .rules__hint { display: none; }
+
+.rules__summary:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+.rules__list {
+  margin: 0;
+  padding: 0 20px 16px 38px;
+  display: grid;
+  gap: 8px;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--color-text-soft);
 }
 
 /* Card / Form */

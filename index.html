@@ -48,28 +48,6 @@
   </header>
 
   <main>
-    <section class="section container">
-      <h2 class="section-title">Antes de reservar</h2>
-      <div class="rule-grid">
-        <div class="rule-card">
-          <span class="rule-card__icon">⏱️</span>
-          <p><strong><span class="tolerance-label">15</span> minutos de tolerância.</strong> Após esse prazo, a reserva poderá ser liberada.</p>
-        </div>
-        <div class="rule-card">
-          <span class="rule-card__icon">🪑</span>
-          <p><strong>Não garantimos posição de mesa.</strong> A organização depende da disponibilidade no momento da chegada.</p>
-        </div>
-        <div class="rule-card">
-          <span class="rule-card__icon">🌊</span>
-          <p><strong>Reservamos apenas parte da nossa capacidade.</strong> O restante das mesas funciona por ordem de chegada.</p>
-        </div>
-        <div class="rule-card">
-          <span class="rule-card__icon">💬</span>
-          <p><strong>Grupos acima de <span id="max-party-label">10</span> pessoas:</strong> atendimento pelo WhatsApp.</p>
-        </div>
-      </div>
-    </section>
-
     <section class="section container" id="reserva">
       <h2 class="section-title">Fazer reserva</h2>
 
@@ -128,25 +106,29 @@
           <p class="hint">Consideramos observações sempre que possível, mas não garantimos o atendimento do pedido.</p>
         </div>
 
-        <div class="alert alert--info" style="font-size:0.88rem;">
-          <strong>Antes de confirmar, leia com atenção:</strong>
-          <ol style="margin:8px 0 0; padding-left:18px;">
+        <details class="rules">
+          <summary class="rules__summary">
+            <span>Regras da reserva</span>
+            <span class="rules__hint">toque para ler</span>
+          </summary>
+          <ol class="rules__list">
             <li>Temos <span class="tolerance-label">15</span> minutos de tolerância para chegada. Após esse prazo, a reserva poderá ser liberada.</li>
             <li>Não garantimos posição de mesa. A organização depende da disponibilidade no momento da chegada.</li>
             <li>Reservamos apenas parte da nossa capacidade. O restante das mesas funciona por ordem de chegada.</li>
             <li>Reservas acima de <span class="max-party-label">10</span> pessoas devem ser feitas pelo WhatsApp.</li>
             <li>Para melhor organização da casa, lugares reservados e não ocupados em até <span class="hold-release-label">1 hora</span> poderão ser liberados para outros clientes.</li>
           </ol>
-        </div>
+        </details>
+
 
         <div class="form-field checkbox-field">
           <input type="checkbox" id="accept_policy" name="accept_policy" required />
-          <label for="accept_policy">Li e aceito as regras acima para minha reserva.</label>
+          <label for="accept_policy">Li e aceito as <strong>regras da reserva</strong> acima.</label>
         </div>
 
         <div class="form-field checkbox-field">
           <input type="checkbox" id="marketing_opt_in" name="marketing_opt_in" />
-          <label for="marketing_opt_in">Aceito receber novidades e promoções exclusivas do Sir Fisher.</label>
+          <label for="marketing_opt_in">Quero saber das promoções antes: executivo em dobro nas terças, datas especiais e novidades do cardápio. Sem spam, e você sai quando quiser.</label>
         </div>
 
         <div id="form-alert-area"></div>

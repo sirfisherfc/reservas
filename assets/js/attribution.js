@@ -71,6 +71,13 @@ function gaSessionId() {
   return match ? match[1] : null;
 }
 
+// O Meta grava _fbp (identifica o navegador) e _fbc (registra o clique no
+// anuncio, derivado do fbclid). Sao os parametros que mais elevam a taxa de
+// correspondencia da Conversions API depois do e-mail — sem eles o Meta chega a
+// recusar o evento por dados de cliente insuficientes.
+function metaFbp() { return readCookie('_fbp'); }
+function metaFbc() { return readCookie('_fbc'); }
+
 export function captureAttribution() {
   const params = new URLSearchParams(window.location.search);
   const incoming = {};
@@ -132,7 +139,27 @@ export function reservationAttribution() {
     // cookies, e o que vale e a sessao em que a reserva realmente aconteceu.
     ga_client_id: limitedValue(gaClientId(), 64),
     ga_session_id: limitedValue(gaSessionId(), 64),
+    meta_fbp: limitedValue(metaFbp(), 255),
+    meta_fbc: limitedValue(metaFbc(), 512),
   };
+}
+
+// O mesmo id vai no Pixel (navegador) e na Conversions API (servidor). E assim
+// que o Meta sabe que os dois sao o mesmo evento e nao conta a reserva duas
+// vezes. A funcao existe em um lugar so para os dois lados nao divergirem.
+export function metaScheduleEventId(reservationId) {
+  return reservationId ? `sf-sched-${reservationId}` : null;
+}
+
+export function measureReservationConfirmedMeta(result) {
+  if (typeof window.fbq !== 'function' || !result || !result.id) return;
+
+  const partySize = Number(result.party_size) || 0;
+  window.fbq('track', 'Schedule', {
+    value: partySize * REVENUE_PER_GUEST_BRL,
+    currency: 'BRL',
+    num_guests: partySize,
+  }, { eventID: metaScheduleEventId(result.id) });
 }
 
 export function initOpenAIAdsPixel() {

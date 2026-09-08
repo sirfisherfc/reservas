@@ -3,3 +3,7 @@
 node_modules/
 .claude/settings.local.json
 .mcp.json
+
+# Artefatos locais gerados por validacoes e ferramentas auxiliares.
+output/
+tmp/

@@ -7,10 +7,10 @@ aqui**. A fonte canônica é o site institucional:
 https://www.sirfisher.com.br/assets/img/
 ```
 
-Repositório: [`sirfisherfc/index`](https://github.com/sirfisherfc/index).
+Repositório: [`sirfisherfc/site`](https://github.com/sirfisherfc/site).
 
 Todas as páginas e o `adminGuard.js` apontam para lá. Para trocar o logo em
-qualquer um dos sites do Sir Fisher, altere só no repositório `index`.
+qualquer um dos sites do Sir Fisher, altere só no repositório `site`.
 
 Motivo: os arquivos estavam duplicados entre os dois repositórios e chegaram
 a divergir — o `logo-horizontal.png` daqui recebeu uma correção que o do site

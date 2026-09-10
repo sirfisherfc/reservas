@@ -585,6 +585,19 @@ td.notes-cell {
   border: 1px solid var(--color-border);
   font-family: inherit;
   font-size: 0.9rem;
+  max-width: 100%;
+}
+
+/* iOS aplica zoom automatico ao focar campos com fonte menor que 16px, o que
+   desloca o modal (position: fixed) e faz o campo parecer travado. */
+@media (max-width: 860px) {
+  .form-field input,
+  .form-field select,
+  .form-field textarea,
+  .filter-bar input,
+  .filter-bar select {
+    font-size: 16px;
+  }
 }
 
 .form-field .hint {
@@ -614,6 +627,7 @@ td.notes-cell {
   width: 100%;
   max-width: 560px;
   padding: 22px 24px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal__header {

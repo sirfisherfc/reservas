@@ -13,6 +13,7 @@ let currentRange = 'today';
 let filterDebounceTimer;
 let nrDebounceTimer;
 
+const MAX_MANUAL_PARTY = 20;
 const PAGE_SIZE = 50;
 let currentLimit = PAGE_SIZE;
 let hasMore = false;
@@ -291,7 +292,7 @@ function renderDetailModal(res, history) {
             <div class="form-field"><label for="edit-name">Nome</label><input type="text" id="edit-name" value="${escapeAttr(res.customer_name_snapshot)}" maxlength="120" /></div>
             <div class="form-field"><label for="edit-phone">Telefone</label><input type="tel" id="edit-phone" value="${escapeAttr(res.customer_phone_snapshot)}" maxlength="20" /></div>
             <div class="form-field"><label for="edit-email">E-mail</label><input type="email" id="edit-email" value="${escapeAttr(res.customer_email_snapshot || '')}" maxlength="160" /></div>
-            <div class="form-field"><label for="edit-party">Pessoas</label><input type="number" id="edit-party" value="${res.party_size}" min="1" /></div>
+            <div class="form-field"><label for="edit-party">Pessoas</label><select id="edit-party">${Array.from({ length: Math.max(MAX_MANUAL_PARTY, res.party_size) }, (_, i) => i + 1).map((n) => `<option value="${n}"${n === res.party_size ? ' selected' : ''}>${n}</option>`).join('')}</select></div>
             <div class="form-field"><label for="edit-date">Data</label><input type="date" id="edit-date" value="${res.reservation_date}" /></div>
             <div class="form-field"><label for="edit-time">Horário</label><input type="time" id="edit-time" value="${res.reservation_time.slice(0, 5)}" step="1800" /></div>
           </div>
@@ -437,6 +438,11 @@ async function changeStatus(id, newStatus, note = null) {
 
 function openNewReservationModal() {
   const mount = qs('#modal-mount');
+  // Select nativo em vez de input numerico: no iPhone o teclado numerico costuma
+  // nao abrir dentro do modal, deixando o campo aparentemente travado.
+  const partyOptions = Array.from({ length: MAX_MANUAL_PARTY }, (_, i) => i + 1)
+    .map((n) => `<option value="${n}">${n} ${n === 1 ? 'pessoa' : 'pessoas'}</option>`)
+    .join('');
   mount.innerHTML = `
     <div class="modal-backdrop" id="new-res-backdrop">
       <div class="modal">
@@ -461,7 +467,10 @@ function openNewReservationModal() {
             </div>
             <div class="form-field">
               <label for="nr-party">Quantidade de pessoas</label>
-              <input type="number" id="nr-party" min="1" required />
+              <select id="nr-party" required>
+                <option value="">Selecione…</option>
+                ${partyOptions}
+              </select>
             </div>
             <div class="form-field">
               <label for="nr-date">Data</label>
@@ -499,7 +508,7 @@ function openNewReservationModal() {
   });
   qs('#nr-date').min = todayISO();
   qs('#nr-date').addEventListener('change', loadTimeOptionsForNewReservation);
-  qs('#nr-party').addEventListener('input', () => {
+  qs('#nr-party').addEventListener('change', () => {
     clearTimeout(nrDebounceTimer);
     nrDebounceTimer = setTimeout(loadTimeOptionsForNewReservation, 250);
   });

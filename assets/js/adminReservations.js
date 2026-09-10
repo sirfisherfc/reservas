@@ -13,7 +13,9 @@ let currentRange = 'today';
 let filterDebounceTimer;
 let nrDebounceTimer;
 
-const MAX_MANUAL_PARTY = 20;
+// Atalhos exibidos no select. Nao e um teto: acima disso o admin escolhe
+// "digitar" e informa qualquer quantidade (reservas de varias mesas).
+const PARTY_SHORTCUTS = 20;
 const PAGE_SIZE = 50;
 let currentLimit = PAGE_SIZE;
 let hasMore = false;
@@ -292,7 +294,7 @@ function renderDetailModal(res, history) {
             <div class="form-field"><label for="edit-name">Nome</label><input type="text" id="edit-name" value="${escapeAttr(res.customer_name_snapshot)}" maxlength="120" /></div>
             <div class="form-field"><label for="edit-phone">Telefone</label><input type="tel" id="edit-phone" value="${escapeAttr(res.customer_phone_snapshot)}" maxlength="20" /></div>
             <div class="form-field"><label for="edit-email">E-mail</label><input type="email" id="edit-email" value="${escapeAttr(res.customer_email_snapshot || '')}" maxlength="160" /></div>
-            <div class="form-field"><label for="edit-party">Pessoas</label><select id="edit-party">${Array.from({ length: Math.max(MAX_MANUAL_PARTY, res.party_size) }, (_, i) => i + 1).map((n) => `<option value="${n}"${n === res.party_size ? ' selected' : ''}>${n}</option>`).join('')}</select></div>
+            <div class="form-field"><label for="edit-party">Pessoas</label>${partyFieldMarkup('edit-party', 'edit-party-other', res.party_size)}</div>
             <div class="form-field"><label for="edit-date">Data</label><input type="date" id="edit-date" value="${res.reservation_date}" /></div>
             <div class="form-field"><label for="edit-time">Horário</label><input type="time" id="edit-time" value="${res.reservation_time.slice(0, 5)}" step="1800" /></div>
           </div>
@@ -378,19 +380,25 @@ function renderDetailModal(res, history) {
 
   const saveEditBtn = qs('#save-edit-btn');
   if (saveEditBtn) {
+    bindPartyField('edit-party', 'edit-party-other');
     saveEditBtn.addEventListener('click', () => saveReservationEdit(res.id));
   }
 }
 
 async function saveReservationEdit(id) {
   const btn = qs('#save-edit-btn');
+  const party = partyFieldValue('edit-party', 'edit-party-other');
+  if (!party) {
+    showToast('Informe a quantidade de pessoas.');
+    return;
+  }
   setLoading(btn, true, 'Salvando...');
 
   const { error } = await supabase.from('reservations').update({
     customer_name_snapshot: qs('#edit-name').value.trim(),
     customer_phone_snapshot: qs('#edit-phone').value.trim(),
     customer_email_snapshot: qs('#edit-email').value.trim() || null,
-    party_size: Number(qs('#edit-party').value),
+    party_size: party,
     reservation_date: qs('#edit-date').value,
     reservation_time: qs('#edit-time').value,
     customer_notes: qs('#edit-customer-notes').value.trim() || null,
@@ -434,15 +442,49 @@ async function changeStatus(id, newStatus, note = null) {
   return true;
 }
 
+// Quantidade de pessoas: select nativo (no iPhone o teclado numerico costuma nao
+// abrir dentro do modal) com escape para digitar valores acima dos atalhos.
+function partyFieldMarkup(selectId, inputId, current) {
+  const isOther = Number.isFinite(current) && current > PARTY_SHORTCUTS;
+  const options = Array.from({ length: PARTY_SHORTCUTS }, (_, i) => i + 1)
+    .map((n) => `<option value="${n}"${n === current ? ' selected' : ''}>${n}</option>`)
+    .join('');
+  return `
+    <select id="${selectId}">
+      ${Number.isFinite(current) ? '' : '<option value="">Selecione…</option>'}
+      ${options}
+      <option value="other"${isOther ? ' selected' : ''}>Mais de ${PARTY_SHORTCUTS} (digitar)</option>
+    </select>
+    <input type="number" id="${inputId}" min="1" step="1" inputmode="numeric"
+      placeholder="Quantas pessoas?" style="margin-top:8px;"
+      value="${isOther ? current : ''}"${isOther ? '' : ' hidden'} />`;
+}
+
+function bindPartyField(selectId, inputId, onChange) {
+  const select = qs(`#${selectId}`);
+  const input = qs(`#${inputId}`);
+  select.addEventListener('change', () => {
+    const other = select.value === 'other';
+    input.hidden = !other;
+    if (other) input.focus();
+    else input.value = '';
+    if (onChange) onChange();
+  });
+  if (onChange) input.addEventListener('input', onChange);
+}
+
+function partyFieldValue(selectId, inputId) {
+  const select = qs(`#${selectId}`);
+  if (select.value === 'other') return Number(qs(`#${inputId}`).value) || 0;
+  return Number(select.value) || 0;
+}
+
 // --- Nova reserva manual ---
 
 function openNewReservationModal() {
   const mount = qs('#modal-mount');
   // Select nativo em vez de input numerico: no iPhone o teclado numerico costuma
   // nao abrir dentro do modal, deixando o campo aparentemente travado.
-  const partyOptions = Array.from({ length: MAX_MANUAL_PARTY }, (_, i) => i + 1)
-    .map((n) => `<option value="${n}">${n} ${n === 1 ? 'pessoa' : 'pessoas'}</option>`)
-    .join('');
   mount.innerHTML = `
     <div class="modal-backdrop" id="new-res-backdrop">
       <div class="modal">
@@ -467,10 +509,7 @@ function openNewReservationModal() {
             </div>
             <div class="form-field">
               <label for="nr-party">Quantidade de pessoas</label>
-              <select id="nr-party" required>
-                <option value="">Selecione…</option>
-                ${partyOptions}
-              </select>
+              ${partyFieldMarkup('nr-party', 'nr-party-other')}
             </div>
             <div class="form-field">
               <label for="nr-date">Data</label>
@@ -508,7 +547,7 @@ function openNewReservationModal() {
   });
   qs('#nr-date').min = todayISO();
   qs('#nr-date').addEventListener('change', loadTimeOptionsForNewReservation);
-  qs('#nr-party').addEventListener('change', () => {
+  bindPartyField('nr-party', 'nr-party-other', () => {
     clearTimeout(nrDebounceTimer);
     nrDebounceTimer = setTimeout(loadTimeOptionsForNewReservation, 250);
   });
@@ -517,7 +556,7 @@ function openNewReservationModal() {
 
 async function loadTimeOptionsForNewReservation() {
   const date = qs('#nr-date').value;
-  const party = Number(qs('#nr-party').value);
+  const party = partyFieldValue('nr-party', 'nr-party-other');
   const select = qs('#nr-time');
   if (!date || !party) {
     select.innerHTML = '<option value="">Selecione data e pessoas</option>';
@@ -544,6 +583,12 @@ async function submitNewReservation(evt) {
   const alertEl = qs('#new-res-alert');
   alertEl.innerHTML = '';
 
+  const party = partyFieldValue('nr-party', 'nr-party-other');
+  if (!party) {
+    alertEl.innerHTML = '<div class="alert alert--danger">Informe a quantidade de pessoas.</div>';
+    return;
+  }
+
   const time = qs('#nr-time').value;
   if (!time) {
     alertEl.innerHTML = '<div class="alert alert--danger">Selecione um horário disponível.</div>';
@@ -558,7 +603,7 @@ async function submitNewReservation(evt) {
     p_phone: qs('#nr-phone').value.trim(),
     p_date: qs('#nr-date').value,
     p_time: time,
-    p_party_size: Number(qs('#nr-party').value),
+    p_party_size: party,
     p_notes: qs('#nr-customer-notes').value.trim() || null,
     p_marketing_opt_in: qs('#nr-marketing').checked,
     p_accepted_policy: true,

@@ -266,14 +266,79 @@ async function openDetailModal(id) {
 
   const { data: history } = await supabase
     .from('reservation_status_history')
-    .select('old_status, new_status, changed_by_type, note, created_at')
+    .select('old_status, new_status, changed_by_user_id, changed_by_type, note, created_at')
     .eq('reservation_id', id)
     .order('created_at', { ascending: false });
 
-  renderDetailModal(res, history || []);
+  const actorNames = await fetchActorNames([
+    res.created_by_user_id,
+    res.updated_by_user_id,
+    ...(history || []).map((h) => h.changed_by_user_id),
+  ]);
+
+  renderDetailModal(res, history || [], actorNames);
 }
 
-function renderDetailModal(res, history) {
+// Resolve id -> nome dos usuarios que agiram na reserva. A policy
+// app_users_select_self_or_admin so deixa o admin ler outros usuarios, entao
+// para o operador nem consultamos: ele continua vendo so o papel ("admin",
+// "operador"), sem nome. Trocar isso exige liberar id+name no RLS.
+async function fetchActorNames(ids) {
+  const map = new Map();
+  if (appUser?.role !== 'admin') return map;
+
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (!unique.length) return map;
+
+  const { data } = await supabase
+    .from('app_users')
+    .select('id, name')
+    .in('id', unique);
+
+  (data || []).forEach((u) => map.set(u.id, u.name));
+  return map;
+}
+
+const ACTOR_TYPE_LABELS = {
+  customer: 'pelo próprio cliente',
+  system: 'pelo sistema',
+  admin: 'admin',
+  operator: 'operador',
+};
+
+// Nome do usuário quando temos (admin) ou, no fallback, só o papel.
+function actorLabel(userId, actorType, actorNames) {
+  const fallback = ACTOR_TYPE_LABELS[actorType] || actorType;
+  if (!userId) return escapeHtml(fallback);
+  const name = actorNames.get(userId);
+  if (!name) return escapeHtml(fallback);
+  return `${escapeHtml(name)} <span class="text-soft">(${escapeHtml(ACTOR_TYPE_LABELS[actorType] || actorType)})</span>`;
+}
+
+function creatorLabel(res, actorNames) {
+  if (!res.created_by_user_id) {
+    return res.source === 'admin'
+      ? escapeHtml('pelo painel')
+      : escapeHtml('pelo próprio cliente, no site');
+  }
+  const name = actorNames.get(res.created_by_user_id);
+  return name
+    ? `${escapeHtml(name)} <span class="text-soft">(pelo painel)</span>`
+    : escapeHtml('por usuário do painel');
+}
+
+// updated_by_user_id é carimbado em TODO update (trg_reservations_updated_by),
+// inclusive mudança de status — que já aparece no histórico. Só vale mostrar
+// quando o último update foi depois da última mudança de status: aí foi uma
+// edição de dados ou de observação interna, que hoje não gera histórico.
+function editedAfterLastStatusChange(res, history) {
+  if (!res.updated_by_user_id || !res.updated_at) return false;
+  const lastStatusAt = history[0]?.created_at;
+  if (!lastStatusAt) return new Date(res.updated_at) > new Date(res.created_at);
+  return new Date(res.updated_at) - new Date(lastStatusAt) > 1000;
+}
+
+function renderDetailModal(res, history, actorNames = new Map()) {
   const mount = qs('#modal-mount');
   const isTerminal = TERMINAL_STATUSES.includes(res.status);
   const canChangeStatus = !isTerminal || canEditAnyStatus();
@@ -331,14 +396,26 @@ function renderDetailModal(res, history) {
         <div>
           <label>Histórico</label>
           <ul class="history-list">
-            ${history.length ? history.map((h) => `
+            ${editedAfterLastStatusChange(res, history) ? `
+              <li class="text-soft">
+                Dados editados por ${escapeHtml(actorNames.get(res.updated_by_user_id) || 'usuário do painel')}
+                — ${formatDateTimeBR(res.updated_at)}
+                <br>Edição de dados ainda não guarda o que foi alterado, só quem e quando.
+              </li>
+            ` : ''}
+            ${history.map((h) => `
               <li>
-                <strong>${statusLabel(h.new_status)}</strong>
-                (${h.changed_by_type === 'customer' ? 'cliente' : h.changed_by_type === 'system' ? 'sistema' : h.changed_by_type})
+                <strong>${statusLabel(h.new_status)}</strong>${h.old_status ? ` <span class="text-soft">(era ${statusLabel(h.old_status)})</span>` : ''}
+                <br>${actorLabel(h.changed_by_user_id, h.changed_by_type, actorNames)}
                 — ${formatDateTimeBR(h.created_at)}
                 ${h.note ? `<br><span class="text-soft">${escapeHtml(h.note)}</span>` : ''}
               </li>
-            `).join('') : '<li class="text-soft">Sem alterações registradas.</li>'}
+            `).join('')}
+            <li>
+              <strong>Reserva criada</strong>
+              <br>${creatorLabel(res, actorNames)}
+              — ${formatDateTimeBR(res.created_at)}
+            </li>
           </ul>
         </div>
       </div>

@@ -400,7 +400,6 @@ function renderDetailModal(res, history, actorNames = new Map()) {
               <li class="text-soft">
                 Dados editados por ${escapeHtml(actorNames.get(res.updated_by_user_id) || 'usuário do painel')}
                 — ${formatDateTimeBR(res.updated_at)}
-                <br>Edição de dados ainda não guarda o que foi alterado, só quem e quando.
               </li>
             ` : ''}
             ${history.map((h) => `

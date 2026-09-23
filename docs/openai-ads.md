@@ -7,14 +7,21 @@ ChatGPT Ads -> entrada no site -> reserva confirmada -> visita realizada
 ```
 
 - `page_viewed`: disparado pelo Pixel ao abrir a pagina de reservas.
-- `appointment_scheduled`: disparado pelo Pixel quando a reserva e concluida.
+- `appointment_scheduled`: disparado pelo Pixel e pela Conversions API quando a
+  reserva e concluida. Os dois envios usam o mesmo `event_id`, portanto contam
+  uma unica conversao.
 - `visit_realized`: conversao server-side, enfileirada somente quando a equipe marca a reserva como `compareceu`.
 
-O `oppref` e os UTMs ficam gravados na reserva. O evento presencial usa o mesmo `oppref`, portanto a chave da Conversions API nunca vai para o navegador.
+O `oppref` e os UTMs ficam gravados na reserva. Os eventos server-side usam o
+mesmo `oppref` quando ele existe. E-mail, telefone e identificador interno sao
+normalizados e enviados somente como SHA-256; a chave da Conversions API nunca
+vai para o navegador.
 
 ## Ativacao
 
-1. No Supabase SQL Editor, execute [`supabase/openai-ads.sql`](../supabase/openai-ads.sql) uma unica vez.
+1. No Supabase SQL Editor, execute [`supabase/openai-ads.sql`](../supabase/openai-ads.sql)
+   e [`supabase/openai-ads-schedule-capi.sql`](../supabase/openai-ads-schedule-capi.sql)
+   uma unica vez.
 2. No ChatGPT Ads Manager, crie uma fonte de conversoes e obtenha o Pixel ID e a Conversions API key.
 3. Configure os secrets da Edge Function no Supabase:
 
@@ -55,7 +62,11 @@ Se o destino precisar ser `www.sirfisher.com.br` antes de abrir a reserva, insta
 
 ## Privacidade e limites
 
-O fluxo server-side envia somente o `oppref` e o evento de visita; nao envia nome, telefone ou e-mail do cliente. Antes de habilitar o Pixel, atualize o aviso de privacidade e aplique o consentimento que for exigido para o seu caso. O Pixel da OpenAI suporta controle explicito de consentimento.
+O fluxo server-side nunca envia nome, telefone ou e-mail em texto puro. Ele
+envia hashes SHA-256 de e-mail, telefone e identificador interno, alem do
+`oppref` quando disponivel. Antes de habilitar o Pixel, atualize o aviso de
+privacidade e aplique o consentimento exigido para o caso. O Pixel da OpenAI
+suporta controle explicito de consentimento.
 
 Esta entrega mede reservas e comparecimentos. Ela ainda nao mede consumo nem ROAS financeiro, porque o sistema de reservas nao recebe o valor fechado no PDV. Quando houver integracao com o SAIPOS, o proximo evento deve ser `order_created` com o valor em centavos e `BRL`.
 

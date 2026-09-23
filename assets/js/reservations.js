@@ -245,7 +245,7 @@ async function handleSubmit(evt) {
   }
 
   const result = Array.isArray(data) ? data[0] : data;
-  measureReservationConfirmed();
+  await measureReservationConfirmed(result, { email, phone, name });
   measureReservationConfirmedGA4(result);
   measureReservationConfirmedMeta(result);
   showSuccess(result);

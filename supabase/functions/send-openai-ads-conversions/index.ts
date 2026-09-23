@@ -113,7 +113,18 @@ async function processOpenAiQueue(): Promise<QueueResult> {
   if (error) return { ...IDLE, configured: true, error: `claim: ${error.message}` };
 
   const rows = (data ?? []) as Array<
-    { queue_id: string; event_id: string; oppref: string; occurred_at: string }
+    {
+      queue_id: string;
+      event_id: string;
+      event_name: "schedule" | "visit_realized";
+      oppref: string | null;
+      email: string | null;
+      phone: string | null;
+      external_id: string | null;
+      party_size: number | null;
+      landing_url: string | null;
+      occurred_at: string;
+    }
   >;
 
   const { sent, failed } = await drain(rows, async (row) => {
@@ -122,6 +133,44 @@ async function processOpenAiQueue(): Promise<QueueResult> {
       throw new Error("event timestamp is older than the Conversions API 7-day limit");
     }
 
+    const user: Record<string, unknown> = { countries: ["BR"], cities: ["Fortaleza"], regions: ["Ceara"] };
+    const email = normalizeEmail(row.email);
+    const phone = normalizePhone(row.phone);
+    if (email) user.emails_sha256 = [await sha256Hex(email)];
+    if (phone) user.phone_numbers_sha256 = [await sha256Hex(phone)];
+    if (row.external_id) user.external_ids_sha256 = [await sha256Hex(row.external_id.trim())];
+
+    const guests = Number(row.party_size) || 0;
+    const isSchedule = row.event_name === "schedule";
+    const event: Record<string, unknown> = isSchedule
+      ? {
+        id: row.event_id,
+        type: "appointment_scheduled",
+        timestamp_ms: timestampMs,
+        source_url: row.landing_url ?? "https://reservas.sirfisher.com.br/",
+        action_source: "web",
+        user,
+        data: {
+          type: "customer_action",
+          amount: guests * REVENUE_PER_GUEST_BRL * 100,
+          currency: "BRL",
+        },
+      }
+      : {
+        id: row.event_id,
+        type: "custom",
+        custom_event_name: "visit_realized",
+        timestamp_ms: timestampMs,
+        action_source: "physical_store",
+        user,
+        data: {
+          type: "custom",
+          amount: guests * REVENUE_PER_GUEST_BRL * 100,
+          currency: "BRL",
+        },
+      };
+    if (row.oppref) event.oppref = row.oppref;
+
     const response = await fetch(`https://bzr.openai.com/v1/events?pid=${encodeURIComponent(PIXEL_ID)}`, {
       method: "POST",
       headers: {
@@ -129,15 +178,9 @@ async function processOpenAiQueue(): Promise<QueueResult> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        events: [{
-          id: row.event_id,
-          type: "custom",
-          custom_event_name: "visit_realized",
-          timestamp_ms: timestampMs,
-          oppref: row.oppref,
-          action_source: "physical_store",
-          data: { type: "custom" },
-        }],
+        validate_only: false,
+        integration_source: "sir_fisher_reservas",
+        events: [event],
       }),
     });
 
@@ -212,9 +255,9 @@ async function processGa4Queue(): Promise<QueueResult> {
 // ---------------------------------------------------------------------------
 // Meta Conversions API
 // ---------------------------------------------------------------------------
-// O Meta exige que identificadores de pessoa cheguem em SHA-256. O dado bruto
-// nunca sai deste servidor: e lido do banco, normalizado e transformado em hash
-// aqui dentro.
+// OpenAI e Meta exigem que identificadores de pessoa cheguem em SHA-256. O
+// dado bruto nunca sai deste servidor: e lido do banco, normalizado e
+// transformado em hash aqui dentro.
 async function sha256Hex(value: string): Promise<string> {
   const bytes = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", bytes);

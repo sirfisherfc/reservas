@@ -151,6 +151,48 @@ export function metaScheduleEventId(reservationId) {
   return reservationId ? `sf-sched-${reservationId}` : null;
 }
 
+// O Pixel e a Conversions API da OpenAI usam o mesmo ID para desduplicar a
+// reserva enviada pelo navegador e pelo servidor.
+export function openAiScheduleEventId(reservationId) {
+  return reservationId ? `sf-oai-sched-${reservationId}` : null;
+}
+
+async function sha256Hex(value) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function normalizeOpenAiPhone(raw) {
+  let digits = String(raw || '').replace(/\D/g, '');
+  if (digits.length === 10 || digits.length === 11) digits = `55${digits}`;
+  return digits.length >= 8 && digits.length <= 15 ? digits : null;
+}
+
+function normalizeOpenAiName(raw) {
+  return String(raw || '')
+    .toLowerCase()
+    .replace(/[\s!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/g, '');
+}
+
+async function openAiPixelUser({ email, phone, name } = {}) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const normalizedPhone = normalizeOpenAiPhone(phone);
+  const nameParts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  const firstName = normalizeOpenAiName(nameParts[0]);
+  const lastName = normalizeOpenAiName(nameParts.length > 1 ? nameParts[nameParts.length - 1] : '');
+  const user = { country: 'BR', city: 'Fortaleza', region: 'Ceara' };
+
+  if (normalizedEmail.includes('@')) user.email_sha256 = await sha256Hex(normalizedEmail);
+  if (normalizedPhone) user.phone_number_sha256 = await sha256Hex(normalizedPhone);
+  if (firstName) user.first_name_sha256 = await sha256Hex(firstName);
+  if (lastName) user.last_name_sha256 = await sha256Hex(lastName);
+
+  return user;
+}
+
 export function measureReservationConfirmedMeta(result) {
   if (typeof window.fbq !== 'function' || !result || !result.id) return;
 
@@ -210,7 +252,20 @@ export function measureReservationConfirmedGA4(result) {
   });
 }
 
-export function measureReservationConfirmed() {
-  if (typeof window.oaiq !== 'function') return;
-  window.oaiq('measure', 'appointment_scheduled', { type: 'customer_action' });
+export async function measureReservationConfirmed(result, customer) {
+  if (typeof window.oaiq !== 'function' || !result?.id) return;
+
+  const partySize = Number(result.party_size) || 0;
+  const user = await openAiPixelUser(customer);
+  window.oaiq('init', { pixelId: OPENAI_ADS_PIXEL_ID, user });
+  window.oaiq(
+    'measure',
+    'appointment_scheduled',
+    {
+      type: 'customer_action',
+      amount: partySize * REVENUE_PER_GUEST_BRL * 100,
+      currency: 'BRL',
+    },
+    { event_id: openAiScheduleEventId(result.id) },
+  );
 }

@@ -23,7 +23,7 @@ function renderError(message) {
 function renderConfirm(token) {
   card.innerHTML = `
     <h2 class="section-title">Cancelar sua reserva</h2>
-    <p>Tem certeza que deseja cancelar esta reserva? Essa ação não pode ser desfeita.</p>
+    <p>Confirme o cancelamento desta reserva. A ação é definitiva.</p>
     <button id="confirm-cancel-btn" class="btn btn--primary" style="background:var(--color-danger);">
       Sim, cancelar reserva
     </button>

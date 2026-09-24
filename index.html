@@ -103,7 +103,7 @@
         <div class="form-field">
           <label for="notes">Observações (opcional)</label>
           <textarea id="notes" name="notes" maxlength="500" placeholder="Alguma observação para sua visita?"></textarea>
-          <p class="hint">Consideramos observações sempre que possível, mas não garantimos o atendimento do pedido.</p>
+          <p class="hint">A equipe avalia as observações conforme a disponibilidade.</p>
         </div>
 
         <details class="rules">
@@ -113,10 +113,10 @@
           </summary>
           <ol class="rules__list">
             <li>Temos <span class="tolerance-label">15</span> minutos de tolerância para chegada. Após esse prazo, a reserva poderá ser liberada.</li>
-            <li>Não garantimos posição de mesa. A organização depende da disponibilidade no momento da chegada.</li>
+            <li>A equipe define a posição da mesa conforme a disponibilidade no momento da chegada.</li>
             <li>Reservamos apenas parte da nossa capacidade. O restante das mesas funciona por ordem de chegada.</li>
             <li>Reservas acima de <span class="max-party-label">10</span> pessoas devem ser feitas pelo WhatsApp.</li>
-            <li>Para melhor organização da casa, lugares reservados e não ocupados em até <span class="hold-release-label">1 hora</span> poderão ser liberados para outros clientes.</li>
+            <li>A equipe poderá liberar os lugares reservados para outros clientes após <span class="hold-release-label">1 hora</span> sem ocupação.</li>
           </ol>
         </details>
 
@@ -128,7 +128,7 @@
 
         <div class="form-field checkbox-field">
           <input type="checkbox" id="marketing_opt_in" name="marketing_opt_in" />
-          <label for="marketing_opt_in">Quero saber das promoções antes: executivo em dobro nas terças, datas especiais e novidades do cardápio. Sem spam, e você sai quando quiser.</label>
+          <label for="marketing_opt_in">Quero receber promoções e novidades do cardápio. Posso sair da lista quando quiser.</label>
         </div>
 
         <div id="form-alert-area"></div>
@@ -138,7 +138,7 @@
 
       <div id="success-panel" class="card hidden text-center">
         <h2 class="section-title">Reserva confirmada 🎉</h2>
-        <p>Enviamos os dados da sua reserva para conferência. Chegue com até 15 minutos de tolerância para manter sua reserva ativa.</p>
+        <p>Confira abaixo os dados da reserva. Chegue dentro da tolerância de 15 minutos para manter a mesa.</p>
         <div class="success-code" id="success-code">SF-XXXXXX</div>
         <ul class="summary-list" id="success-summary"></ul>
         <div class="stack">
@@ -150,7 +150,7 @@
   </main>
 
   <footer class="site-footer container">
-    <p><strong>Sir Fisher Praia</strong> — reservas online</p>
+    <p><strong>Sir Fisher Praia</strong> · reservas online</p>
     <p>Precisa de ajuda? <a id="footer-whatsapp" href="#" target="_blank" rel="noopener">Fale conosco pelo WhatsApp</a></p>
     <p><a href="https://www.sirfisher.com.br/privacidade/" target="_blank" rel="noopener">Aviso de Privacidade</a></p>
   </footer>

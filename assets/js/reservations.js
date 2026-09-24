@@ -32,7 +32,7 @@ const FRIENDLY_FALLBACK = {
   DATE_NOT_ALLOWED: 'Não é possível reservar para essa data.',
   DATE_BLOCKED: 'Esse dia não está disponível para reservas.',
   SLOT_BLOCKED: 'Esse horário não está disponível.',
-  SAME_DAY_CUTOFF: 'Reservas para o mesmo dia são aceitas somente até o horário de corte. Após esse horário, o atendimento funciona por ordem de chegada.',
+  SAME_DAY_CUTOFF: 'Para reservar no mesmo dia, escolha um horário antes do corte. Depois disso, atendemos por ordem de chegada.',
   SLOT_FULL_PEOPLE: 'Esse horário já atingiu o limite de pessoas.',
   SLOT_FULL_RESERVATIONS: 'Esse horário já atingiu o limite de reservas.',
   DUPLICATE_REQUEST: 'Já identificamos uma solicitação recente com esses dados. Aguarde alguns minutos e tente novamente.',
@@ -175,7 +175,7 @@ function renderNoAvailability(date, size, errorCode) {
   if (errorCode === 'SAME_DAY_CUTOFF' && date === todayISO()) {
     const cutoff = String(settings?.same_day_cutoff_time || '12:00').slice(0, 5);
     slotsContainer.innerHTML = `
-      <p class="hint">Reservas para o mesmo dia são aceitas somente até ${cutoff}. Após esse horário não conseguimos mais confirmar reserva online, mas temos mesas para atendimento por ordem de chegada — venha nos visitar!</p>
+      <p class="hint">Para hoje, confirme a reserva online até ${cutoff}. Depois desse horário, atendemos por ordem de chegada.</p>
       <a class="btn btn--whatsapp" style="margin-top:8px;" href="${waHref}" target="_blank" rel="noopener">Falar no WhatsApp</a>
     `;
     return;

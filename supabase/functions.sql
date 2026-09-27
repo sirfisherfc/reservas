@@ -397,7 +397,8 @@ $$;
 -- Para chamadas autenticadas (staff), os limites de público (min/max pessoas,
 -- corte de mesmo dia, janela de antecedência) são flexibilizados, pois nesse
 -- caso um humano já mediou o pedido (ex.: grupo grande combinado por telefone).
--- Bloqueios de data/horário e limites físicos de capacidade valem sempre.
+-- Staff também pode reservar fora da grade e acima da capacidade (o painel
+-- pede confirmação). Bloqueios de data/horário valem sempre.
 -- Ocupação considera janela de tempo (margem antes + duração depois), não só
 -- o horário exato — ver comentário no bloco de checagem de limite abaixo.
 -- =========================================================================
@@ -595,41 +596,46 @@ begin
     raise exception 'SLOT_BLOCKED: Este horário não está disponível nesta data.';
   end if;
 
-  v_weekday := extract(dow from p_date);
-
-  if not exists (select 1 from public.availability_rules where weekday = v_weekday and enabled = true) then
-    raise exception 'DATE_NOT_ALLOWED: Não aceitamos reservas neste dia da semana.';
-  end if;
-
-  select * into v_rule from public.availability_rules
-  where weekday = v_weekday and time_slot = p_time and enabled = true;
-
-  if not found then
-    raise exception 'SLOT_BLOCKED: Este horário não está disponível.';
-  end if;
-
   -- Trava por dia inteiro: uma reserva pode afetar o cômputo de vários horários
   -- vizinhos ao mesmo tempo (janela de ocupação abaixo), então a serialização
   -- precisa ser por data, não mais só pelo horário exato.
   perform pg_advisory_xact_lock(hashtext(p_date::text));
 
-  -- Mesma lógica de janela de ocupação (margem antes + duração depois) do
-  -- get_available_time_slots, usando aritmética de timestamp para não quebrar
-  -- perto da meia-noite.
-  select coalesce(sum(res.party_size), 0), count(*)
-    into v_people_booked, v_reservations_booked
-  from public.reservations res
-  where res.reservation_date = p_date
-    and res.status = 'confirmada'
-    and (p_date + p_time) between
-        ((p_date + res.reservation_time) - (v_pre_buffer_minutes || ' minutes')::interval)
-        and ((p_date + res.reservation_time) + (v_duration_minutes || ' minutes')::interval);
+  -- Staff pode reservar fora da grade de horários e acima da capacidade
+  -- (ex.: evento de 50 pessoas às 05:30 combinado por telefone). O painel
+  -- avisa e pede confirmação antes; aqui só os bloqueios acima valem.
+  if not v_is_staff then
+    v_weekday := extract(dow from p_date);
 
-  if v_people_booked + p_party_size > v_rule.max_people then
-    raise exception 'SLOT_FULL_PEOPLE: Este horário já atingiu o limite de pessoas.';
-  end if;
-  if v_reservations_booked + 1 > v_rule.max_reservations then
-    raise exception 'SLOT_FULL_RESERVATIONS: Este horário já atingiu o limite de reservas.';
+    if not exists (select 1 from public.availability_rules where weekday = v_weekday and enabled = true) then
+      raise exception 'DATE_NOT_ALLOWED: Não aceitamos reservas neste dia da semana.';
+    end if;
+
+    select * into v_rule from public.availability_rules
+    where weekday = v_weekday and time_slot = p_time and enabled = true;
+
+    if not found then
+      raise exception 'SLOT_BLOCKED: Este horário não está disponível.';
+    end if;
+
+    -- Mesma lógica de janela de ocupação (margem antes + duração depois) do
+    -- get_available_time_slots, usando aritmética de timestamp para não quebrar
+    -- perto da meia-noite.
+    select coalesce(sum(res.party_size), 0), count(*)
+      into v_people_booked, v_reservations_booked
+    from public.reservations res
+    where res.reservation_date = p_date
+      and res.status = 'confirmada'
+      and (p_date + p_time) between
+          ((p_date + res.reservation_time) - (v_pre_buffer_minutes || ' minutes')::interval)
+          and ((p_date + res.reservation_time) + (v_duration_minutes || ' minutes')::interval);
+
+    if v_people_booked + p_party_size > v_rule.max_people then
+      raise exception 'SLOT_FULL_PEOPLE: Este horário já atingiu o limite de pessoas.';
+    end if;
+    if v_reservations_booked + 1 > v_rule.max_reservations then
+      raise exception 'SLOT_FULL_RESERVATIONS: Este horário já atingiu o limite de reservas.';
+    end if;
   end if;
 
   v_phone_digits := regexp_replace(p_phone, '\D', '', 'g');

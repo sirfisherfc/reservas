@@ -16,6 +16,7 @@ let nrDebounceTimer;
 // Atalhos exibidos no select. Nao e um teto: acima disso o admin escolhe
 // "digitar" e informa qualquer quantidade (reservas de varias mesas).
 const PARTY_SHORTCUTS = 20;
+const CUSTOM_TIME = '__custom';
 const PAGE_SIZE = 50;
 let currentLimit = PAGE_SIZE;
 let hasMore = false;
@@ -594,6 +595,7 @@ function openNewReservationModal() {
             <div class="form-field">
               <label for="nr-time">Horário</label>
               <select id="nr-time" required><option value="">Selecione a data primeiro</option></select>
+              <input type="time" id="nr-time-other" style="margin-top:8px;" hidden />
             </div>
           </div>
           <div class="form-field">
@@ -623,6 +625,11 @@ function openNewReservationModal() {
   });
   qs('#nr-date').min = todayISO();
   qs('#nr-date').addEventListener('change', loadTimeOptionsForNewReservation);
+  qs('#nr-time').addEventListener('change', () => {
+    const custom = qs('#nr-time').value === CUSTOM_TIME;
+    qs('#nr-time-other').hidden = !custom;
+    qs('#nr-time-other').required = custom;
+  });
   bindPartyField('nr-party', 'nr-party-other', () => {
     clearTimeout(nrDebounceTimer);
     nrDebounceTimer = setTimeout(loadTimeOptionsForNewReservation, 250);
@@ -630,10 +637,14 @@ function openNewReservationModal() {
   qs('#new-res-form').addEventListener('submit', submitNewReservation);
 }
 
+// Admin ve toda a grade, inclusive horarios lotados (marcados), e pode
+// digitar um horario fora dela. O banco aceita; a confirmacao fica no submit.
 async function loadTimeOptionsForNewReservation() {
   const date = qs('#nr-date').value;
   const party = partyFieldValue('nr-party', 'nr-party-other');
   const select = qs('#nr-time');
+  qs('#nr-time-other').hidden = true;
+  qs('#nr-time-other').required = false;
   if (!date || !party) {
     select.innerHTML = '<option value="">Selecione data e pessoas</option>';
     return;
@@ -644,13 +655,15 @@ async function loadTimeOptionsForNewReservation() {
     select.innerHTML = '<option value="">Erro ao carregar horários</option>';
     return;
   }
-  const available = slots.filter((s) => s.is_available);
-  if (!available.length) {
-    select.innerHTML = '<option value="">Nenhum horário disponível</option>';
-    return;
-  }
-  select.innerHTML = '<option value="">Selecione…</option>' +
-    available.map((s) => `<option value="${s.time_slot}">${formatTimeBR(s.time_slot)}</option>`).join('');
+  const options = slots.map((s) => {
+    const label = s.is_available
+      ? formatTimeBR(s.time_slot)
+      : `${formatTimeBR(s.time_slot)} — lotado (${Math.max(s.spots_remaining, 0)} vagas)`;
+    return `<option value="${s.time_slot}" data-full="${s.is_available ? '' : '1'}">${label}</option>`;
+  });
+  select.innerHTML = `<option value="">${slots.length ? 'Selecione…' : 'Sem horários na grade'}</option>` +
+    options.join('') +
+    `<option value="${CUSTOM_TIME}">Outro horário (digitar)</option>`;
 }
 
 async function submitNewReservation(evt) {
@@ -665,11 +678,15 @@ async function submitNewReservation(evt) {
     return;
   }
 
-  const time = qs('#nr-time').value;
+  const select = qs('#nr-time');
+  const custom = select.value === CUSTOM_TIME;
+  const time = custom ? qs('#nr-time-other').value : select.value;
   if (!time) {
-    alertEl.innerHTML = '<div class="alert alert--danger">Selecione um horário disponível.</div>';
+    alertEl.innerHTML = '<div class="alert alert--danger">Selecione ou digite um horário.</div>';
     return;
   }
+  if (custom && !confirm(`${formatTimeBR(time)} está fora da grade de horários. Criar a reserva mesmo assim?`)) return;
+  if (select.selectedOptions[0]?.dataset.full && !confirm('Este horário já está lotado para essa quantidade de pessoas. Criar a reserva mesmo assim?')) return;
 
   setLoading(btn, true, 'Criando...');
 

@@ -1669,6 +1669,7 @@ begin
   perform public.rv_expire_due(null);
   return coalesce((
     select jsonb_agg(jsonb_build_object(
+      'id', b.id, 'table_id', b.table_id,
       'codigo', b.public_code, 'status', b.status, 'mesa', t.label, 'tipo', tt.name, 'lote', l.name,
       'responsavel', b.customer_name, 'whatsapp', b.customer_phone, 'email', b.customer_email,
       'adultos', b.adults, 'criancas', b.children, 'colo', b.infants,

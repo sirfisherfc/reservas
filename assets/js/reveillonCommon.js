@@ -52,14 +52,15 @@ export function longDateBR(ts, timeZone = 'America/Fortaleza') {
   });
 }
 
-// Contagem regressiva curta: "31h12min", "45min", "vencido"
+// Contagem regressiva curta (cabe dentro da mesa no mapa): "31h", "4h05", "45min", "vencido"
 export function countdown(ts, now = Date.now()) {
   const ms = new Date(ts).getTime() - now;
   if (ms <= 0) return 'vencido';
   const totalMin = Math.floor(ms / 60000);
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
-  return h > 0 ? `${h}h${String(m).padStart(2, '0')}min` : `${m}min`;
+  if (h >= 10) return `${h}h`;
+  return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m}min`;
 }
 
 export function formatPixKey(key, type) {

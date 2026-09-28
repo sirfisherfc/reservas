@@ -1,0 +1,225 @@
+/* Painel do Réveillon — uso principal no celular: alvos de toque grandes. */
+
+.rv-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+}
+.rv-tab {
+  flex: 1;
+  min-width: max-content;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: #fff;
+  font: inherit;
+  font-weight: 700;
+  font-size: .95rem;
+  cursor: pointer;
+}
+.rv-tab.is-active { background: var(--color-secondary); border-color: var(--color-secondary); color: #fff; }
+
+.rv-map-card { padding: 12px; }
+.rv-map-wrap { max-width: 720px; margin: 0 auto; }
+
+.rv-counters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.rv-counter {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+.rv-counter span { display: block; font-size: .75rem; color: var(--color-text-soft); }
+.rv-counter strong { font-size: 1.3rem; }
+
+.rv-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.rv-toolbar input, .rv-toolbar select {
+  flex: 1;
+  min-width: 160px;
+  padding: 11px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  font: inherit;
+  font-size: 16px;
+}
+.rv-btn { min-height: 46px; }
+
+.rv-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.rv-stat { background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 12px 14px; }
+.rv-stat span { display: block; font-size: .78rem; color: var(--color-text-soft); }
+.rv-stat strong { display: block; font-size: 1.2rem; margin-top: 2px; }
+.rv-stat small { color: var(--color-text-soft); }
+
+.rv-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.rv-status--pre_reserva { background: #fdf1de; color: #a05a00; }
+.rv-status--vencida { background: #fbe4dc; color: #b33b17; }
+.rv-status--sinal_pago { background: #e3edfb; color: #1d4f91; }
+.rv-status--quitada { background: var(--color-success-bg); color: var(--color-success); }
+.rv-status--cancelada, .rv-status--expirada { background: #eee; color: #666; }
+.rv-status--bloqueada { background: #eee; color: #555; }
+.rv-status--livre { background: #eef6f6; color: var(--color-secondary); }
+
+.rv-row-link { cursor: pointer; }
+
+/* Folha (modal) — no celular ocupa a largura toda e cola embaixo */
+.rv-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 26, 26, .5);
+  z-index: 900;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.rv-sheet {
+  background: #fff;
+  width: 100%;
+  max-width: 560px;
+  max-height: 92vh;
+  overflow-y: auto;
+  border-radius: 20px 20px 0 0;
+  padding: 16px 16px 28px;
+  -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 861px) {
+  .rv-sheet-backdrop { align-items: center; }
+  .rv-sheet { border-radius: 20px; }
+}
+.rv-sheet__head { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+.rv-sheet__head h2 { margin: 0; font-size: 1.2rem; }
+.rv-sheet__close {
+  margin-left: auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: #f1ede4;
+  font-size: 1.4rem;
+  cursor: pointer;
+  flex: none;
+}
+.rv-kv { list-style: none; margin: 0 0 12px; padding: 0; }
+.rv-kv li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px dashed var(--color-border); font-size: .93rem; }
+.rv-kv li span:first-child { color: var(--color-text-soft); }
+.rv-kv li strong { text-align: right; }
+.rv-money {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+.rv-money div { background: #f8f6f1; border-radius: var(--radius-md); padding: 10px 12px; }
+.rv-money span { display: block; font-size: .75rem; color: var(--color-text-soft); }
+.rv-money strong { font-size: 1.1rem; }
+.rv-money small { display: block; color: var(--color-text-soft); font-size: .78rem; }
+.rv-money .is-due { background: #fdf1de; }
+
+.rv-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+.rv-actions .btn { min-height: 52px; font-size: .95rem; padding: 10px; }
+.rv-actions .rv-wide { grid-column: 1 / -1; }
+.rv-big { min-height: 58px !important; font-size: 1.05rem !important; }
+.btn--wa { background: #25d366; color: #06301c; }
+
+.rv-subhead { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-soft); margin: 16px 0 6px; }
+
+.rv-seg { display: flex; gap: 6px; margin-bottom: 12px; }
+.rv-seg button {
+  flex: 1;
+  min-height: 50px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rv-seg button.is-active { background: var(--color-secondary); border-color: var(--color-secondary); color: #fff; }
+
+.rv-amount { font-size: 1.6rem !important; font-weight: 800; padding: 12px !important; text-align: center; }
+.rv-sheet .form-field { margin-bottom: 12px; }
+.rv-sheet .form-field input, .rv-sheet .form-field select, .rv-sheet .form-field textarea { font-size: 16px; padding: 11px 12px; }
+.rv-check { display: flex; gap: 10px; align-items: flex-start; margin: 8px 0; font-size: .92rem; }
+.rv-check input { width: 20px; height: 20px; margin-top: 1px; flex: none; }
+
+.rv-steppers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.rv-steppers label { font-size: .78rem; font-weight: 600; display: block; margin-bottom: 4px; }
+.rv-steppers > div { min-width: 0; }
+.rv-steppers input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  text-align: center;
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.rv-payments { list-style: none; padding: 0; margin: 0; font-size: .88rem; }
+.rv-payments li { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--color-border); }
+.rv-payments li.is-void { text-decoration: line-through; color: #999; }
+.rv-payments li > div { flex: 1; }
+.rv-payments button { border: none; background: none; color: var(--color-danger); font: inherit; font-size: .8rem; cursor: pointer; padding: 6px; }
+
+.rv-sim-mini { background: #f8f6f1; border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 12px; font-size: .9rem; }
+
+.rv-edit-bar { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.rv-edit-bar__btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.rv-edit-bar__btns .btn { flex: 1; min-height: 48px; }
+
+/* Configurações */
+.rv-config details { background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-bottom: 10px; }
+.rv-config summary { padding: 14px 16px; font-weight: 700; cursor: pointer; list-style: none; }
+.rv-config summary::-webkit-details-marker { display: none; }
+.rv-config summary::after { content: "+"; float: right; color: var(--color-secondary); font-size: 1.2rem; line-height: 1; }
+.rv-config details[open] summary::after { content: "−"; }
+.rv-config__body { padding: 0 16px 16px; }
+.rv-config .form-field { margin-bottom: 12px; }
+.rv-config .form-field input, .rv-config .form-field select, .rv-config .form-field textarea { font-size: 16px; padding: 10px 12px; }
+.rv-config textarea { min-height: 70px; }
+.rv-config .rv-terms { min-height: 320px; font-family: inherit; line-height: 1.5; }
+.rv-config .rv-save { min-height: 50px; width: 100%; margin-top: 4px; }
+.rv-grid-row {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  align-items: end;
+}
+.rv-grid-row .form-field { margin: 0; }
+.rv-grid-row .rv-grid-title { grid-column: 1 / -1; font-weight: 700; }
+
+/* Impressão da portaria */
+.print-only { display: none; }
+@media print {
+  .sidebar, .rv-tabs, .page-header, .no-print, #page-alert, .rv-panel:not(#tab-portaria) { display: none !important; }
+  .main { padding: 0; }
+  .print-only { display: block; }
+  th.print-only, td.print-only { display: table-cell; }
+  .table-wrap { border: none; box-shadow: none; overflow: visible; }
+  table { font-size: 11pt; width: 100%; }
+  td, th { padding: 6px 8px; border-bottom: 1px solid #999; }
+  .rv-status { border: 1px solid #999; background: none !important; color: #000 !important; }
+}

@@ -45,8 +45,8 @@
 }
 .rv-table__badge {
   fill: #ffffff;
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 800;
   pointer-events: none;
   font-family: inherit;
 }

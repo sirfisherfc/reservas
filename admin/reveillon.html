@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Réveillon — Painel Sir Fisher Praia</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" type="image/png" href="https://www.sirfisher.com.br/assets/img/favicon.png" />
+  <link rel="stylesheet" href="../assets/css/admin.css" />
+  <link rel="stylesheet" href="../assets/css/reveillon-map.css" />
+  <link rel="stylesheet" href="../assets/css/admin-reveillon.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main">
+      <div class="page-header">
+        <h1 id="page-title">Réveillon</h1>
+        <span class="text-soft" id="sync-status"></span>
+      </div>
+
+      <div class="rv-tabs" id="rv-tabs" role="tablist">
+        <button class="rv-tab is-active" data-tab="mapa" type="button">Mapa</button>
+        <button class="rv-tab" data-tab="portaria" type="button">Portaria</button>
+        <button class="rv-tab" data-tab="resumo" type="button" data-admin>Resumo</button>
+        <button class="rv-tab" data-tab="config" type="button" data-admin>Configurar</button>
+      </div>
+
+      <div id="page-alert"></div>
+
+      <!-- MAPA -->
+      <section class="rv-panel" id="tab-mapa">
+        <div class="rv-counters" id="counters"></div>
+        <div class="card rv-map-card">
+          <div class="rv-legend" id="legend-status">
+            <span class="rv-chip rv-chip--livre">Livre</span>
+            <span class="rv-chip rv-chip--pre_reserva">Pré-reserva</span>
+            <span class="rv-chip rv-chip--vencida">Prazo vencido</span>
+            <span class="rv-chip rv-chip--sinal_pago">Sinal pago</span>
+            <span class="rv-chip rv-chip--quitada">Quitada</span>
+            <span class="rv-chip rv-chip--bloqueada">Bloqueada</span>
+          </div>
+          <div class="rv-legend" id="legend-types"></div>
+          <div class="rv-map-wrap">
+            <svg id="rv-map" class="rv-map" role="group" aria-label="Mapa das mesas"></svg>
+          </div>
+          <div class="rv-edit-bar hidden" id="edit-bar">
+            <span id="edit-selected" class="text-soft">Arraste as mesas. Toque numa mesa para girar.</span>
+            <div class="rv-edit-bar__btns">
+              <button class="btn btn--outline" type="button" id="rot-left" disabled>⟲ 15°</button>
+              <button class="btn btn--outline" type="button" id="rot-right" disabled>⟳ 15°</button>
+              <button class="btn btn--outline" type="button" id="edit-cancel">Cancelar</button>
+              <button class="btn btn--success" type="button" id="edit-save">Salvar posições</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PORTARIA -->
+      <section class="rv-panel hidden" id="tab-portaria">
+        <div class="rv-toolbar no-print">
+          <input type="search" id="door-search" placeholder="Buscar nome ou mesa" />
+          <button class="btn btn--outline rv-btn" type="button" id="door-print">Imprimir</button>
+          <button class="btn btn--outline rv-btn" type="button" id="door-csv">CSV</button>
+        </div>
+        <div class="print-only rv-print-head" id="door-print-head"></div>
+        <div class="table-wrap">
+          <table class="rv-door">
+            <thead><tr><th>Mesa</th><th>Responsável</th><th>Pessoas</th><th>Status</th><th>Observações</th><th class="print-only">Chegou</th></tr></thead>
+            <tbody id="door-tbody"><tr><td colspan="6" class="empty-state">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+        <p class="text-soft" id="door-total"></p>
+      </section>
+
+      <!-- RESUMO (admin) -->
+      <section class="rv-panel hidden" id="tab-resumo">
+        <div class="rv-toolbar">
+          <button class="btn btn--outline rv-btn" type="button" id="export-csv">Exportar CSV (com valores)</button>
+        </div>
+        <div class="rv-stats" id="summary-stats"></div>
+        <div class="card mb-16">
+          <h2 class="section-title">Por tipo de mesa</h2>
+          <div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Vendidas</th><th>Negociação</th><th>Pessoas</th><th>Ocupação</th><th>Vendido</th></tr></thead><tbody id="summary-types"></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="rv-toolbar">
+            <h2 class="section-title" style="margin:0;">Reservas</h2>
+            <select id="list-status">
+              <option value="ativas">Ativas</option>
+              <option value="">Todas</option>
+              <option value="pre_reserva">Pré-reserva</option>
+              <option value="sinal_pago">Sinal pago</option>
+              <option value="quitada">Quitada</option>
+              <option value="cancelada">Cancelada</option>
+              <option value="expirada">Expirada</option>
+            </select>
+            <input type="search" id="list-search" placeholder="Buscar nome, código ou mesa" />
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Mesa</th><th>Responsável</th><th>Status</th><th>Total</th><th>Recebido</th><th>Saldo</th></tr></thead><tbody id="list-tbody"></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- CONFIGURAR (admin) -->
+      <section class="rv-panel hidden" id="tab-config">
+        <div class="rv-config" id="config-root"><p class="text-soft">Carregando…</p></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="sheet-mount"></div>
+
+  <script type="module" src="../assets/js/adminReveillon.js"></script>
+</body>
+</html>

@@ -147,7 +147,8 @@ export function parseDbError(error) {
 //   { kind, shape: 'ellipse', points: [[cx,cy]], rx, ry }
 //   { kind, shape: 'circle',  points: [[cx,cy]], r }
 //   { kind, x, y, w, h }  (retângulo)     { kind: 'label', x, y, label }
-// kind define o estilo: sea, deck, wall, fence, hedge, tree, kiosk, dj, street, label.
+// kind define o estilo: sea, deck, wall, fence, box (marcação pequena, ex.: quadro
+// junto à mureta), hedge, tree, kiosk, dj, street, label.
 // As cadeiras são desenhadas em volta de cada mesa conforme as pessoas
 // incluídas no tipo (lateral 8, central 4, bistrô 2).
 // Devolve um mapa id -> <g> para quem precisar (ex.: modo editar mapa).

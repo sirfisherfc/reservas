@@ -218,7 +218,7 @@ export function renderMap(svg, opts) {
     }
     // Rótulo sempre na horizontal, com tamanho proporcional à mesa.
     const len = String(t.label).length;
-    const fs = Math.max(12, Math.min(24, Math.min(w, h) * 0.62, (w * 1.7) / Math.max(len, 2)));
+    const fs = Math.max(12, Math.min(24, Math.min(w, h) * 0.62, (w * 1.4) / Math.max(len, 2)));
     g.appendChild(el('text', {
       x: w / 2, y: h / 2, 'text-anchor': 'middle', 'dominant-baseline': 'central',
       class: 'rv-table__label', 'font-size': fs, transform: `rotate(${-rot} ${w / 2} ${h / 2})`,

@@ -77,6 +77,24 @@ begin
 end;
 $$;
 
+-- 2b. Limite de cadeiras do evento (laterais + centrais) -----------------------
+do $$
+declare
+  v_event uuid := (select id from public.rv_events limit 1);
+  v_lat uuid := (select id from public.rv_table_types where code = 'lateral' limit 1);
+  v_bis uuid := (select id from public.rv_table_types where code = 'bistro' limit 1);
+  v_used int;
+begin
+  v_used := public.rv_seats_used(v_event);
+  update public.rv_events set seat_limit = v_used + 10 where id = v_event;
+  assert public.rv_seat_limit_error(v_event, v_lat, 10, 0) is null, 'FALHOU: limite barrou dentro da folga';
+  assert public.rv_seat_limit_error(v_event, v_lat, 11, 0) like 'SEAT_LIMIT%', 'FALHOU: limite não barrou acima da folga';
+  update public.rv_events set seat_limit = v_used where id = v_event;
+  assert public.rv_seat_limit_error(v_event, v_bis, 2, 0) is null, 'FALHOU: bistrô não deveria contar no limite';
+  update public.rv_events set seat_limit = 96 where id = v_event;
+end;
+$$;
+
 -- 3. Expiração: vencida sem pagamento libera a mesa -----------------------------
 do $$
 declare

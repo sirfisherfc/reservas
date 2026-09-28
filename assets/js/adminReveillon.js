@@ -780,7 +780,9 @@ async function loadSummary() {
     stat('Mesas vendidas', t.bookings_sold, `${t.bookings_paid_in_full} quitadas`),
     stat('Em negociação', t.bookings_negotiating, t.deposit_incomplete ? `${t.deposit_incomplete} com sinal incompleto` : ''),
     stat('Pessoas', t.people_all, `${t.people_sold} vendidas · ${t.children} crianças · ${t.infants} colo`),
-    stat('Ocupação', `${occ}%`, `${t.people_all} de ${t.capacity} lugares`),
+    t.seat_limit
+      ? stat('Cadeiras (sem bistrô)', `${t.seats_used} / ${t.seat_limit}`, `restam ${Math.max(t.seat_limit - t.seats_used, 0)} · bistrôs ${t.bistro_people} de ${t.bistro_capacity}`)
+      : stat('Ocupação', `${occ}%`, `${t.people_all} de ${t.capacity} lugares`),
     stat('Total vendido', money(t.total_sold), `+ ${money(t.total_negotiating)} em negociação`),
     stat('Recebido', money(t.received), Object.entries(t.by_method || {}).map(([m, v]) => `${METHOD_LABELS[m] || m} ${money(v)}`).join(' · ')),
     stat('A receber', money(t.to_receive), `Pix ${money(t.to_receive_pix)}`),
@@ -955,6 +957,7 @@ function renderConfig() {
         ${field('c-child', 'Desconto por criança (R$)', e.child_discount, { type: 'number', attrs: 'step="0.01" min="0"' })}
         ${field('c-childage', 'Idade máxima da criança', e.child_max_age, { type: 'number', attrs: 'min="0" max="17"' })}
         ${field('c-holds', 'Pré-reservas abertas por cliente', e.max_active_holds_per_contact, { type: 'number', attrs: 'min="1"' })}
+        ${field('c-seatlimit', 'Limite de cadeiras (sem bistrô)', e.seat_limit, { type: 'number', attrs: 'min="1"', hint: 'Soma de pessoas em todas as mesas laterais e centrais. Em branco = sem limite.' })}
       </div>
       <p class="hint">Reservas já feitas guardam os valores de quando foram criadas.</p>
       <button class="btn btn--success rv-save" type="button" id="save-rules">Salvar regras</button>
@@ -990,6 +993,7 @@ function renderConfig() {
           ${field(`ty-max-${ty.id}`, 'Máx. pessoas', ty.max_people, { type: 'number', attrs: 'min="1"' })}
           ${field(`ty-inf-${ty.id}`, 'Máx. colo', ty.max_infants, { type: 'number', attrs: 'min="0"' })}
           <div class="form-field">${check(`ty-extra-${ty.id}`, 'Cadeira extra', ty.allows_extra_chairs)}</div>
+          <div class="form-field">${check(`ty-limit-${ty.id}`, 'Conta no limite de cadeiras', ty.counts_toward_limit)}</div>
           <div style="grid-column:1/-1">${field(`ty-desc-${ty.id}`, 'Descrição', ty.description)}</div>
         </div>`).join('')}
       <button class="btn btn--success rv-save" type="button" id="save-types">Salvar tipos</button>
@@ -1083,6 +1087,7 @@ function wireConfig() {
     child_discount: numOrNull('c-child'),
     child_max_age: numOrNull('c-childage'),
     max_active_holds_per_contact: numOrNull('c-holds'),
+    seat_limit: numOrNull('c-seatlimit'),
   }));
   qs('#save-texts').addEventListener('click', () => {
     const texts = { ...(e.texts || {}) };
@@ -1110,6 +1115,7 @@ function wireConfig() {
       max_people: numOrNull(`ty-max-${ty.id}`),
       max_infants: numOrNull(`ty-inf-${ty.id}`),
       allows_extra_chairs: qs(`#ty-extra-${ty.id}`).checked,
+      counts_toward_limit: qs(`#ty-limit-${ty.id}`).checked,
       description: val(`ty-desc-${ty.id}`) || null,
     }).eq('id', ty.id)));
     const err = results.find((r) => r.error);

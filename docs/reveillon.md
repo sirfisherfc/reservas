@@ -25,11 +25,12 @@ pré-reserva ──(pago ≥ sinal)──▶ sinal pago ──(pago ≥ total, o
 No celular, abra **Painel → Réveillon → Configurar**:
 
 1. **Evento, Pix e WhatsApp:** confira a data, o endereço, a chave Pix (já está o CNPJ 37.889.047/0001-68) e o WhatsApp. O titular do Pix é opcional.
-2. **Regras de pagamento e prazos:** sinal (30%), desconto no Pix (5%), validade da pré-reserva (48h), aviso antes de expirar (12h), data do saldo (20/12/2026), desconto por criança (R$ 100) e idade (11 anos).
-3. **Lotes e preços:** o **Lote 1** vem com os preços combinados. Para criar um Lote 2, toque em **+ Novo lote**. Ele copia os preços e nasce inativo; ajuste valores e vigência e ative. Vale o primeiro lote ativo, pela ordem, dentro da vigência. **Reservas já feitas mantêm o preço do lote em que foram criadas.**
-4. **Termos:** o texto integral está lá. Editar cria uma nova versão, e cada reserva guarda a versão que o cliente aceitou, com data e hora.
-5. **Mesas e mapa:** o mapa inicial foi desenhado a partir da foto aérea e do croqui do Réveillon 2026 (mureta em diagonal, quiosque oval, DJ, árvore, cerca verde e calçadão), com as cadeiras de cada mesa. Para ajustar, toque em **Editar mapa**: arraste as mesas, o quiosque, o DJ e a árvore; gire a mesa selecionada com ⟲/⟳; depois toque em **Salvar posições**. Tamanho e forma de cada mesa ficam na lista logo abaixo, e o contorno da área, a mureta e a cerca ficam em "Mapa avançado" (JSON). No celular, o mapa rola para o lado para as mesas terem tamanho de toque.
-6. **Vendas e integrações:** marque **Vendas abertas no site** e toque em **Salvar**. Enquanto estiver desmarcado, o site mostra o mapa, mas não aceita pré-reservas.
+2. **Limite de cadeiras:** as 7 laterais (8 cadeiras cada) e as 8 centrais (4 cada) somam 88 cadeiras-base, mas o limite do evento é **96 pessoas nessas mesas** (campo "Limite de cadeiras (sem bistrô)" em Regras). A folga serve para cadeiras extras: a lateral aceita até 16 e a central até 8, desde que a soma geral não passe de 96. Os bistrôs ficam fora dessa conta. O banco confere o limite em toda criação, edição e troca de mesa, inclusive com duas reservas chegando ao mesmo tempo.
+3. **Regras de pagamento e prazos:** sinal (30%), desconto no Pix (5%), validade da pré-reserva (48h), aviso antes de expirar (12h), data do saldo (20/12/2026), desconto por criança (R$ 100) e idade (11 anos).
+4. **Lotes e preços:** o **Lote 1** vem com os preços combinados. Para criar um Lote 2, toque em **+ Novo lote**. Ele copia os preços e nasce inativo; ajuste valores e vigência e ative. Vale o primeiro lote ativo, pela ordem, dentro da vigência. **Reservas já feitas mantêm o preço do lote em que foram criadas.**
+5. **Termos:** o texto integral está lá. Editar cria uma nova versão, e cada reserva guarda a versão que o cliente aceitou, com data e hora.
+6. **Mesas e mapa:** o mapa inicial foi desenhado a partir da foto aérea e do croqui do Réveillon 2026 (mureta em diagonal, quiosque oval, DJ, árvore, cerca verde e calçadão), com as cadeiras de cada mesa. Para ajustar, toque em **Editar mapa**: arraste as mesas, o quiosque, o DJ e a árvore; gire a mesa selecionada com ⟲/⟳; depois toque em **Salvar posições**. Tamanho e forma de cada mesa ficam na lista logo abaixo, e o contorno da área, a mureta e a cerca ficam em "Mapa avançado" (JSON). No celular, o mapa rola para o lado para as mesas terem tamanho de toque.
+7. **Vendas e integrações:** marque **Vendas abertas no site** e toque em **Salvar**. Enquanto estiver desmarcado, o site mostra o mapa, mas não aceita pré-reservas.
 
 Tudo o que aparece no site (preços, prazos, textos, mensagens de WhatsApp) sai dessas telas. Nada fica fixo no código.
 
@@ -85,7 +86,7 @@ A aba **Portaria** lista as mesas com reserva: responsável, pessoas e observaç
 
 ### Resumo e exportação (só admin)
 
-A aba **Resumo** mostra: mesas vendidas por tipo, pessoas, ocupação (96 cadeiras + 10 lugares de bistrô), total vendido, recebido (por forma), a receber, consumação comprometida e descontos (crianças, manuais e Pix). **Exportar CSV** gera a planilha completa para o Excel (separador `;`, vírgula decimal).
+A aba **Resumo** mostra: mesas vendidas por tipo, pessoas, cadeiras usadas contra o limite de 96 (laterais + centrais) e a ocupação dos bistrôs, total vendido, recebido (por forma), a receber, consumação comprometida e descontos (crianças, manuais e Pix). **Exportar CSV** gera a planilha completa para o Excel (separador `;`, vírgula decimal).
 
 ## Perfis
 
@@ -135,7 +136,7 @@ Todos já foram aplicados no projeto `lucpxoynpvogkvzepagi`. Para um projeto nov
 1. `supabase/reveillon-schema.sql`: tabelas, o índice único de 1 reserva ativa por mesa e a coluna `rv_booking_id` em `notification_queue`.
 2. `supabase/reveillon-functions.sql`: `rv_calc_price` (função única de preço), RPCs, triggers e o job pg_cron `rv-reveillon-tick` (a cada 15 min).
 3. `supabase/reveillon-rls.sql`: RLS, grants e a publicação Realtime de `rv_table_state`.
-4. `supabase/reveillon-seed.sql`: evento Réveillon 2027, termos, tipos, 21 mesas e Lote 1.
+4. `supabase/reveillon-seed.sql`: evento Réveillon 2027, termos, tipos, 20 mesas (7 laterais, 8 centrais, 5 bistrôs) e Lote 1.
 5. `supabase/reveillon-integration.sql`: bloqueio de 31/12 e aviso na reserva comum.
 
 `supabase/reveillon-tests.sql` roda todos os testes dentro de uma transação com ROLLBACK (nada fica gravado): preços, anti-colisão, expiração e permissões de anon e operador. O resultado esperado é `TODOS OS TESTES PASSARAM`.
@@ -145,6 +146,7 @@ Todos já foram aplicados no projeto `lucpxoynpvogkvzepagi`. Para um projeto nov
 - **Nunca 2 reservas ativas na mesma mesa:** índice único parcial `uq_rv_bookings_one_active_per_table` e trava da linha da mesa em `rv_create_prebooking`. Testado com 20 chamadas HTTP simultâneas à mesma mesa: 1 sucesso e 19 recusas "mesa acabou de ser reservada".
 - **Mesmo valor em todo lugar:** simulação pública, reserva gravada e painel usam `rv_calc_price`. A reserva guarda uma cópia dos preços do lote (colunas `snap_*`).
 - **Expiração:** a mesa aparece livre no segundo exato do vencimento (`rv_table_live_state`). O cron só grava o status `expirada` e manda o aviso de 12h.
+- **Limite de 96 cadeiras (sem bistrô):** `rv_seat_limit_error`, com trava do evento. Testado com 7 pré-reservas simultâneas de 8 pessoas e limite em 16: 2 passaram e 5 foram recusadas.
 - **Anti-abuso no site:** honeypot, 3 pedidos a cada 10 min por contato e até 3 pré-reservas abertas por telefone ou e-mail (configurável).
 
 ### Teste de concorrência (para repetir)

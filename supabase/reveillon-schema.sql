@@ -37,6 +37,7 @@ create table if not exists public.rv_events (
   child_discount numeric(10,2) not null default 100 check (child_discount >= 0),
   child_max_age int not null default 11 check (child_max_age between 0 and 17),
   max_active_holds_per_contact int not null default 3 check (max_active_holds_per_contact between 1 and 50),
+  seat_limit int check (seat_limit is null or seat_limit > 0),
   sales_open boolean not null default true,
   emails_enabled boolean not null default false,
   tracking jsonb not null default '{"ga4": false, "meta": false, "openai_ads": false}'::jsonb,
@@ -80,6 +81,7 @@ create table if not exists public.rv_table_types (
   max_people int not null,
   allows_extra_chairs boolean not null default false,
   max_infants int not null default 4 check (max_infants >= 0),
+  counts_toward_limit boolean not null default true,
   sort_order int not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -273,6 +275,12 @@ create table if not exists public.rv_table_state (
   state text not null check (state in ('livre', 'negociacao', 'reservada', 'bloqueada')),
   updated_at timestamptz not null default now()
 );
+
+-- Para bancos criados antes destas colunas existirem.
+alter table public.rv_events add column if not exists seat_limit int check (seat_limit is null or seat_limit > 0);
+alter table public.rv_table_types add column if not exists counts_toward_limit boolean not null default true;
+comment on column public.rv_events.seat_limit is
+  'Máximo de pessoas sentadas (adultos + crianças) somando todas as reservas ativas em mesas cujo tipo conta no limite (laterais e centrais). Bistrô fica fora. Null = sem limite.';
 
 -- =========================================================================
 -- notification_queue — liga um e-mail a uma reserva de réveillon

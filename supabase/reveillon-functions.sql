@@ -288,6 +288,66 @@ begin
 end;
 $$;
 
+-- Pessoas sentadas (adultos + crianças) nas reservas ativas das mesas que
+-- contam no limite do evento (laterais e centrais; bistrô fica fora).
+-- Pré-reserva vencida e sem pagamento não conta (a mesa já está livre).
+create or replace function public.rv_seats_used(p_event_id uuid, p_exclude_booking uuid default null)
+returns int
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce(sum(b.adults + b.children), 0)::int
+  from public.rv_bookings b
+  join public.rv_tables t on t.id = b.table_id
+  join public.rv_table_types tt on tt.id = t.table_type_id
+  where b.event_id = p_event_id
+    and tt.counts_toward_limit
+    and (p_exclude_booking is null or b.id <> p_exclude_booking)
+    and (b.status in ('sinal_pago', 'quitada')
+         or (b.status = 'pre_reserva'
+             and (b.hold_expires_at is null or b.hold_expires_at > now()
+                  or exists (select 1 from public.rv_payments p where p.booking_id = b.id and p.voided_at is null))));
+$$;
+
+-- Confere o limite de cadeiras do evento. Null = ok; senão 'CODIGO: mensagem'.
+create or replace function public.rv_seat_limit_error(
+  p_event_id uuid,
+  p_table_type_id uuid,
+  p_adults int,
+  p_children int,
+  p_exclude_booking uuid default null
+)
+returns text
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_limit int;
+  v_counts boolean;
+  v_used int;
+  v_free int;
+begin
+  select e.seat_limit into v_limit from public.rv_events e where e.id = p_event_id;
+  select tt.counts_toward_limit into v_counts from public.rv_table_types tt where tt.id = p_table_type_id;
+  if v_limit is null or not coalesce(v_counts, false) then
+    return null;
+  end if;
+  v_used := public.rv_seats_used(p_event_id, p_exclude_booking);
+  v_free := greatest(v_limit - v_used, 0);
+  if coalesce(p_adults, 0) + coalesce(p_children, 0) > v_free then
+    if v_free = 0 then
+      return 'SEAT_LIMIT: As cadeiras das mesas laterais e centrais esgotaram. Ainda pode haver bistrô livre, ou fale conosco pelo WhatsApp.';
+    end if;
+    return format('SEAT_LIMIT: Restam só %s lugares nas mesas laterais e centrais. Reduza a quantidade de pessoas ou fale conosco pelo WhatsApp.', v_free);
+  end if;
+  return null;
+end;
+$$;
+
 -- Estado vivo de uma mesa. Pré-reserva vencida e sem nenhum pagamento já conta
 -- como livre, mesmo antes do cron gravar 'expirada'.
 create or replace function public.rv_table_live_state(p_table_id uuid)
@@ -750,7 +810,8 @@ begin
     raise exception 'SALES_CLOSED: As vendas não estão abertas no momento.';
   end if;
 
-  v_err := public.rv_party_error(t.table_type_id, p_adults, p_children, p_infants, false);
+  v_err := coalesce(public.rv_party_error(t.table_type_id, p_adults, p_children, p_infants, false),
+                    public.rv_seat_limit_error(e.id, t.table_type_id, p_adults, p_children));
   v_state := public.rv_table_live_state(t.id);
   v_price := public.rv_price_for_lot(v_lot_id, t.table_type_id, greatest(p_adults, 0), greatest(p_children, 0));
 
@@ -929,6 +990,14 @@ begin
   if exists (select 1 from public.rv_bookings b
              where b.table_id = t.id and b.status in ('pre_reserva', 'sinal_pago', 'quitada')) then
     raise exception 'TABLE_TAKEN: Esta mesa acabou de ser reservada por outra pessoa. Escolha outra no mapa.';
+  end if;
+
+  -- Limite de cadeiras do evento: trava o evento para que duas reservas
+  -- simultâneas em mesas diferentes não passem juntas do limite.
+  perform 1 from public.rv_events where id = e.id for update;
+  v_err := public.rv_seat_limit_error(e.id, tt.id, p_adults, p_children);
+  if v_err is not null then
+    raise exception '%', v_err;
   end if;
 
   -- ---- cliente (CRM compartilhado com a reserva comum) ----
@@ -1421,6 +1490,11 @@ begin
   if v_err is not null then
     raise exception '%', v_err;
   end if;
+  perform 1 from public.rv_events where id = b.event_id for update;
+  v_err := public.rv_seat_limit_error(b.event_id, t_new.table_type_id, b.adults, b.children, b.id);
+  if v_err is not null then
+    raise exception '%', v_err;
+  end if;
 
   v_old_price := public.rv_price_for_booking(b.id);
 
@@ -1511,6 +1585,11 @@ begin
   end if;
   select t.table_type_id into v_type from public.rv_tables t where t.id = b.table_id;
   v_err := public.rv_party_error(v_type, p_adults, p_children, p_infants, p_allow_below_min or b.below_min_override);
+  if v_err is not null then
+    raise exception '%', v_err;
+  end if;
+  perform 1 from public.rv_events where id = b.event_id for update;
+  v_err := public.rv_seat_limit_error(b.event_id, v_type, p_adults, p_children, b.id);
   if v_err is not null then
     raise exception '%', v_err;
   end if;
@@ -1633,6 +1712,10 @@ begin
       'children', (select coalesce(sum(children), 0) from act),
       'infants', (select coalesce(sum(infants), 0) from act),
       'capacity', (select coalesce(sum(capacity), 0) from by_type),
+      'seat_limit', (select e.seat_limit from public.rv_events e where e.id = v_event_id),
+      'seats_used', public.rv_seats_used(v_event_id),
+      'bistro_capacity', (select coalesce(sum(capacity), 0) from by_type where code in (select tt.code from public.rv_table_types tt where tt.event_id = v_event_id and not tt.counts_toward_limit)),
+      'bistro_people', (select coalesce(sum(people_all), 0) from by_type where code in (select tt.code from public.rv_table_types tt where tt.event_id = v_event_id and not tt.counts_toward_limit)),
       'total_sold', (select coalesce(sum(total_amount), 0) from act where status in ('sinal_pago', 'quitada')),
       'total_negotiating', (select coalesce(sum(total_amount), 0) from act where status = 'pre_reserva'),
       'received', (select coalesce(sum((pr->>'paid_net')::numeric), 0) from act),

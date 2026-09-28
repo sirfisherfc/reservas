@@ -60,7 +60,7 @@ insert into public.rv_events (
     'lembrete_saldo', E'Olá, {nome}! Passando para lembrar do saldo da mesa {mesa} no {evento}: {saldo_pix} no Pix ou {saldo} no cartão (presencial), até {data_saldo}.\nChave Pix: {pix_chave}',
     'confirmacao_final', E'Olá, {nome}! Tudo certo: a mesa {mesa} está quitada para o {evento}. 🥂\nPessoas: {pessoas} · Consumação: {consumacao}\nEndereço: {endereco}\nAté lá!'
   ),
-  '{"viewBox": [0, 0, 1050.0, 870.0], "decor": [{"kind": "sea", "shape": "polygon", "points": [[0, 0], [1050.0, 0], [1050.0, 60], [0, 110]], "label": "Mar"}, {"kind": "deck", "shape": "polygon", "points": [[25.0, 265.0], [220.0, 195.0], [950.0, 412.5], [1040.0, 515.0], [930.0, 715.0], [25.0, 715.0]]}, {"kind": "tree", "shape": "circle", "points": [[90.0, 190.0]], "r": 130, "label": ""}, {"kind": "tree", "shape": "circle", "points": [[594.2, 411.9]], "r": 22, "label": ""}, {"kind": "wall", "shape": "polyline", "points": [[25.0, 265.0], [220.0, 195.0], [950.0, 412.5], [1040.0, 515.0]], "label": "Mureta"}, {"kind": "kiosk", "shape": "ellipse", "points": [[185.0, 475.0]], "rx": 160, "ry": 104, "label": "Quiosque"}, {"kind": "dj", "shape": "circle", "points": [[250.0, 650.0]], "r": 36, "label": "DJ"}, {"kind": "hedge", "shape": "polyline", "points": [[25.0, 715.0], [930.0, 715.0]], "label": ""}, {"kind": "street", "shape": "polygon", "points": [[0.0, 782.5], [1050.0, 782.5], [1050.0, 870.0], [0.0, 870.0]], "label": "Calçadão · Av. Beira Mar"}]}'::jsonb,
+  '{"viewBox": [-20, 0, 940, 870], "decor": [{"kind": "sea", "shape": "polygon", "points": [[-20, 0], [920, 0], [920, 62], [-20, 105]], "label": "Mar"}, {"kind": "deck", "shape": "polygon", "points": [[25, 265], [220, 195], [890.0, 394.6], [832.0, 715.0], [25, 715]]}, {"kind": "tree", "shape": "circle", "points": [[90.0, 190.0]], "r": 130, "label": ""}, {"kind": "tree", "shape": "circle", "points": [[565.8, 420.1]], "r": 22, "label": ""}, {"kind": "wall", "shape": "polyline", "points": [[25, 265], [220, 195], [890.0, 394.6], [832.0, 715.0]], "label": "Mureta"}, {"kind": "kiosk", "shape": "ellipse", "points": [[185.0, 475.0]], "rx": 160, "ry": 104, "label": "Quiosque"}, {"kind": "dj", "shape": "circle", "points": [[250.0, 650.0]], "r": 36, "label": "DJ"}, {"kind": "hedge", "shape": "polyline", "points": [[25, 715], [301, 715]], "label": ""}, {"kind": "hedge", "shape": "polyline", "points": [[410, 715], [832.0, 715.0]], "label": ""}, {"kind": "street", "shape": "polygon", "points": [[-20, 782.5], [920, 782.5], [920, 870.0], [-20, 870.0]], "label": "Calçadão · Av. Beira Mar"}, {"kind": "label", "x": 356, "y": 752, "label": "▲ Entrada"}]}'::jsonb,
   '37889047000168', 'cnpj', null, '5585988544274',
   30, 5, 48, 12, '2026-12-20',
   100, 11, 3, 96,
@@ -125,34 +125,36 @@ on conflict (event_id, code) do nothing;
 -- ---- mesas + posição no mapa ----
 -- Desenhado a partir da foto aérea e do croqui do Réveillon 2026 (mureta em
 -- diagonal, quiosque oval, DJ ao lado do quiosque). Numeração 01-20 pela posição: beira da mureta
--- (01-08; a B05 é bistrô, porque a árvore ali não deixa caber mesa), fileira do
--- meio (B09-B10 bistrôs, 11-14 centrais) e fileira de trás (B15-B16 bistrôs,
--- 17-20 centrais). Bistrô leva "B" só para identificar; o número nunca se repete. Unidades do viewBox do mapa;
+-- (01-08; a 05 é central de 4 lugares, ao lado da árvore), fileira do meio
+-- (B09-B10 bistrôs, 11-14 centrais), fileira de trás (B15-B16 bistrôs, 17-20
+-- centrais) e o bistrô B21 entre a 11 e a 17. Bistrô leva "B" só para
+-- identificar; o número nunca se repete. Unidades do viewBox do mapa;
 -- ajuste fino pelo modo "Editar mapa" do painel.
 insert into public.rv_tables (event_id, table_type_id, label, x, y, w, h, rotation, shape, sort_order)
 select e.id, tt.id, v.label, v.x, v.y, v.w, v.h, v.rotation, v.shape, v.sort_order
 from public.rv_events e
 join (values
-  ('lateral', '01', 217.3, 251.9, 100, 50, 106.6, 'rect', 1),
-  ('lateral', '02', 306.4, 278.5, 100, 50, 106.6, 'rect', 2),
-  ('lateral', '03', 395.5, 305.0, 100, 50, 106.6, 'rect', 3),
-  ('lateral', '04', 484.6, 331.6, 100, 50, 106.6, 'rect', 4),
-  ('bistro', 'B05', 592.5, 339.3, 36, 36, 0, 'round', 5),
-  ('lateral', '06', 624.4, 373.2, 100, 50, 106.6, 'rect', 6),
-  ('lateral', '07', 713.5, 399.8, 100, 50, 106.6, 'rect', 7),
-  ('lateral', '08', 802.6, 426.3, 100, 50, 106.6, 'rect', 8),
+  ('lateral', '01', 204.2, 248.0, 100, 50, 106.6, 'rect', 1),
+  ('lateral', '02', 285.8, 272.3, 100, 50, 106.6, 'rect', 2),
+  ('lateral', '03', 367.4, 296.6, 100, 50, 106.6, 'rect', 3),
+  ('lateral', '04', 449.0, 320.9, 100, 50, 106.6, 'rect', 4),
+  ('central', '05', 559.6, 331.8, 50, 50, 16.6, 'rect', 5),
+  ('lateral', '06', 612.2, 369.6, 100, 50, 106.6, 'rect', 6),
+  ('lateral', '07', 693.8, 393.9, 100, 50, 106.6, 'rect', 7),
+  ('lateral', '08', 775.4, 418.2, 100, 50, 106.6, 'rect', 8),
   ('bistro', 'B09', 386.0, 400.0, 36, 36, 0, 'round', 9),
   ('bistro', 'B10', 374.0, 472.0, 36, 36, 0, 'round', 10),
   ('central', '11', 447.5, 472.5, 50, 50, 11, 'rect', 11),
   ('central', '12', 557.5, 490.0, 50, 50, 11, 'rect', 12),
   ('central', '13', 670.0, 510.0, 50, 50, 11, 'rect', 13),
-  ('central', '14', 780.0, 535.0, 50, 50, 11, 'rect', 14),
+  ('central', '14', 785.1, 535.0, 50, 50, 11, 'rect', 14),
   ('bistro', 'B15', 362.0, 544.0, 36, 36, 0, 'round', 15),
   ('bistro', 'B16', 350.0, 616.0, 36, 36, 0, 'round', 16),
-  ('central', '17', 432.5, 602.5, 50, 50, 4, 'rect', 17),
-  ('central', '18', 562.5, 610.0, 50, 50, 4, 'rect', 18),
-  ('central', '19', 692.5, 617.5, 50, 50, 4, 'rect', 19),
-  ('central', '20', 800.0, 625.0, 50, 50, 4, 'rect', 20)
+  ('central', '17', 432.5, 639, 50, 50, 0, 'rect', 17),
+  ('central', '18', 544.4, 639, 50, 50, 0, 'rect', 18),
+  ('central', '19', 656.3, 639, 50, 50, 0, 'rect', 19),
+  ('central', '20', 768.2, 639, 50, 50, 0, 'rect', 20),
+  ('bistro', 'B21', 447.0, 562.8, 36, 36, 90, 'round', 21)
 ) as v(type_code, label, x, y, w, h, rotation, shape, sort_order) on true
 join public.rv_table_types tt on tt.event_id = e.id and tt.code = v.type_code
 where e.slug = 'reveillon-2027'

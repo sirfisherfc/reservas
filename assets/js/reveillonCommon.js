@@ -147,7 +147,7 @@ export function parseDbError(error) {
 //   { kind, shape: 'ellipse', points: [[cx,cy]], rx, ry }
 //   { kind, shape: 'circle',  points: [[cx,cy]], r }
 //   { kind, x, y, w, h }  (retângulo)     { kind: 'label', x, y, label }
-// kind define o estilo: sea, deck, wall, hedge, tree, kiosk, dj, street, label.
+// kind define o estilo: sea, deck, wall, fence, hedge, tree, kiosk, dj, street, label.
 // As cadeiras são desenhadas em volta de cada mesa conforme as pessoas
 // incluídas no tipo (lateral 8, central 4, bistrô 2).
 // Devolve um mapa id -> <g> para quem precisar (ex.: modo editar mapa).
@@ -268,8 +268,9 @@ function renderDecor(d) {
       const maxX = Math.max(...xs);
       for (let i = 0; i < 2; i += 1) {
         const y = Math.min(...ys) + 18 + i * 22;
-        let path = `M 0 ${y}`;
-        for (let x = 0; x < maxX; x += 60) path += ' q 15 -8 30 0 t 30 0';
+        const minX = Math.min(...xs);
+        let path = `M ${minX} ${y}`;
+        for (let x = minX; x < maxX; x += 60) path += ' q 15 -8 30 0 t 30 0';
         g.appendChild(el('path', { d: path, class: 'rv-wave' }));
       }
       cy = Math.min(...ys) + 30;
@@ -283,7 +284,7 @@ function renderDecor(d) {
     g.appendChild(el('rect', { x: d.x, y: d.y, width: d.w, height: d.h, rx: d.kind === 'dj' ? 14 : 0 }));
     cx = d.x + d.w / 2; cy = d.y + d.h / 2;
   }
-  if (d.label && d.kind !== 'wall' && d.kind !== 'hedge') {
+  if (d.label && !['wall', 'hedge', 'fence'].includes(d.kind)) {
     g.appendChild(el('text', {
       x: cx, y: cy, 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'rv-decor__label',
     }, d.label));

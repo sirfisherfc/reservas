@@ -36,6 +36,7 @@
 .rv-decor--deck polygon { fill: #d9d4c7; }
 .rv-decor--wall polyline, .rv-decor--wall rect { fill: none; stroke: #8f8a80; stroke-width: 14; stroke-linecap: round; stroke-linejoin: round; }
 .rv-decor--wall rect { fill: #8f8a80; stroke: none; }
+.rv-decor--fence polyline { fill: none; stroke: #5d6770; stroke-width: 6; stroke-dasharray: 14 5; stroke-linecap: round; }
 .rv-decor--hedge polyline { fill: none; stroke: #3f8f3a; stroke-width: 10; stroke-dasharray: 2 12; stroke-linecap: round; }
 .rv-decor--tree ellipse { fill: rgba(63, 128, 58, .55); stroke: rgba(47, 99, 43, .6); stroke-width: 3; }
 .rv-decor--kiosk ellipse, .rv-decor--kiosk rect { fill: #f2c14e; stroke: #b88a1c; stroke-width: 4; }
@@ -44,7 +45,7 @@
 .rv-decor--dj .rv-decor__label { fill: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: .06em; }
 .rv-decor--street polygon, .rv-decor--street rect { fill: #cfc3ad; }
 .rv-decor--street .rv-decor__label { fill: #6d6250; font-size: 22px; }
-.rv-decor--label .rv-decor__label { fill: #8a7a62; font-size: 22px; }
+.rv-decor--label .rv-decor__label { fill: #5d5140; font-size: 22px; font-weight: 700; }
 .rv-decor__label { font-family: inherit; pointer-events: none; }
 
 .rv-table { cursor: pointer; outline: none; }

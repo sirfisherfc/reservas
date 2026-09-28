@@ -6,7 +6,7 @@ import { qs, qsa, maskPhoneBR, setLoading, showToast, debounce } from './utils.j
 import { captureAttribution, reservationAttribution, initOpenAIAdsPixel } from './attribution.js';
 import {
   esc, money, pct, dateBR, dateTimeBR, timeBR, longDateBR, fillTemplate, eventTextVars,
-  bookingMessageVars, waHref, formatPixKey, parseDbError, renderMap, stateLabel,
+  bookingMessageVars, waHref, formatPixKey, parseDbError, renderMap, stateLabel, centerMapScroll,
 } from './reveillonCommon.js';
 
 const slug = new URLSearchParams(window.location.search).get('evento') || null;
@@ -466,6 +466,7 @@ async function init() {
   if (!(await load())) return;
   renderStatic();
   drawMap();
+  centerMapScroll(svg);
   subscribe();
 }
 

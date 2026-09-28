@@ -3,8 +3,10 @@
 .rv-map-wrap {
   width: 100%;
   border-radius: 14px;
-  overflow: hidden;
-  background: #f3e6d0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  background: #efe0c2;
   border: 1px solid #ecdfc9;
 }
 
@@ -12,40 +14,61 @@
   display: block;
   width: 100%;
   height: auto;
-  touch-action: manipulation;
+  touch-action: pan-x pan-y pinch-zoom;
   user-select: none;
   -webkit-user-select: none;
 }
+/* No celular o mapa fica mais largo que a tela (rola para o lado), para as
+   mesas terem tamanho de toque. */
+@media (max-width: 700px) {
+  .rv-map { width: 700px; max-width: none; }
+}
+.rv-map-scroll-hint { display: none; }
+@media (max-width: 700px) {
+  .rv-map-scroll-hint { display: block; }
+}
 
-.rv-floor { fill: #f7eedd; }
+.rv-floor { fill: #efe0c2; }
 
-.rv-decor--sea rect { fill: url(#rv-sea); }
-.rv-decor--sea .rv-decor__label { fill: #ffffff; font-size: 30px; letter-spacing: .3em; opacity: .9; }
+.rv-decor--sea polygon, .rv-decor--sea rect { fill: url(#rv-sea); }
+.rv-decor--sea .rv-decor__label { fill: #ffffff; font-size: 26px; letter-spacing: .3em; opacity: .9; }
 .rv-wave { fill: none; stroke: rgba(255, 255, 255, .35); stroke-width: 3; }
-.rv-decor--wall rect { fill: #b9a584; }
-.rv-decor--dj rect { fill: #23303a; }
-.rv-decor--dj .rv-decor__label { fill: #ffffff; font-size: 30px; font-weight: 700; letter-spacing: .12em; }
-.rv-decor--label .rv-decor__label { fill: #8a7a62; font-size: 24px; }
+.rv-decor--deck polygon { fill: #d9d4c7; }
+.rv-decor--wall polyline, .rv-decor--wall rect { fill: none; stroke: #8f8a80; stroke-width: 14; stroke-linecap: round; stroke-linejoin: round; }
+.rv-decor--wall rect { fill: #8f8a80; stroke: none; }
+.rv-decor--hedge polyline { fill: none; stroke: #3f8f3a; stroke-width: 10; stroke-dasharray: 2 12; stroke-linecap: round; }
+.rv-decor--tree ellipse { fill: rgba(63, 128, 58, .55); stroke: rgba(47, 99, 43, .6); stroke-width: 3; }
+.rv-decor--kiosk ellipse, .rv-decor--kiosk rect { fill: #f2c14e; stroke: #b88a1c; stroke-width: 4; }
+.rv-decor--kiosk .rv-decor__label { fill: #6b4c00; font-size: 24px; font-weight: 700; }
+.rv-decor--dj ellipse, .rv-decor--dj rect { fill: #e8792b; stroke: #b3561a; stroke-width: 3; }
+.rv-decor--dj .rv-decor__label { fill: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: .06em; }
+.rv-decor--street polygon, .rv-decor--street rect { fill: #cfc3ad; }
+.rv-decor--street .rv-decor__label { fill: #6d6250; font-size: 22px; }
+.rv-decor--label .rv-decor__label { fill: #8a7a62; font-size: 22px; }
 .rv-decor__label { font-family: inherit; pointer-events: none; }
 
 .rv-table { cursor: pointer; outline: none; }
+.rv-table__hit { fill: transparent; }
+.rv-table__chair { fill: #ffffff; stroke: rgba(0, 0, 0, .28); stroke-width: 1.5; pointer-events: none; }
 .rv-table__shape {
   fill: var(--rv-type, #2f6f8f);
-  stroke: rgba(0, 0, 0, .18);
+  stroke: rgba(0, 0, 0, .22);
   stroke-width: 2;
   transition: opacity .15s ease;
 }
 .rv-table__hatch { fill: url(#rv-hatch); pointer-events: none; }
 .rv-table__label {
   fill: #ffffff;
-  font-size: 26px;
   font-weight: 800;
   pointer-events: none;
   font-family: inherit;
 }
 .rv-table__badge {
-  fill: #ffffff;
-  font-size: 22px;
+  fill: #23303a;
+  stroke: #ffffff;
+  stroke-width: 5px;
+  paint-order: stroke;
+  font-size: 17px;
   font-weight: 800;
   pointer-events: none;
   font-family: inherit;
@@ -64,14 +87,18 @@
 .rv-table--pre_reserva_vencida .rv-table__shape { fill: #e4572e; stroke: #b33b17; }
 .rv-table--sinal_pago .rv-table__shape { fill: #2a7fbf; stroke: #1c5d8e; }
 .rv-table--quitada .rv-table__shape { fill: #2e7d5b; stroke: #1f5a41; }
-.rv-table--livre_admin .rv-table__shape { fill: #ffffff; stroke: var(--rv-type, #2f6f8f); stroke-width: 5; }
+.rv-table--livre_admin .rv-table__shape { fill: #ffffff; stroke: var(--rv-type, #2f6f8f); stroke-width: 4; }
 .rv-table--livre_admin .rv-table__label { fill: var(--rv-type, #2f6f8f); }
 
 .rv-table:hover .rv-table__shape,
-.rv-table:focus-visible .rv-table__shape { stroke: #23303a; stroke-width: 5; }
-.rv-table.is-selected .rv-table__shape { stroke: #23303a; stroke-width: 7; }
+.rv-table:focus-visible .rv-table__shape { stroke: #23303a; stroke-width: 4; }
+.rv-table.is-selected .rv-table__shape { stroke: #23303a; stroke-width: 5; }
+.rv-table.is-selected .rv-table__chair { stroke: #23303a; }
 
 .rv-map.is-editing .rv-table { cursor: grab; }
+.rv-map.is-editing .rv-decor.is-movable { cursor: grab; }
+.rv-map.is-editing .rv-decor.is-movable > :first-child { stroke-dasharray: 8 6; }
+.rv-decor.is-dragging { opacity: .75; }
 .rv-map.is-editing .rv-table.is-dragging { cursor: grabbing; }
 .rv-map.is-editing .rv-table.is-dragging .rv-table__shape { opacity: .8; }
 

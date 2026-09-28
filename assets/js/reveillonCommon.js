@@ -140,9 +140,23 @@ export function parseDbError(error) {
 // -------------------------------------------------------------------------
 // renderMap(svg, { map, types, tables, stateOf, selectedId, onSelect, badge })
 //   stateOf(table)   -> string usada como classe CSS (livre, negociacao, ...)
-//   badge(table)     -> texto opcional abaixo do rótulo (ex.: contagem regressiva)
+//   badge(table)     -> texto opcional acima da mesa (ex.: contagem regressiva)
 //   onSelect(table)  -> toque/enter na mesa
+// Elementos de referência (map.decor) aceitam:
+//   { kind, shape: 'polygon'|'polyline', points: [[x,y],...] }
+//   { kind, shape: 'ellipse', points: [[cx,cy]], rx, ry }
+//   { kind, shape: 'circle',  points: [[cx,cy]], r }
+//   { kind, x, y, w, h }  (retângulo)     { kind: 'label', x, y, label }
+// kind define o estilo: sea, deck, wall, hedge, tree, kiosk, dj, street, label.
+// As cadeiras são desenhadas em volta de cada mesa conforme as pessoas
+// incluídas no tipo (lateral 8, central 4, bistrô 2).
 // Devolve um mapa id -> <g> para quem precisar (ex.: modo editar mapa).
+// Elementos que o modo "Editar mapa" deixa arrastar.
+export const MOVABLE_DECOR = ['kiosk', 'dj', 'tree', 'label'];
+const CHAIR_W = 15;
+const CHAIR_D = 10;
+const CHAIR_GAP = 3;
+
 export function renderMap(svg, opts) {
   const { map = {}, types = [], tables = [], stateOf, selectedId, onSelect, badge } = opts;
   const vb = Array.isArray(map.viewBox) && map.viewBox.length === 4 ? map.viewBox : [0, 0, 1000, 1100];
@@ -162,68 +176,57 @@ export function renderMap(svg, opts) {
       <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(255,255,255,.55)" stroke-width="6"/>
     </pattern>`;
   svg.appendChild(defs);
+  svg.appendChild(el('rect', { x: vb[0], y: vb[1], width: vb[2], height: vb[3], class: 'rv-floor' }));
 
-  const floor = el('rect', { x: vb[0], y: vb[1], width: vb[2], height: vb[3], class: 'rv-floor' });
-  svg.appendChild(floor);
-
-  for (const d of map.decor || []) {
-    const g = el('g', { class: `rv-decor rv-decor--${d.kind}` });
-    if (d.kind === 'label') {
-      g.appendChild(el('text', { x: d.x, y: d.y, 'text-anchor': 'middle', class: 'rv-decor__label' }, d.label));
-    } else {
-      g.appendChild(el('rect', { x: d.x, y: d.y, width: d.w, height: d.h, rx: d.kind === 'dj' ? 14 : 0 }));
-      if (d.kind === 'sea') {
-        for (let i = 0; i < 3; i += 1) {
-          const y = d.y + d.h * (0.35 + i * 0.2);
-          let path = `M ${d.x} ${y}`;
-          for (let x = d.x; x < d.x + d.w; x += 60) path += ` q 15 -10 30 0 t 30 0`;
-          g.appendChild(el('path', { d: path, class: 'rv-wave' }));
-        }
-      }
-      if (d.label && d.kind !== 'wall') {
-        g.appendChild(el('text', {
-          x: d.x + d.w / 2, y: d.y + d.h / 2, 'text-anchor': 'middle', 'dominant-baseline': 'central',
-          class: 'rv-decor__label',
-        }, d.label));
-      }
-    }
+  (map.decor || []).forEach((d, i) => {
+    const g = renderDecor(d);
+    g.dataset.decor = String(i);
+    if (MOVABLE_DECOR.includes(d.kind)) g.classList.add('is-movable');
     svg.appendChild(g);
-  }
+  });
 
   const nodes = {};
   for (const t of tables) {
     const type = typeById[t.type_id] || {};
     const state = stateOf ? stateOf(t) : 'livre';
     const w = Number(t.w); const h = Number(t.h);
+    const rot = Number(t.rotation) || 0;
     const g = el('g', {
       class: `rv-table rv-table--${state}${t.id === selectedId ? ' is-selected' : ''}`,
-      transform: `translate(${Number(t.x)} ${Number(t.y)}) rotate(${Number(t.rotation) || 0} ${w / 2} ${h / 2})`,
+      transform: `translate(${Number(t.x)} ${Number(t.y)}) rotate(${rot} ${w / 2} ${h / 2})`,
       tabindex: '0',
       role: 'button',
       'data-id': t.id,
       'aria-label': `${type.name || 'Mesa'} ${t.label}: ${stateLabel(state)}`,
       style: `--rv-type:${type.color || '#2f6f8f'}`,
     });
-    const shape = t.shape === 'round'
-      ? el('ellipse', { cx: w / 2, cy: h / 2, rx: w / 2, ry: h / 2, class: 'rv-table__shape' })
-      : el('rect', { x: 0, y: 0, width: w, height: h, rx: 10, class: 'rv-table__shape' });
-    g.appendChild(shape);
-    if (state === 'negociacao' || state === 'pre_reserva') {
-      g.appendChild(t.shape === 'round'
-        ? el('ellipse', { cx: w / 2, cy: h / 2, rx: w / 2, ry: h / 2, class: 'rv-table__hatch' })
-        : el('rect', { x: 0, y: 0, width: w, height: h, rx: 10, class: 'rv-table__hatch' }));
+    const pad = CHAIR_GAP + CHAIR_D + 4;
+    // área de toque maior que a mesa (inclui as cadeiras)
+    g.appendChild(el('rect', { x: -pad, y: -pad, width: w + pad * 2, height: h + pad * 2, class: 'rv-table__hit' }));
+    for (const c of chairRects(w, h, Number(type.included_people) || 0, t.shape)) {
+      g.appendChild(el('rect', {
+        x: c.x, y: c.y, width: c.w, height: c.h, rx: 3, class: 'rv-table__chair',
+        transform: c.rot ? `rotate(${c.rot} ${c.x + c.w / 2} ${c.y + c.h / 2})` : null,
+      }));
     }
+    const body = () => (t.shape === 'round'
+      ? el('ellipse', { cx: w / 2, cy: h / 2, rx: w / 2, ry: h / 2 })
+      : el('rect', { x: 0, y: 0, width: w, height: h, rx: Math.min(8, h / 4) }));
+    const shape = body(); shape.setAttribute('class', 'rv-table__shape'); g.appendChild(shape);
+    if (state === 'negociacao' || state === 'pre_reserva') {
+      const hatch = body(); hatch.setAttribute('class', 'rv-table__hatch'); g.appendChild(hatch);
+    }
+    // Rótulo sempre na horizontal, com tamanho proporcional à mesa.
+    const fs = Math.max(13, Math.min(24, Math.min(w, h) * 0.62));
+    g.appendChild(el('text', {
+      x: w / 2, y: h / 2, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+      class: 'rv-table__label', 'font-size': fs, transform: `rotate(${-rot} ${w / 2} ${h / 2})`,
+    }, t.label));
     const extra = badge ? badge(t) : '';
-    // O rótulo fica sempre na horizontal, mesmo com a mesa girada.
-    const label = el('text', {
-      x: w / 2, y: extra ? h / 2 - 8 : h / 2, 'text-anchor': 'middle', 'dominant-baseline': 'central',
-      class: 'rv-table__label', transform: `rotate(${-(Number(t.rotation) || 0)} ${w / 2} ${h / 2})`,
-    }, t.label);
-    g.appendChild(label);
     if (extra) {
       g.appendChild(el('text', {
-        x: w / 2, y: h / 2 + 14, 'text-anchor': 'middle', 'dominant-baseline': 'central',
-        class: 'rv-table__badge', transform: `rotate(${-(Number(t.rotation) || 0)} ${w / 2} ${h / 2})`,
+        x: w / 2, y: -pad - 6, 'text-anchor': 'middle', class: 'rv-table__badge',
+        transform: `rotate(${-rot} ${w / 2} ${h / 2})`,
       }, extra));
     }
     if (onSelect) {
@@ -236,6 +239,89 @@ export function renderMap(svg, opts) {
     nodes[t.id] = g;
   }
   return nodes;
+}
+
+// No celular o mapa é mais largo que a tela: na primeira exibição, rola até a
+// área das mesas (em vez de começar pelo quiosque, na borda esquerda).
+export function centerMapScroll(svg, ratio = 0.62) {
+  const wrap = svg.parentElement;
+  if (wrap && wrap.scrollWidth > wrap.clientWidth) {
+    wrap.scrollLeft = (wrap.scrollWidth - wrap.clientWidth) * ratio;
+  }
+}
+
+function renderDecor(d) {
+  const g = el('g', { class: `rv-decor rv-decor--${d.kind}` });
+  const pts = Array.isArray(d.points) ? d.points : [];
+  let cx; let cy;
+  if (d.kind === 'label' || (!d.shape && d.w === undefined)) {
+    g.appendChild(el('text', { x: d.x, y: d.y, 'text-anchor': 'middle', class: 'rv-decor__label' }, d.label));
+    return g;
+  }
+  if (d.shape === 'polygon' || d.shape === 'polyline') {
+    g.appendChild(el(d.shape, { points: pts.map((p) => p.join(',')).join(' ') }));
+    const xs = pts.map((p) => p[0]); const ys = pts.map((p) => p[1]);
+    cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+    cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+    if (d.kind === 'sea') {
+      const maxX = Math.max(...xs);
+      for (let i = 0; i < 2; i += 1) {
+        const y = Math.min(...ys) + 18 + i * 22;
+        let path = `M 0 ${y}`;
+        for (let x = 0; x < maxX; x += 60) path += ' q 15 -8 30 0 t 30 0';
+        g.appendChild(el('path', { d: path, class: 'rv-wave' }));
+      }
+      cy = Math.min(...ys) + 30;
+    }
+  } else if (d.shape === 'ellipse' || d.shape === 'circle') {
+    [cx, cy] = pts[0] || [0, 0];
+    const rx = d.shape === 'circle' ? d.r : d.rx;
+    const ry = d.shape === 'circle' ? d.r : d.ry;
+    g.appendChild(el('ellipse', { cx, cy, rx, ry }));
+  } else {
+    g.appendChild(el('rect', { x: d.x, y: d.y, width: d.w, height: d.h, rx: d.kind === 'dj' ? 14 : 0 }));
+    cx = d.x + d.w / 2; cy = d.y + d.h / 2;
+  }
+  if (d.label && d.kind !== 'wall' && d.kind !== 'hedge') {
+    g.appendChild(el('text', {
+      x: cx, y: cy, 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'rv-decor__label',
+    }, d.label));
+  }
+  return g;
+}
+
+// Posição das cadeiras em volta da mesa (coordenadas locais da mesa).
+function chairRects(w, h, n, shape) {
+  const out = [];
+  if (!n) return out;
+  if (shape === 'round') {
+    const r = Math.max(w, h) / 2 + CHAIR_GAP + CHAIR_D / 2;
+    for (let i = 0; i < n; i += 1) {
+      const a = (Math.PI * 2 * i) / n - Math.PI / 2;
+      const x = w / 2 + Math.cos(a) * r; const y = h / 2 + Math.sin(a) * r;
+      out.push({ x: x - CHAIR_W / 2, y: y - CHAIR_D / 2, w: CHAIR_W, h: CHAIR_D, rot: (a * 180) / Math.PI + 90 });
+    }
+    return out;
+  }
+  const along = (count, len) => Array.from({ length: count }, (_, i) => (len * (i + 0.5)) / count);
+  const top = (xs) => xs.forEach((x) => out.push({ x: x - CHAIR_W / 2, y: -CHAIR_GAP - CHAIR_D, w: CHAIR_W, h: CHAIR_D }));
+  const bottom = (xs) => xs.forEach((x) => out.push({ x: x - CHAIR_W / 2, y: h + CHAIR_GAP, w: CHAIR_W, h: CHAIR_D }));
+  const left = (ys) => ys.forEach((y) => out.push({ x: -CHAIR_GAP - CHAIR_D, y: y - CHAIR_W / 2, w: CHAIR_D, h: CHAIR_W }));
+  const right = (ys) => ys.forEach((y) => out.push({ x: w + CHAIR_GAP, y: y - CHAIR_W / 2, w: CHAIR_D, h: CHAIR_W }));
+  if (w >= h * 1.4 || n <= 2) {
+    // mesa comprida (ou só 2 lugares): cadeiras nos lados longos
+    const perSide = Math.ceil(n / 2);
+    top(along(perSide, w));
+    bottom(along(n - perSide, w));
+  } else {
+    // mesa quadrada: uma por lado, e o que sobrar vai para cima/baixo
+    const base = Math.floor(n / 4); const rest = n % 4;
+    top(along(base + (rest > 0 ? 1 : 0), w));
+    bottom(along(base + (rest > 1 ? 1 : 0), w));
+    left(along(base + (rest > 2 ? 1 : 0), h));
+    right(along(base, h));
+  }
+  return out;
 }
 
 const STATE_LABELS = {

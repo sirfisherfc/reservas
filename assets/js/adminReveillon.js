@@ -8,7 +8,7 @@ import { requireStaff, mountLayout } from './adminGuard.js';
 import { qs, qsa, showToast, toCSV, downloadTextFile, maskPhoneBR, debounce } from './utils.js';
 import {
   esc, money, pct, dateBR, dateTimeBR, countdown, fillTemplate, bookingMessageVars,
-  waHref, parseDbError, renderMap, stateLabel,
+  waHref, parseDbError, renderMap, stateLabel, centerMapScroll,
 } from './reveillonCommon.js';
 
 let appUser = null;
@@ -18,7 +18,7 @@ let serverOffset = 0;
 let activeTab = 'mapa';
 let sheet = null;            // { mode, bookingId, tableId }
 let editMode = false;
-let editState = null;        // { pos: {id: {x,y,rotation}}, selected }
+let editState = null;        // { pos: {id: {x,y,rotation}}, map, mapChanged, selected }
 let exportRows = [];
 let doorRows = [];
 
@@ -51,6 +51,7 @@ async function init() {
   wireEditBar();
 
   await loadBoard();
+  centerMapScroll(qs('#rv-map'));
   subscribe();
   setInterval(() => { if (!editMode && board) drawMap(); }, 30000);
 }
@@ -135,7 +136,7 @@ function drawMap() {
     ? board.tables.map((t) => ({ ...t, ...(editState.pos[t.id] || {}) }))
     : board.tables;
   renderMap(svg, {
-    map: board.event.map,
+    map: editMode ? editState.map : board.event.map,
     types: board.types,
     tables,
     stateOf: tableState,
@@ -1196,8 +1197,17 @@ function wireConfig() {
 }
 
 // -------------------------------------------------------------------------
-// Modo "editar mapa": arrastar e girar mesas
+// Modo "editar mapa": arrastar e girar mesas; arrastar quiosque, DJ, árvore e
+// textos (elementos de referência do mapa).
 // -------------------------------------------------------------------------
+function shiftDecor(d, dx, dy) {
+  const out = JSON.parse(JSON.stringify(d));
+  if (Array.isArray(out.points)) out.points = out.points.map(([x, y]) => [Math.round(x + dx), Math.round(y + dy)]);
+  if (out.x !== undefined) out.x = Math.round(Number(out.x) + dx);
+  if (out.y !== undefined) out.y = Math.round(Number(out.y) + dy);
+  return out;
+}
+
 function wireEditBar() {
   qs('#edit-cancel').addEventListener('click', () => exitEditMode(false));
   qs('#edit-save').addEventListener('click', () => exitEditMode(true));
@@ -1214,19 +1224,31 @@ function wireEditBar() {
   };
   svg.addEventListener('pointerdown', (evt) => {
     if (!editMode) return;
-    const g = evt.target.closest('.rv-table');
-    if (!g) return;
-    const id = g.dataset.id;
-    const t = { ...tableById(id), ...(editState.pos[id] || {}) };
     const p = toSvg(evt);
-    drag = { id, g, dx: p.x - Number(t.x), dy: p.y - Number(t.y), moved: false, t };
-    g.classList.add('is-dragging');
+    const g = evt.target.closest('.rv-table');
+    if (g) {
+      const id = g.dataset.id;
+      const t = { ...tableById(id), ...(editState.pos[id] || {}) };
+      drag = { kind: 'table', id, g, dx: p.x - Number(t.x), dy: p.y - Number(t.y), moved: false, t };
+    } else {
+      const dg = evt.target.closest('.rv-decor.is-movable');
+      if (!dg) return;
+      drag = { kind: 'decor', idx: Number(dg.dataset.decor), g: dg, sx: p.x, sy: p.y, moved: false };
+    }
+    drag.g.classList.add('is-dragging');
     svg.setPointerCapture(evt.pointerId);
     evt.preventDefault();
   });
   svg.addEventListener('pointermove', (evt) => {
     if (!drag) return;
     const p = toSvg(evt);
+    if (drag.kind === 'decor') {
+      drag.ddx = Math.round(p.x - drag.sx);
+      drag.ddy = Math.round(p.y - drag.sy);
+      if (Math.abs(drag.ddx) + Math.abs(drag.ddy) > 3) drag.moved = true;
+      drag.g.setAttribute('transform', `translate(${drag.ddx} ${drag.ddy})`);
+      return;
+    }
     const x = Math.round(p.x - drag.dx);
     const y = Math.round(p.y - drag.dy);
     if (Math.abs(x - Number(drag.t.x)) + Math.abs(y - Number(drag.t.y)) > 3) drag.moved = true;
@@ -1237,9 +1259,17 @@ function wireEditBar() {
   });
   const end = () => {
     if (!drag) return;
-    const { id, moved, nx, ny, t } = drag;
-    if (moved) editState.pos[id] = { x: nx, y: ny, rotation: Number(t.rotation) || 0 };
-    editState.selected = id;
+    if (drag.kind === 'decor') {
+      if (drag.moved) {
+        editState.map.decor[drag.idx] = shiftDecor(editState.map.decor[drag.idx], drag.ddx, drag.ddy);
+        editState.mapChanged = true;
+      }
+      editState.selected = null;
+    } else {
+      const { id, moved, nx, ny, t } = drag;
+      if (moved) editState.pos[id] = { x: nx, y: ny, rotation: Number(t.rotation) || 0 };
+      editState.selected = id;
+    }
     drag = null;
     updateEditBar();
     drawMap();
@@ -1251,7 +1281,7 @@ function wireEditBar() {
 function enterEditMode() {
   closeSheet();
   editMode = true;
-  editState = { pos: {}, selected: null };
+  editState = { pos: {}, map: JSON.parse(JSON.stringify(board.event.map || {})), mapChanged: false, selected: null };
   qs('#edit-bar').classList.remove('hidden');
   updateEditBar();
   drawMap();
@@ -1260,9 +1290,11 @@ function enterEditMode() {
 
 function updateEditBar() {
   const t = editState?.selected ? tableById(editState.selected) : null;
+  const n = Object.keys(editState?.pos || {}).length;
+  const changes = `${n} mesa(s)${editState?.mapChanged ? ' e elementos do mapa' : ''} alterado(s).`;
   qs('#edit-selected').textContent = t
-    ? `Mesa ${t.label} selecionada. ${Object.keys(editState.pos).length} mesa(s) alterada(s).`
-    : 'Arraste as mesas. Toque numa mesa para girar.';
+    ? `Mesa ${t.label} selecionada. ${changes}`
+    : `Arraste mesas, quiosque, DJ ou árvore. Toque numa mesa para girar. ${n || editState?.mapChanged ? changes : ''}`;
   qs('#rot-left').disabled = !t;
   qs('#rot-right').disabled = !t;
 }
@@ -1277,13 +1309,19 @@ function rotateSelected(deg) {
 }
 
 async function exitEditMode(save) {
-  if (save && editState && Object.keys(editState.pos).length) {
-    const results = await Promise.all(Object.entries(editState.pos).map(([id, p]) => (
+  if (save && editState) {
+    const jobs = Object.entries(editState.pos).map(([id, p]) => (
       supabase.from('rv_tables').update({ x: p.x, y: p.y, rotation: p.rotation }).eq('id', id)
-    )));
-    const err = results.find((r) => r.error);
-    if (err) { showToast(err.error.message, 'danger'); return; }
-    showToast('Posições salvas.');
+    ));
+    if (editState.mapChanged) {
+      jobs.push(supabase.from('rv_events').update({ map: editState.map }).eq('id', board.event.id));
+    }
+    if (jobs.length) {
+      const results = await Promise.all(jobs);
+      const err = results.find((r) => r.error);
+      if (err) { showToast(err.error.message, 'danger'); return; }
+      showToast('Mapa salvo.');
+    }
   }
   editMode = false;
   editState = null;

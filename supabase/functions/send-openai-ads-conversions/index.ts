@@ -295,7 +295,9 @@ async function processMetaQueue(): Promise<QueueResult> {
     occurred_at: string;
   }>;
 
-  const endpoint = `https://graph.facebook.com/v21.0/${encodeURIComponent(META_PIXEL_ID)}/events`
+  // v26.0: versao mais nova da Graph API em set/2026 (a v21, de out/2024, chegava
+  // ao fim dos ~2 anos garantidos pela Meta). O corpo do /events nao mudou.
+  const endpoint = `https://graph.facebook.com/v26.0/${encodeURIComponent(META_PIXEL_ID)}/events`
     + `?access_token=${encodeURIComponent(META_CAPI_TOKEN)}`;
 
   const { sent, failed } = await drain(rows, async (row) => {

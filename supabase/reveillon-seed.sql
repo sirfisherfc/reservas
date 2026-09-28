@@ -6,7 +6,7 @@
 --   {pix_discount_pct} {deposit_pct} {hold_hours} {balance_due_date}
 --   {child_discount} {child_max_age}
 -- Modelos de WhatsApp aceitam:
---   {nome} {codigo} {mesa} {tipo} {pessoas} {evento} {total} {total_pix}
+--   {nome} {nome_completo} {codigo} {mesa} {tipo} {pessoas} {evento} {total} {total_pix}
 --   {sinal} {sinal_pix} {saldo} {saldo_pix} {consumacao} {prazo}
 --   {data_saldo} {pix_chave} {endereco}
 

@@ -194,13 +194,16 @@ as $$
 $$;
 
 -- Preço de uma composição num lote (simulação pública e criação).
+-- p_paid_gross permite simular "depois do sinal" com a mesma função.
+drop function if exists public.rv_price_for_lot(uuid, uuid, int, int, text, numeric);
 create or replace function public.rv_price_for_lot(
   p_lot_id uuid,
   p_table_type_id uuid,
   p_adults int,
   p_children int,
   p_manual_discount_type text default null,
-  p_manual_discount_value numeric default 0
+  p_manual_discount_value numeric default 0,
+  p_paid_gross numeric default 0
 )
 returns jsonb
 language sql
@@ -217,7 +220,7 @@ as $$
     lp.table_price, lp.table_consumption, lp.extra_chair_price, lp.extra_chair_consumption,
     tt.included_people, tt.allows_extra_chairs,
     e.child_discount, e.pix_discount_pct, e.deposit_pct,
-    p_adults, p_children, p_manual_discount_type, p_manual_discount_value, 0
+    p_adults, p_children, p_manual_discount_type, p_manual_discount_value, p_paid_gross
   ) r
   where lp.lot_id = p_lot_id and lp.table_type_id = p_table_type_id;
 $$;
@@ -759,6 +762,9 @@ begin
     'table', jsonb_build_object('id', t.id, 'label', t.label, 'state', case v_state when 'bloqueada' then 'reservada' else v_state end),
     'lot_id', v_lot_id,
     'price', v_price,
+    -- saldo depois de pagar exatamente o sinal mínimo (mesma função de preço)
+    'after_deposit', public.rv_price_for_lot(v_lot_id, t.table_type_id, greatest(p_adults, 0), greatest(p_children, 0),
+                                             null, 0, (v_price->>'deposit_min')::numeric),
     'hold_hours', e.hold_hours,
     'hold_expires_at_preview', now() + make_interval(hours => e.hold_hours),
     'balance_due_date', e.balance_due_date,

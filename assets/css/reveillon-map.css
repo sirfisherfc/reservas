@@ -1,0 +1,123 @@
+/* Mapa de mesas do Réveillon — compartilhado entre reveillon.html e admin/reveillon.html */
+
+.rv-map-wrap {
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f3e6d0;
+  border: 1px solid #ecdfc9;
+}
+
+.rv-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.rv-floor { fill: #f7eedd; }
+
+.rv-decor--sea rect { fill: url(#rv-sea); }
+.rv-decor--sea .rv-decor__label { fill: #ffffff; font-size: 30px; letter-spacing: .3em; opacity: .9; }
+.rv-wave { fill: none; stroke: rgba(255, 255, 255, .35); stroke-width: 3; }
+.rv-decor--wall rect { fill: #b9a584; }
+.rv-decor--dj rect { fill: #23303a; }
+.rv-decor--dj .rv-decor__label { fill: #ffffff; font-size: 30px; font-weight: 700; letter-spacing: .12em; }
+.rv-decor--label .rv-decor__label { fill: #8a7a62; font-size: 24px; }
+.rv-decor__label { font-family: inherit; pointer-events: none; }
+
+.rv-table { cursor: pointer; outline: none; }
+.rv-table__shape {
+  fill: var(--rv-type, #2f6f8f);
+  stroke: rgba(0, 0, 0, .18);
+  stroke-width: 2;
+  transition: opacity .15s ease;
+}
+.rv-table__hatch { fill: url(#rv-hatch); pointer-events: none; }
+.rv-table__label {
+  fill: #ffffff;
+  font-size: 26px;
+  font-weight: 800;
+  pointer-events: none;
+  font-family: inherit;
+}
+.rv-table__badge {
+  fill: #ffffff;
+  font-size: 17px;
+  font-weight: 700;
+  pointer-events: none;
+  font-family: inherit;
+}
+
+/* estados públicos */
+.rv-table--negociacao .rv-table__shape { opacity: .6; }
+.rv-table--reservada .rv-table__shape,
+.rv-table--bloqueada .rv-table__shape { fill: #c7c0b4; stroke: #b0a898; }
+.rv-table--reservada .rv-table__label,
+.rv-table--bloqueada .rv-table__label { fill: #7c7468; }
+.rv-table--bloqueada .rv-table__shape { stroke-dasharray: 8 6; stroke-width: 3; }
+
+/* estados do painel (status da reserva) */
+.rv-table--pre_reserva .rv-table__shape { fill: #f4a93b; stroke: #c98217; }
+.rv-table--pre_reserva_vencida .rv-table__shape { fill: #e4572e; stroke: #b33b17; }
+.rv-table--sinal_pago .rv-table__shape { fill: #2a7fbf; stroke: #1c5d8e; }
+.rv-table--quitada .rv-table__shape { fill: #2e7d5b; stroke: #1f5a41; }
+.rv-table--livre_admin .rv-table__shape { fill: #ffffff; stroke: var(--rv-type, #2f6f8f); stroke-width: 5; }
+.rv-table--livre_admin .rv-table__label { fill: var(--rv-type, #2f6f8f); }
+
+.rv-table:hover .rv-table__shape,
+.rv-table:focus-visible .rv-table__shape { stroke: #23303a; stroke-width: 5; }
+.rv-table.is-selected .rv-table__shape { stroke: #23303a; stroke-width: 7; }
+
+.rv-map.is-editing .rv-table { cursor: grab; }
+.rv-map.is-editing .rv-table.is-dragging { cursor: grabbing; }
+.rv-map.is-editing .rv-table.is-dragging .rv-table__shape { opacity: .8; }
+
+/* legenda */
+.rv-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-bottom: 8px;
+  font-size: .82rem;
+}
+.rv-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #5b6b73;
+}
+.rv-chip i {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--rv-type);
+  display: inline-block;
+}
+.rv-chip::before { content: none; }
+.rv-chip--livre::before,
+.rv-chip--negociacao::before,
+.rv-chip--reservada::before,
+.rv-chip--pre_reserva::before,
+.rv-chip--sinal_pago::before,
+.rv-chip--quitada::before,
+.rv-chip--bloqueada::before,
+.rv-chip--vencida::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  display: inline-block;
+}
+.rv-chip--livre::before { background: #5b8fb0; }
+.rv-chip--negociacao::before {
+  background: repeating-linear-gradient(45deg, rgba(91, 143, 176, .6) 0 4px, rgba(255, 255, 255, .7) 4px 7px);
+}
+.rv-chip--reservada::before { background: #c7c0b4; }
+.rv-chip--pre_reserva::before { background: #f4a93b; }
+.rv-chip--vencida::before { background: #e4572e; }
+.rv-chip--sinal_pago::before { background: #2a7fbf; }
+.rv-chip--quitada::before { background: #2e7d5b; }
+.rv-chip--bloqueada::before { background: #c7c0b4; outline: 2px dashed #b0a898; outline-offset: -2px; }

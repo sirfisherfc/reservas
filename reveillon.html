@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Réveillon — Sir Fisher Praia</title>
+  <meta name="description" content="Escolha sua mesa para o Réveillon no Sir Fisher Praia, à beira-mar em Fortaleza. Veja o valor na hora e faça sua pré-reserva." />
+  <link rel="icon" type="image/png" href="https://www.sirfisher.com.br/assets/img/favicon.png" />
+  <link rel="stylesheet" href="./assets/css/style.css" />
+  <link rel="stylesheet" href="./assets/css/reveillon.css" />
+  <!-- Mesmas tags base do index.html (medição de visita). As CONVERSÕES do
+       réveillon só disparam se ligadas em rv_events.tracking (padrão: tudo off). -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-F40Z5Y9QT6"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-F40Z5Y9QT6', {
+      linker: { domains: ['sirfisher.com.br', 'www.sirfisher.com.br', 'reservas.sirfisher.com.br'] }
+    });
+  </script>
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '948509834960152');
+    fbq('track', 'PageView');
+  </script>
+</head>
+<body class="rv">
+
+  <div class="masthead">
+    <div class="container">
+      <a href="https://www.sirfisher.com.br"><img src="https://www.sirfisher.com.br/assets/img/logo-horizontal.png" alt="Sir Fisher Praia" class="masthead__logo" width="900" height="280" /></a>
+    </div>
+  </div>
+
+  <header class="hero rv-hero">
+    <div class="container">
+      <p class="rv-hero__kicker" id="hero-kicker">&nbsp;</p>
+      <h1 id="hero-title">Réveillon no Sir Fisher Praia</h1>
+      <p id="hero-subtitle">Carregando informações do evento…</p>
+      <a href="#mapa" class="btn btn--primary rv-hero__cta">Escolher minha mesa</a>
+    </div>
+  </header>
+
+  <main class="rv-main">
+    <div id="load-error" class="container hidden">
+      <div class="alert alert--danger">Não foi possível carregar o evento agora. Atualize a página em instantes.</div>
+    </div>
+
+    <section class="section container" id="evento">
+      <div class="card rv-info">
+        <ul class="rv-facts">
+          <li><span class="rv-facts__icon" aria-hidden="true">📅</span><div><strong id="fact-date">&nbsp;</strong><span id="fact-time" class="text-soft"></span></div></li>
+          <li><span class="rv-facts__icon" aria-hidden="true">📍</span><div><strong id="fact-venue">&nbsp;</strong><a id="fact-address" class="text-soft" target="_blank" rel="noopener" href="#"></a></div></li>
+        </ul>
+        <h2 class="section-title" id="included-title">Incluso em todas as mesas</h2>
+        <ul class="rv-included" id="included-list"></ul>
+        <p class="text-soft rv-small" id="menu-note"></p>
+        <a class="btn btn--outline btn--sm" id="menu-link" target="_blank" rel="noopener" href="#">Ver o cardápio</a>
+      </div>
+    </section>
+
+    <section class="section container" id="mapa">
+      <h2 class="section-title rv-on-dark">Escolha sua mesa</h2>
+      <div class="card rv-map-card">
+        <div class="rv-legend" id="legend-types"></div>
+        <div class="rv-legend rv-legend--states">
+          <span class="rv-chip rv-chip--livre">Livre</span>
+          <span class="rv-chip rv-chip--negociacao">Em negociação</span>
+          <span class="rv-chip rv-chip--reservada">Reservada</span>
+        </div>
+        <div class="rv-map-wrap">
+          <svg id="rv-map" class="rv-map" role="group" aria-label="Mapa das mesas"></svg>
+        </div>
+        <p class="hint text-center" id="map-hint">Toque numa mesa livre para ver o valor.</p>
+        <div class="alert alert--info rv-small" id="group-note"></div>
+        <div id="closed-notice" class="alert alert--info hidden">
+          <span id="closed-text"></span>
+          <a class="btn btn--whatsapp" id="closed-whatsapp" href="#" target="_blank" rel="noopener" style="margin-top:10px;">Falar no WhatsApp</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section container hidden" id="mesa">
+      <div class="card" id="table-panel">
+        <div class="rv-table-head">
+          <span class="rv-dot" id="tp-dot"></span>
+          <div>
+            <h2 class="section-title" id="tp-title" style="margin:0;">Mesa</h2>
+            <p class="text-soft rv-small" id="tp-desc" style="margin:0;"></p>
+          </div>
+          <button type="button" class="rv-close" id="tp-close" aria-label="Fechar">×</button>
+        </div>
+
+        <ul class="summary-list rv-table-facts" id="tp-facts"></ul>
+
+        <h3 class="rv-subtitle">Quantas pessoas?</h3>
+        <div class="rv-stepper" data-field="adults">
+          <div><strong>Adultos</strong><span class="hint" id="adults-hint"></span></div>
+          <div class="rv-stepper__ctrl">
+            <button type="button" data-step="-1" aria-label="Menos adultos">−</button>
+            <output id="adults">0</output>
+            <button type="button" data-step="1" aria-label="Mais adultos">+</button>
+          </div>
+        </div>
+        <div class="rv-stepper" data-field="children">
+          <div><strong>Crianças até <span class="js-child-age"></span> anos</strong><span class="hint" id="children-hint"></span></div>
+          <div class="rv-stepper__ctrl">
+            <button type="button" data-step="-1" aria-label="Menos crianças">−</button>
+            <output id="children">0</output>
+            <button type="button" data-step="1" aria-label="Mais crianças">+</button>
+          </div>
+        </div>
+        <div class="rv-stepper" data-field="infants">
+          <div><strong>Crianças de colo</strong><span class="hint"></span></div>
+          <div class="rv-stepper__ctrl">
+            <button type="button" data-step="-1" aria-label="Menos crianças de colo">−</button>
+            <output id="infants">0</output>
+            <button type="button" data-step="1" aria-label="Mais crianças de colo">+</button>
+          </div>
+        </div>
+
+        <div id="sim-message" class="alert alert--danger hidden" role="alert"></div>
+
+        <div class="rv-sim" id="sim-box" aria-live="polite">
+          <ul class="summary-list" id="sim-lines"></ul>
+          <div class="rv-sim__total">
+            <div><span>Total</span><strong id="sim-total">—</strong></div>
+            <div class="rv-sim__pix"><span id="sim-pix-label">No Pix</span><strong id="sim-total-pix">—</strong></div>
+          </div>
+          <ul class="summary-list rv-sim__plan" id="sim-plan"></ul>
+        </div>
+
+        <form id="rv-form" novalidate>
+          <div class="form-field hp-field" aria-hidden="true">
+            <label for="website">Não preencha este campo</label>
+            <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
+          </div>
+          <h3 class="rv-subtitle">Seus dados</h3>
+          <div class="form-field">
+            <label for="name">Nome do responsável</label>
+            <input type="text" id="name" maxlength="120" required autocomplete="name" />
+          </div>
+          <div class="form-row form-row--split">
+            <div class="form-field">
+              <label for="phone">WhatsApp</label>
+              <input type="tel" id="phone" maxlength="20" required autocomplete="tel" inputmode="tel" placeholder="(85) 99999-9999" />
+            </div>
+            <div class="form-field">
+              <label for="email">E-mail</label>
+              <input type="email" id="email" maxlength="160" required autocomplete="email" />
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="notes">Observações (opcional)</label>
+            <textarea id="notes" maxlength="500" placeholder="Aniversário, cadeirinha para bebê, alguma necessidade especial…"></textarea>
+          </div>
+
+          <div class="form-field checkbox-field">
+            <input type="checkbox" id="accept_terms" required />
+            <label for="accept_terms">Li e aceito os <a href="#" class="js-open-terms">termos do evento</a>.</label>
+          </div>
+          <div class="form-field checkbox-field">
+            <input type="checkbox" id="marketing_opt_in" />
+            <label for="marketing_opt_in">Quero receber promoções e novidades do cardápio. Posso sair da lista quando quiser.</label>
+          </div>
+
+          <div id="form-alert-area"></div>
+          <button type="submit" id="submit-btn" class="btn btn--primary">Fazer pré-reserva</button>
+          <p class="hint text-center" id="guarantee-inline"></p>
+        </form>
+      </div>
+    </section>
+
+    <section class="section container hidden" id="sucesso">
+      <div class="card text-center" id="success-panel">
+        <h2 class="section-title" id="success-title">Pré-reserva feita!</h2>
+        <div class="success-code" id="success-code"></div>
+        <p id="success-note"></p>
+        <ul class="summary-list rv-left" id="success-summary"></ul>
+
+        <div class="rv-pix" id="pix-box">
+          <p class="rv-pix__label">Chave Pix <span id="pix-type"></span></p>
+          <p class="rv-pix__key" id="pix-key"></p>
+          <p class="text-soft rv-small" id="pix-holder"></p>
+          <button type="button" class="btn btn--outline btn--sm" id="pix-copy">Copiar chave</button>
+        </div>
+        <p class="alert alert--info hidden" id="no-pix"></p>
+
+        <div class="alert alert--info rv-left" id="success-deadline"></div>
+        <div class="stack">
+          <a id="success-whatsapp" class="btn btn--whatsapp" href="#" target="_blank" rel="noopener">Enviar comprovante pelo WhatsApp</a>
+          <button type="button" class="btn btn--outline" id="success-back">Ver o mapa</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section container" id="pagamento">
+      <div class="card">
+        <h2 class="section-title">Como pagar</h2>
+        <ul class="rv-bullets">
+          <li id="pix-note"></li>
+          <li id="card-note"></li>
+          <li id="guarantee-note"></li>
+          <li id="balance-note"></li>
+        </ul>
+        <h2 class="section-title">Crianças</h2>
+        <ul class="rv-bullets" id="children-rules"></ul>
+        <h2 class="section-title">Termos resumidos</h2>
+        <ul class="rv-bullets" id="terms-summary"></ul>
+        <button type="button" class="btn btn--outline js-open-terms">Ler os termos completos</button>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="terms-dialog" class="rv-dialog">
+    <div class="rv-dialog__head">
+      <strong>Termos do evento</strong>
+      <button type="button" class="rv-close" id="terms-close" aria-label="Fechar">×</button>
+    </div>
+    <div class="rv-dialog__body" id="terms-body"></div>
+  </dialog>
+
+  <footer class="site-footer container">
+    <p><strong>Sir Fisher Praia</strong> · Réveillon</p>
+    <p>Dúvidas? <a id="footer-whatsapp" href="#" target="_blank" rel="noopener">Fale conosco pelo WhatsApp</a></p>
+    <p><a href="https://www.sirfisher.com.br/privacidade/" target="_blank" rel="noopener">Aviso de Privacidade</a></p>
+  </footer>
+
+  <script type="module" src="./assets/js/reveillon.js"></script>
+</body>
+</html>

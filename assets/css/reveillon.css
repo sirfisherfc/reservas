@@ -1,0 +1,159 @@
+/* Réveillon — página pública. Estende style.css (mesma paleta praia/pôr do sol). */
+@import url("./reveillon-map.css");
+
+.rv-hero { padding: 40px 0 34px; }
+.rv-hero__kicker {
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: .78rem;
+  font-weight: 700;
+  opacity: .9;
+  margin-bottom: 10px;
+}
+.rv-hero__cta {
+  width: auto;
+  margin-top: 6px;
+  background: #fff8ee;
+  color: var(--color-primary-dark);
+  padding: 13px 26px;
+}
+.rv-hero__cta:hover { background: #ffffff; }
+
+.rv-main .section { padding: 14px 12px; }
+.rv-on-dark { color: #fff8ee; text-shadow: 0 1px 6px rgba(0, 0, 0, .15); }
+.rv-small { font-size: .88rem; }
+.rv-left { text-align: left; }
+
+/* Fatos do evento */
+.rv-facts { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 12px; }
+.rv-facts li { display: flex; gap: 12px; align-items: flex-start; }
+.rv-facts li > div { display: flex; flex-direction: column; }
+.rv-facts__icon { font-size: 1.35rem; line-height: 1.2; }
+.rv-facts a { text-decoration: none; }
+
+.rv-included { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; }
+.rv-included li {
+  padding: 10px 14px;
+  background: var(--color-sand);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+.rv-included li::before { content: "✓ "; color: var(--color-success); }
+
+.rv-bullets { margin: 0 0 18px; padding-left: 20px; display: grid; gap: 8px; font-size: .93rem; }
+.rv-bullets li:empty { display: none; }
+
+/* Mapa */
+.rv-map-card { padding: 16px; }
+.rv-map-card .alert { margin: 12px 0 0; }
+.rv-legend--states { margin-bottom: 10px; }
+
+/* Painel da mesa */
+.rv-table-head { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+.rv-dot { width: 18px; height: 18px; border-radius: 5px; flex: none; margin-top: 4px; }
+.rv-close {
+  margin-left: auto;
+  border: none;
+  background: var(--color-sand);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  flex: none;
+}
+.rv-subtitle { font-size: 1rem; margin: 20px 0 10px; }
+.rv-table-facts li strong { max-width: 60%; }
+
+.rv-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--color-border);
+}
+.rv-stepper > div:first-child { display: flex; flex-direction: column; }
+.rv-stepper .hint { margin: 0; }
+.rv-stepper__ctrl { display: flex; align-items: center; gap: 8px; flex: none; }
+.rv-stepper__ctrl button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: #fffefb;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-secondary);
+  cursor: pointer;
+}
+.rv-stepper__ctrl button:disabled { opacity: .35; cursor: not-allowed; }
+.rv-stepper__ctrl output { min-width: 28px; text-align: center; font-size: 1.15rem; font-weight: 800; }
+
+.rv-sim {
+  margin: 16px 0 6px;
+  padding: 14px 16px;
+  background: #fbf5ea;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: opacity .15s ease;
+}
+.rv-sim.is-loading { opacity: .55; }
+.rv-sim .summary-list { margin: 0; }
+.rv-sim__total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0;
+  padding: 12px 0;
+  border-top: 2px solid var(--color-border);
+  border-bottom: 2px solid var(--color-border);
+}
+.rv-sim__total > div { display: flex; flex-direction: column; }
+.rv-sim__total span { font-size: .82rem; color: var(--color-text-soft); }
+.rv-sim__total strong { font-size: 1.35rem; }
+.rv-sim__pix { text-align: right; }
+.rv-sim__pix strong { color: var(--color-success); }
+.rv-sim__plan li { align-items: flex-start; gap: 12px; }
+.rv-sim__plan strong { font-size: .95rem; }
+.rv-sim__plan small { font-weight: 400; color: var(--color-text-soft); }
+
+#rv-form { margin-top: 8px; }
+
+/* Sucesso */
+.rv-pix {
+  background: var(--color-sand);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin: 6px 0 16px;
+}
+.rv-pix__label { margin: 0; font-size: .85rem; color: var(--color-text-soft); }
+.rv-pix__key { margin: 4px 0; font-size: 1.3rem; font-weight: 800; letter-spacing: .02em; word-break: break-all; }
+
+/* Termos */
+.rv-dialog {
+  width: min(640px, calc(100% - 24px));
+  max-height: calc(100vh - 40px);
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 0;
+  box-shadow: var(--shadow-md);
+}
+.rv-dialog::backdrop { background: rgba(35, 48, 58, .55); }
+.rv-dialog__head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: #fff;
+  border-bottom: 1px solid var(--color-border);
+}
+.rv-dialog__body {
+  padding: 16px 20px 24px;
+  white-space: pre-wrap;
+  font-size: .9rem;
+  line-height: 1.6;
+}

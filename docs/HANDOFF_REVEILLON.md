@@ -1,0 +1,111 @@
+# Handoff — módulo de Réveillon 2027
+
+Atualizado em 28/09/2026. Este documento permite que outra IA retome o módulo de Réveillon sem depender do histórico da conversa. Manual de uso: [`reveillon.md`](reveillon.md).
+
+## Estado atual (em produção)
+
+- O módulo está publicado e testado, mas **as vendas estão fechadas** (`rv_events.sales_open = false`). Quem abre é o Rogério, pelo painel (Configurar → Vendas e integrações), quando decidir lançar.
+- E-mails automáticos do réveillon **ligados** (`emails_enabled = true`). Conversões de Ads **desligadas** (`tracking` todo `false`).
+- Chave Pix: CNPJ `37889047000168` (tipo `cnpj`). WhatsApp `5585988544274`.
+- Evento: Réveillon 2027, 31/12/2026 20h → 01/01/2027 2h, slug `reveillon-2027`.
+- Nenhuma reserva real ainda. Todas as reservas de teste foram apagadas.
+- Páginas: `reveillon.html` (público) e `admin/reveillon.html` (item **Réveillon** no menu do painel).
+- Última versão: `6b8b419` (repo `reservas`, main). A Edge Function `send-notifications` está publicada na versão 20.
+
+## Regras de negócio decididas com o Rogério
+
+- **Mesas (21), numeradas pela posição no mapa**, sem número repetido. Bistrô leva "B" só para identificar; no sistema de vendas lança-se só o número.
+  - Beira da mureta, da esquerda para a direita: 01, 02, 03, 04 (laterais), **05 (central de 4 lugares**, ao lado de uma árvore, onde não cabe lateral), 06, 07, 08 (laterais).
+  - Fileira do meio: B09, B10 (bistrôs), 11 a 14 (centrais).
+  - Fileira de trás, rente à cerca da entrada: B15, B16 (bistrôs), 17 a 20 (centrais).
+  - B21: bistrô entre a 11 e a 17, com cadeiras para os lados.
+- **Tipos e preços (Lote 1):**
+
+  | Tipo | Valor | Consumação | Pessoas |
+  |---|---|---|---|
+  | Lateral (azul, 2 mesas unidas) | R$ 2.800 | R$ 800 | mínimo 8, máximo 16 (cadeira extra a partir da 9ª) |
+  | Central (verde) | R$ 1.500 | R$ 400 | cobre 4, mínimo 1 (paga as 4), máximo 8 |
+  | Bistrô (roxo) | R$ 800 | R$ 200 | exatamente 2 |
+
+  Cadeira extra: R$ 350 com R$ 100 de consumação.
+- **Limite do evento: 96 pessoas somando laterais e centrais** (`rv_events.seat_limit`). A base é de 92 cadeiras (7×8 + 9×4) e a folga serve para extras. Bistrôs ficam fora dessa conta (`rv_table_types.counts_toward_limit = false`).
+- **Sinal de 30%** em até 48h. Sem sinal, a pré-reserva expira. Com pagamento parcial, **não expira**: o painel mostra "prazo vencido".
+- **Pix com 5% de desconto:** cada Pix de R$ X abate X ÷ 0,95 do valor cheio. Cartão só presencial. Não há gateway nem link de pagamento.
+- **Crianças:** de colo não pagam e não contam para o mínimo. Até 11 anos têm R$ 100 de desconto cada.
+- **Datas:** saldo até 20/12/2026. Termos: reembolso em até 7 dias, nada após 25/12/2026.
+- **Operador** vê só o mapa (status, nome, pessoas, observações) e a portaria, **sem valores**. Isso é garantido no banco, não só na tela.
+
+## Onde está cada coisa
+
+| Parte | Arquivos |
+|---|---|
+| Banco | `supabase/reveillon-schema.sql`, `reveillon-functions.sql`, `reveillon-rls.sql`, `reveillon-seed.sql`, `reveillon-integration.sql` (nessa ordem) |
+| Testes | `supabase/reveillon-tests.sql` (roda em transação com ROLLBACK; esperado `TODOS OS TESTES PASSARAM`) |
+| Site | `reveillon.html`, `assets/js/reveillon.js`, `assets/css/reveillon.css` |
+| Painel | `admin/reveillon.html`, `assets/js/adminReveillon.js`, `assets/css/admin-reveillon.css` |
+| Compartilhado | `assets/js/reveillonCommon.js` (formatação e desenho do mapa SVG), `assets/css/reveillon-map.css` |
+| E-mails | `supabase/functions/send-notifications/index.ts` (ramo `rv_*`) |
+| Integração com a reserva comum | 31/12 em `blocked_dates` + `restaurant_settings.special_date_notices` + trecho em `assets/js/reservations.js` |
+
+Peças-chave do banco:
+- `rv_calc_price`: a única função de preço, usada por simulação, criação e painel.
+- `rv_create_prebooking`: trava a mesa e o evento.
+- Índice único parcial `uq_rv_bookings_one_active_per_table`.
+- `rv_seat_limit_error`: o limite de 96.
+- Job pg_cron `rv-reveillon-tick` a cada 15 min: expira pré-reservas e manda o aviso de 12h.
+- `rv_table_state`: único dado do módulo legível pelo anon, publicado no Realtime.
+
+## Mapa (como foi feito e como mexer)
+
+- **Base:** desenhado a partir da foto de drone e do croqui do PDF de venda do Réveillon 2026 (`OneDrive/Sir Fisher/Vendas/Eventos/Reveillon 2026. lote 2.pdf`, páginas 4 e 5) e da planilha `Reveillon 2026.xlsx`.
+- **Onde fica gravado:**
+  - `rv_events.map`: viewBox `[-20, 0, 940, 870]` e elementos de referência (`decor`).
+  - `rv_tables`: `x`, `y`, `w`, `h`, `rotation` e `shape` em unidades do viewBox; `x`/`y` são o canto superior esquerdo da mesa sem girar.
+- **Elementos de referência (`decor`):**
+  - mar;
+  - área do salão (`deck`);
+  - mureta cinza (`wall`), que desce pelo lado direito como grade até a cerca;
+  - quadro de energia em frente à 07 (`box`, sem texto, pedido do Rogério);
+  - cerca verde (`hedge`), aberta entre o DJ e a 17;
+  - texto "▲ Entrada" (`label`);
+  - duas árvores (`tree`);
+  - quiosque oval (`kiosk`) e DJ (`dj`);
+  - calçadão (`street`).
+- **Geometria da beira:** a linha da mureta vai de (220, 195) a (950, 412.5), cerca de 16,6°.
+  - Laterais: 100×50, giradas 106,6° (perpendiculares à mureta), com o centro a 65 unidades da linha.
+  - Centrais: 50×50. Bistrôs: 36.
+  - Cadeiras desenhadas pela capacidade do tipo.
+- **Como editar:**
+  - Pelo celular, o Rogério ajusta em Painel → Réveillon → Configurar → Mesas e mapa → **Editar mapa**. Arrastar mesas, quiosque, DJ, árvores e texto, e girar a mesa selecionada.
+  - **Regra:** ao mexer por SQL, atualizar o banco **e** o `reveillon-seed.sql` (mapa e tabela de mesas), para os dois ficarem iguais.
+- **Celular:** o mapa tem 700 px de largura, rola para o lado e abre centralizado nas mesas (`centerMapScroll`).
+
+## Como trabalhar no banco (sem pedir ao Rogério)
+
+- **Projeto Supabase:** `lucpxoynpvogkvzepagi`, **o mesmo banco do repo `gestao`**. Tudo do módulo usa o prefixo `rv_`.
+- **Sem MCP:** quando o MCP do Supabase não carrega (sessão aberta fora de `reservas/`), usar a Management API: `POST https://api.supabase.com/v1/projects/lucpxoynpvogkvzepagi/database/query` com o token do `reservas/.mcp.json`. Esse arquivo está no `.gitignore`: **nunca** copiar o token para docs ou commits.
+- **Testar como operador ou admin:** no mesmo SQL, `select set_config('request.jwt.claims', json_build_object('sub', <auth_user_id>, 'role', 'authenticated')::text, true); set local role authenticated;`.
+- **Testar como anon:** chamadas REST com a chave publicável do `assets/js/config.js`.
+- **Não criar usuário via service_role:** o classificador de permissões bloqueou. Para testar a interface do painel, usar Playwright (Edge, `channel='msedge'`) com um mock do `supabaseClient.js` alimentado por respostas reais das RPCs.
+- **Edge Function:** a CLI do Supabase está logada na máquina. Antes de republicar, baixar a versão no ar (`supabase functions download ... --use-api`) e comparar com o repo, para não apagar mudança feita direto no Supabase.
+- **Windows:** abrir arquivos com `encoding='utf-8'` no Python (o padrão cp1252 quebrou um JSON). Commits na main são o passo final normal, sem pedir confirmação.
+
+## Testes já feitos (produção)
+
+- 20 pré-reservas simultâneas na mesma mesa: 1 sucesso e 19 "mesa acabou de ser reservada".
+- Limite em 16 com 7 pré-reservas simultâneas de 8 pessoas: 2 passaram e 5 foram recusadas. O bistrô seguiu livre.
+- Simulação pública = valor gravado = painel (4 pontos comparados).
+- Anon: sem acesso a nenhuma tabela `rv_*` exceto `rv_table_state`; só executa `rv_public_event`, `rv_simulate` e `rv_create_prebooking`.
+- Operador: 0 linhas em `rv_bookings`, `rv_payments`, `rv_lot_prices` e `rv_events`; `FORBIDDEN` nas funções de admin. O JSON do mapa e o da portaria que chegam a ele não têm nenhum campo financeiro nem telefone.
+- Os 4 e-mails (`rv_prebooking`, `rv_expiry_warning`, `rv_deposit_received`, `rv_paid_in_full`) foram enviados pelo Resend para `delivered@resend.dev`.
+- Reserva comum: 31/12 mostra o aviso com link; os outros dias seguem iguais.
+- Página pública e painel testados no Edge headless a 390 px, sem erro no console.
+
+## Pendências e riscos
+
+1. **Abrir as vendas** quando o Rogério decidir (um toque no painel).
+2. **Painel nunca testado com login real:** só com mock. Recomendar que o Rogério faça uma reserva manual, registre um pagamento e estorne pelo celular antes de abrir as vendas.
+3. **Operador vê telefone pela tabela de clientes:** a policy `customers_select_staff` já existia na reserva comum, e o cliente do réveillon entra em `customers`. Valores ele não vê. Restringir exigiria mexer na reserva comum; o Rogério não decidiu.
+4. **Conversões server-side (CAPI/GA4 MP) não ligadas:** `ad_conversion_events.reservation_id` é `NOT NULL` e está em produção. Só o navegador está preparado, e desligado.
+5. **Mapa:** o Rogério ajustou visualmente até o estado atual. Qualquer pedido novo de posição: editar banco + seed, tirar print e conferir sobreposição com a mureta, a grade e a cerca.
+6. **Depois do evento:** desativar o job `rv-reveillon-tick` (`cron.unschedule`) e decidir se `special_date_notices` continua.

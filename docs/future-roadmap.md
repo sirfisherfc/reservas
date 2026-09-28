@@ -35,7 +35,14 @@ Sincronizar reservas confirmadas com uma agenda — exigiria OAuth adicional (Go
 
 ## Mapa de mesas
 
-Só faz sentido se um dia o restaurante decidir atribuir mesas específicas por reserva (hoje, propositalmente, o sistema não atribui mesa nenhuma — ver regras de negócio no README/plano original).
+Na reserva comum, continua sem atribuição de mesa (proposital). Para o **Réveillon** existe um mapa de mesas próprio — ✅ IMPLEMENTADO, ver [`reveillon.md`](reveillon.md).
+
+## Réveillon — próximos passos possíveis
+
+- **Conversões server-side (CAPI/GA4 MP) do réveillon:** hoje só o navegador está preparado (e desligado). Ligar ao servidor exige que `ad_conversion_events` aceite `rv_booking_id` (a coluna `reservation_id` é `NOT NULL` e está em produção) e um ramo novo na Edge Function de conversões.
+- **Link de pagamento / gateway:** fora do escopo por decisão (cartão só presencial). Se um dia entrar, o pagamento registrado automaticamente usaria a mesma `rv_admin_register_payment`.
+- **Área do cliente** (consultar a própria reserva por link com token, como o cancelamento da reserva comum).
+- **Reaproveitar para outros eventos** (Carnaval, datas especiais): o modelo já suporta vários eventos (`rv_events.slug`, `reveillon.html?evento=slug`); falta um seletor de evento no painel.
 
 ## Relatórios avançados
 

@@ -141,6 +141,14 @@ async function handleAvailabilityInputs() {
 
   if (checkPartySizeOverflow()) return;
 
+  // Datas com reserva própria (ex.: Réveillon): mostra o aviso e o link em
+  // vez dos horários. Vem de restaurant_settings.special_date_notices.
+  const notice = specialDateNotice(dateInput.value);
+  if (notice) {
+    renderSpecialDateNotice(notice);
+    return;
+  }
+
   const date = dateInput.value;
   const size = Number(partySizeInput.value);
   const min = Number(partySizeInput.min);
@@ -167,6 +175,30 @@ async function handleAvailabilityInputs() {
   }
 
   renderSlots(slotsContainer, currentSlots, selectedTime, selectSlot);
+}
+
+function specialDateNotice(date) {
+  const list = Array.isArray(settings?.special_date_notices) ? settings.special_date_notices : [];
+  return date ? list.find((n) => n && n.date === date) : null;
+}
+
+function renderSpecialDateNotice(notice) {
+  slotsContainer.innerHTML = '';
+  const box = document.createElement('div');
+  box.className = 'alert alert--info';
+  const text = document.createElement('p');
+  text.style.margin = '0 0 10px';
+  text.textContent = notice.message || '';
+  box.appendChild(text);
+  if (notice.url) {
+    const link = document.createElement('a');
+    link.className = 'btn btn--primary';
+    link.href = notice.url;
+    link.textContent = notice.cta || 'Saiba mais';
+    box.appendChild(link);
+  }
+  slotsContainer.appendChild(box);
+  submitBtn.disabled = true;
 }
 
 function renderNoAvailability(date, size, errorCode) {

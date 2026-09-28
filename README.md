@@ -17,15 +17,17 @@ Site de reservas para o restaurante Sir Fisher Praia. HTML/CSS/JS puro (sem buil
 - [`docs/openai-ads.md`](docs/openai-ads.md) — medição de reservas e comparecimentos do ChatGPT Ads.
 - [`docs/privacidade-dados.md`](docs/privacidade-dados.md) — quais dados são salvos e por quê.
 - [`docs/security-checklist.md`](docs/security-checklist.md) — checklist de testes manuais.
+- [`docs/reveillon.md`](docs/reveillon.md) — módulo de Réveillon (mesas numeradas, pré-reserva, sinal, portaria).
 - [`docs/future-roadmap.md`](docs/future-roadmap.md) — fase 2 (não implementada).
 
 ## Estrutura
 
 ```
 index.html, cancelar.html   — site público
+reveillon.html              — venda das mesas do Réveillon (módulo separado)
 admin/                      — painel administrativo
 assets/css/, assets/js/     — estilos e módulos JS
-supabase/                   — schema.sql, functions.sql, rls.sql, seed.sql
+supabase/                   — schema.sql, functions.sql, rls.sql, seed.sql; reveillon-*.sql (módulo de Réveillon)
 supabase/functions/         — Edge Functions (send-notifications: e-mail de confirmação)
 docs/                       — documentação
 ```

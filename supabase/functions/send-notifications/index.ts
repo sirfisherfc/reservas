@@ -1,7 +1,7 @@
 // Edge Function: send-notifications
 // -----------------------------------------------------------------------------
 // Lê a fila `notification_queue` (canal 'email', status 'pending'), envia cada
-// confirmação de reserva pelo Resend e marca o registro como 'sent' ou 'failed'.
+// e-mail (reserva comum e réveillon, tipos rv_*) pelo Resend e marca o registro como 'sent' ou 'failed'.
 //
 // É idempotente e processa em lote: pode ser chamada por um Database Webhook
 // (envio imediato ao criar a reserva) e/ou por um cron de backup — as duas coisas
@@ -191,6 +191,151 @@ function buildEmailHtml(p: Payload): string {
 </body></html>`;
 }
 
+// -----------------------------------------------------------------------------
+// Réveillon (tipos rv_*): payload montado por public.rv_booking_payload, com os
+// valores já calculados no banco (rv_calc_price). Aqui só formatamos.
+// -----------------------------------------------------------------------------
+interface RvPrice {
+  total?: number; total_pix?: number; consumption_total?: number;
+  deposit_min?: number; deposit_min_pix?: number;
+  deposit_remaining?: number; deposit_remaining_pix?: number;
+  balance?: number; balance_pix?: number; paid_net?: number;
+}
+interface RvPayload {
+  public_code?: string; name?: string; email?: string;
+  table_label?: string; table_type?: string; event_name?: string;
+  event_starts_at?: string; timezone?: string; address?: string; menu_url?: string;
+  balance_due_date?: string; hold_expires_at?: string;
+  pix_key?: string; pix_key_type?: string; pix_holder?: string;
+  pix_discount_pct?: number; deposit_pct?: number; whatsapp?: string;
+  adults?: number; children?: number; infants?: number; party_size?: number;
+  price?: RvPrice;
+}
+
+const brl = (v: unknown) => Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function rvDateTime(ts: string | undefined, tz: string): string {
+  if (!ts) return "";
+  const d = new Date(ts);
+  const date = d.toLocaleDateString("pt-BR", { timeZone: tz, day: "2-digit", month: "2-digit" });
+  const time = d.toLocaleTimeString("pt-BR", { timeZone: tz, hour: "2-digit", minute: "2-digit" });
+  return `${date} às ${time}`;
+}
+
+function rvDate(iso: string | undefined): string {
+  if (!iso) return "";
+  const [y, m, d] = String(iso).slice(0, 10).split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function rvPixKey(key: string | undefined, type: string | undefined): string {
+  const k = String(key ?? "");
+  const d = k.replace(/\D/g, "");
+  if (type === "cnpj" && d.length === 14) return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+  return k;
+}
+
+const RV_SUBJECTS: Record<string, (p: RvPayload) => string> = {
+  rv_prebooking: (p) => `Pré-reserva ${p.public_code} — envie o sinal para garantir a mesa ${p.table_label}`,
+  rv_expiry_warning: (p) => `Sua pré-reserva da mesa ${p.table_label} expira em breve`,
+  rv_deposit_received: (p) => `Sinal recebido — mesa ${p.table_label} garantida no ${p.event_name}`,
+  rv_paid_in_full: (p) => `Tudo certo! Mesa ${p.table_label} quitada para o ${p.event_name}`,
+};
+
+function buildReveillonEmailHtml(type: string, p: RvPayload): string {
+  const tz = p.timezone || "America/Fortaleza";
+  const pr = p.price ?? {};
+  const name = escapeHtml(String(p.name ?? "").split(" ")[0]);
+  const people = `${Number(p.party_size ?? 0)}${p.infants ? ` + ${p.infants} de colo` : ""}`;
+  const wa = String(p.whatsapp ?? "").replace(/\D/g, "");
+  const needsDeposit = type === "rv_prebooking" || type === "rv_expiry_warning";
+  const waMsg = needsDeposit
+    ? `Olá! Segue o comprovante do sinal da reserva ${p.public_code} (mesa ${p.table_label}) do ${p.event_name}.`
+    : `Olá! Tenho uma dúvida sobre a reserva ${p.public_code} (mesa ${p.table_label}) do ${p.event_name}.`;
+  const waUrl = wa ? `https://wa.me/${wa}?text=${encodeURIComponent(waMsg)}` : "";
+
+  const intro: Record<string, string> = {
+    rv_prebooking: `Recebemos sua pré-reserva! A mesa fica separada até <strong>${escapeHtml(rvDateTime(p.hold_expires_at, tz))}</strong> e só fica garantida depois que recebermos o sinal.`,
+    rv_expiry_warning: `Sua pré-reserva vence em <strong>${escapeHtml(rvDateTime(p.hold_expires_at, tz))}</strong>. Se o sinal não chegar até lá, a mesa volta a ficar disponível para outras pessoas.`,
+    rv_deposit_received: `Recebemos seu sinal. <strong>Sua mesa está garantida!</strong>`,
+    rv_paid_in_full: `Sua reserva está <strong>quitada</strong>. Agora é só aproveitar a virada com a gente!`,
+  };
+
+  const row = (k: string, v: string) => `<div><span style="color:#888;">${k}:</span> <strong>${v}</strong></div>`;
+  const summary = [
+    row("Código", escapeHtml(p.public_code ?? "")),
+    row("Mesa", `${escapeHtml(p.table_type ?? "")} ${escapeHtml(p.table_label ?? "")}`),
+    row("Pessoas", escapeHtml(people)),
+    row("Total", `${brl(pr.total)} <span style="color:#888;font-weight:400;">(${brl(pr.total_pix)} no Pix)</span>`),
+    row("Consumação inclusa", brl(pr.consumption_total)),
+    type === "rv_deposit_received" ? row("Recebido", brl(pr.paid_net)) : "",
+    type === "rv_deposit_received" && Number(pr.balance) > 0
+      ? row("Saldo", `${brl(pr.balance_pix)} no Pix ou ${brl(pr.balance)} no cartão, até ${escapeHtml(rvDate(p.balance_due_date))}`)
+      : "",
+  ].join("");
+
+  const pixBlock = needsDeposit ? `
+    <tr><td style="padding:14px 32px 4px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fdf1de;border-radius:8px;">
+        <tr><td style="padding:16px 20px;font-size:14px;line-height:1.7;">
+          <div style="font-size:15px;"><strong>Sinal: ${brl(pr.deposit_remaining_pix ?? pr.deposit_min_pix)} no Pix</strong></div>
+          <div style="color:#666;">ou ${brl(pr.deposit_remaining ?? pr.deposit_min)} no cartão, presencialmente no restaurante</div>
+          ${p.pix_key ? `<div style="margin-top:10px;color:#888;">Chave Pix ${escapeHtml(String(p.pix_key_type ?? "").toUpperCase())}</div>
+          <div style="font-size:18px;font-weight:800;letter-spacing:.02em;">${escapeHtml(rvPixKey(p.pix_key, p.pix_key_type))}</div>
+          ${p.pix_holder ? `<div style="color:#666;">${escapeHtml(p.pix_holder)}</div>` : ""}` : ""}
+          <div style="margin-top:10px;">Prazo: <strong>${escapeHtml(rvDateTime(p.hold_expires_at, tz))}</strong></div>
+        </td></tr>
+      </table>
+    </td></tr>` : "";
+
+  const waButton = waUrl ? `
+    <tr><td style="padding:16px 32px 4px;">
+      <a href="${waUrl}" style="display:inline-block;padding:12px 22px;background:#25d366;border-radius:6px;color:#06301c;text-decoration:none;font-size:15px;font-weight:700;">
+        ${needsDeposit ? "Enviar comprovante pelo WhatsApp" : "Falar pelo WhatsApp"}
+      </a>
+    </td></tr>` : "";
+
+  const eventInfo = type === "rv_paid_in_full" ? `
+    <tr><td style="padding:14px 32px 0;font-size:14px;line-height:1.7;">
+      <div><strong>${escapeHtml(p.event_name ?? "")}</strong> · ${escapeHtml(rvDateTime(p.event_starts_at, tz))}</div>
+      <div>${escapeHtml(p.address ?? "")}</div>
+      ${p.menu_url ? `<div><a href="${escapeHtml(p.menu_url)}" style="color:#0f6b6b;">Ver o cardápio</a></div>` : ""}
+    </td></tr>` : "";
+
+  return `<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f2ee;font-family:Arial,Helvetica,sans-serif;color:#2b2b2b;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f2ee;padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);">
+        <tr><td align="center" style="background:#ffffff;padding:22px 32px 18px;">
+          <img src="https://www.sirfisher.com.br/assets/img/logo-horizontal.png" alt="Sir Fisher Praia" width="210" style="display:block;width:210px;max-width:100%;height:auto;margin:0;border:0;" />
+        </td></tr>
+        <tr><td style="background:#0f3d3e;padding:20px 32px;">
+          <div style="color:#ffffff;font-size:20px;font-weight:700;">${escapeHtml(p.event_name ?? "Réveillon")}</div>
+          <div style="color:#9fc6c2;font-size:13px;margin-top:2px;">${escapeHtml(rvDateTime(p.event_starts_at, tz))} · Sir Fisher Praia</div>
+        </td></tr>
+        <tr><td style="padding:24px 32px 8px;">
+          <p style="margin:0 0 12px;font-size:16px;">Olá${name ? ", " + name : ""}!</p>
+          <p style="margin:0 0 8px;font-size:15px;line-height:1.6;">${intro[type] ?? ""}</p>
+        </td></tr>
+        <tr><td style="padding:0 32px 4px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f6f3;border-radius:8px;">
+            <tr><td style="padding:16px 20px;font-size:14px;line-height:1.9;">${summary}</td></tr>
+          </table>
+        </td></tr>
+        ${pixBlock}
+        ${eventInfo}
+        ${waButton}
+        <tr><td style="padding:20px 32px 28px;border-top:1px solid #eee;color:#999;font-size:12px;line-height:1.6;">
+          Sir Fisher Praia — Av. Beira Mar 3421, Meireles. Este é um e-mail automático; para falar com a gente, use o WhatsApp.
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+}
+
 Deno.serve(async (req) => {
   // Autorização por segredo compartilhado (verify_jwt=false no config.toml).
   if (!NOTIFY_SECRET || req.headers.get("x-notify-secret") !== NOTIFY_SECRET) {
@@ -208,7 +353,7 @@ Deno.serve(async (req) => {
     return json({ error: `claim: ${claimErr.message}` }, 500);
   }
 
-  const rows = (claimed ?? []) as Array<{ id: string; type: string; payload: Payload }>;
+  const rows = (claimed ?? []) as Array<{ id: string; type: string; payload: Payload & RvPayload }>;
   let sent = 0;
   let failed = 0;
 
@@ -225,8 +370,10 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           from: RESEND_FROM,
           to: [p.email],
-          subject: `${row.type === "reservation_reminder" ? "Sua reserva é amanhã — pode confirmar?" : "Reserva confirmada"} — ${p.public_code ?? "Sir Fisher Praia"}`,
-          html: buildEmailHtml(p),
+          subject: row.type.startsWith("rv_")
+            ? (RV_SUBJECTS[row.type]?.(p as RvPayload) ?? "Réveillon — Sir Fisher Praia")
+            : `${row.type === "reservation_reminder" ? "Sua reserva é amanhã — pode confirmar?" : "Reserva confirmada"} — ${p.public_code ?? "Sir Fisher Praia"}`,
+          html: row.type.startsWith("rv_") ? buildReveillonEmailHtml(row.type, p as RvPayload) : buildEmailHtml(p),
         }),
       });
       if (!res.ok) {

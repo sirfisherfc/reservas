@@ -7,6 +7,8 @@ o e-mail pelo [Resend](https://resend.com) e marca o registro como `sent`/`faile
 O e-mail traz código da reserva, data, horário, nº de pessoas e um botão
 **Cancelar reserva** (link `cancelar.html?t=TOKEN`).
 
+O **Réveillon** usa a mesma fila e a mesma função, com quatro tipos próprios (`rv_prebooking`, `rv_expiry_warning`, `rv_deposit_received`, `rv_paid_in_full`) ligados a `notification_queue.rv_booking_id`. O e-mail da reserva comum não mudou. Ver [`reveillon.md`](reveillon.md).
+
 ## Visão geral do fluxo
 
 ```

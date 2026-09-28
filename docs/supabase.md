@@ -9,6 +9,8 @@ Os quatro arquivos em `/supabase` são a fonte da verdade do banco e devem ser a
 3. `rls.sql` — habilita RLS, cria as policies e concede os grants (tabela e função).
 4. `seed.sql` — parâmetros iniciais e grade de horários de exemplo.
 
+O módulo de Réveillon tem seus próprios arquivos, aplicados **depois** dos quatro acima e nesta ordem: `reveillon-schema.sql`, `reveillon-functions.sql`, `reveillon-rls.sql`, `reveillon-seed.sql`, `reveillon-integration.sql`. `reveillon-tests.sql` valida tudo com ROLLBACK. Detalhes em [`reveillon.md`](reveillon.md).
+
 Esses arquivos já refletem duas correções encontradas em testes reais (não apenas leitura de código):
 
 - **Ambiguidade de colunas em PL/pgSQL**: como `fn_create_reservation` e `fn_cancel_reservation_public` usam `RETURNS TABLE(...)` com colunas chamadas `id`, `status`, `party_size` etc., referências *sem* alias a colunas de mesmo nome em `reservations` ficavam ambíguas (`column reference "id" is ambiguous`). Corrigido qualificando todas as referências com alias de tabela.

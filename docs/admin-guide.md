@@ -35,6 +35,7 @@ Reservas nunca são apagadas fisicamente — apenas mudam de status. O históric
 - **Configurações** (admin) — parâmetros gerais do site e a grade de horários recorrente por dia da semana.
 - **Bloqueios** (admin) — bloqueio pontual de um dia inteiro ou de uma faixa de horário (inicial/final) numa data específica (eventos, manutenção, datas comemorativas). A faixa bloqueia de uma vez todos os horários já configurados na grade daquele dia da semana dentro do intervalo escolhido.
 - **Usuários** (admin) — cadastro e gestão de administradores/operadores.
+- **Réveillon** — venda das mesas numeradas da noite de 31/12: mapa com status, pagamentos, portaria, resumo financeiro e configurações do evento. Admin vê e faz tudo; operador vê só o mapa (status, nome, pessoas, observações) e a portaria, **sem valores**. Manual completo em [`reveillon.md`](reveillon.md).
 
 ## Configurações disponíveis
 
@@ -63,6 +64,10 @@ Quando o **admin ou operador** cria uma reserva manual, os limites pensados para
 `confirmada` → (automático ao criar) · `cancelada_cliente` (via link público) · `cancelada_restaurante` · `compareceu` · `no_show` · `desistiu` · `recusada`.
 
 Só reservas com status `confirmada` ocupam a disponibilidade dos horários.
+
+## Réveillon
+
+O réveillon tem módulo próprio (tabelas `rv_*`, página `reveillon.html`, painel `admin/reveillon.html`) e **não altera** a reserva comum: lá continua sem mesa e com confirmação automática. A noite de 31/12/2026 está bloqueada em **Bloqueios**, e quem escolhe essa data no site vê o link para a página do réveillon (configuração `special_date_notices`). Passo a passo de uso no celular: [`reveillon.md`](reveillon.md).
 
 ## Exportação CSV
 

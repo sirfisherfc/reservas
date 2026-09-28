@@ -17,6 +17,18 @@ habilita o aceite de marketing.
 - **Aceite das regras da reserva** — obrigatório, registrado junto com a reserva (não é a mesma coisa que o aceite de marketing).
 - **Aceite de marketing (opcional)** — checkbox separado, **desmarcado por padrão**, nunca vem pré-marcado. Se aceito, guardamos também a data/hora do aceite (`marketing_opt_in_at`).
 
+## Dados coletados na pré-reserva do Réveillon
+
+- **Nome do responsável, WhatsApp e e-mail** — para enviar a chave Pix, confirmar o sinal e falar sobre a reserva.
+- **Quantidade de adultos, crianças até 11 anos e crianças de colo** — definem o valor (cadeira extra, desconto de criança) e a lista da portaria. Não pedimos idade nem nome das crianças.
+- **Observação (opcional)** e **observação interna** (só equipe).
+- **Aceite dos termos** — obrigatório, com data/hora e a versão exata do texto aceito (`rv_terms`).
+- **Aceite de marketing (opcional)** — mesmo padrão da reserva comum (desmarcado por padrão), gravado no cadastro `customers`.
+- **Pagamentos** — data, valor, forma (Pix, débito ou crédito), nome de quem pagou e quem registrou. Nenhum dado de cartão é coletado: cartão é só presencial, na maquininha.
+- **Origem da visita** (UTMs e identificadores de anúncio), como na reserva comum. As conversões de Ads do réveillon estão **desligadas** por configuração.
+
+Onde fica: `rv_bookings` (reserva, com cópia do nome/telefone/e-mail), `rv_payments`, `rv_booking_history` (log imutável) e `customers` (o mesmo cadastro da reserva comum). Quem acessa: só administradores leem telefone, e-mail e valores; operadores veem nome, número de pessoas e observações; o site público vê apenas se cada mesa está livre, em negociação ou reservada — sem nome, telefone ou valor. Tudo garantido por RLS e funções no banco (ver `reveillon.md`).
+
 ## O que NÃO coletamos
 
 Não pedimos restrição alimentar, escolha de mesa/área, nem qualquer dado além do necessário para operar a reserva.

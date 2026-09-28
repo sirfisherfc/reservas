@@ -124,8 +124,10 @@ on conflict (event_id, code) do nothing;
 
 -- ---- mesas + posição no mapa ----
 -- Desenhado a partir da foto aérea e do croqui do Réveillon 2026 (mureta em
--- diagonal, quiosque oval, DJ ao lado do quiosque). 7 laterais na beira; entre a
--- 04 e a 05 fica o bistrô B5, porque a árvore ali não deixa caber uma mesa. Unidades do viewBox do mapa;
+-- diagonal, quiosque oval, DJ ao lado do quiosque). Numeração 01-20 pela posição: beira da mureta
+-- (01-08; a B05 é bistrô, porque a árvore ali não deixa caber mesa), fileira do
+-- meio (B09-B10 bistrôs, 11-14 centrais) e fileira de trás (B15-B16 bistrôs,
+-- 17-20 centrais). Bistrô leva "B" só para identificar; o número nunca se repete. Unidades do viewBox do mapa;
 -- ajuste fino pelo modo "Editar mapa" do painel.
 insert into public.rv_tables (event_id, table_type_id, label, x, y, w, h, rotation, shape, sort_order)
 select e.id, tt.id, v.label, v.x, v.y, v.w, v.h, v.rotation, v.shape, v.sort_order
@@ -135,22 +137,22 @@ join (values
   ('lateral', '02', 322.0, 249.5, 76, 36, 21, 'rect', 2),
   ('lateral', '03', 419.5, 287.0, 76, 36, 21, 'rect', 3),
   ('lateral', '04', 507.0, 324.5, 76, 36, 21, 'rect', 4),
-  ('lateral', '05', 632.0, 384.5, 76, 36, 21, 'rect', 5),
-  ('lateral', '06', 722.0, 419.5, 76, 36, 21, 'rect', 6),
-  ('lateral', '07', 812.0, 442.0, 76, 36, 21, 'rect', 7),
-  ('central', '08', 447.5, 452.5, 50, 50, 11, 'rect', 8),
-  ('central', '09', 557.5, 470.0, 50, 50, 11, 'rect', 9),
-  ('central', '10', 670.0, 490.0, 50, 50, 11, 'rect', 10),
-  ('central', '11', 780.0, 515.0, 50, 50, 11, 'rect', 11),
-  ('central', '12', 432.5, 602.5, 50, 50, 4, 'rect', 12),
-  ('central', '13', 562.5, 610.0, 50, 50, 4, 'rect', 13),
-  ('central', '14', 692.5, 617.5, 50, 50, 4, 'rect', 14),
-  ('central', '15', 800.0, 625.0, 50, 50, 4, 'rect', 15),
-  ('bistro', 'B1', 396.5, 374.0, 32, 32, 0, 'round', 16),
-  ('bistro', 'B2', 366.5, 441.5, 32, 32, 0, 'round', 17),
-  ('bistro', 'B3', 359.0, 514.0, 32, 32, 0, 'round', 18),
-  ('bistro', 'B4', 344.0, 579.0, 32, 32, 0, 'round', 19),
-  ('bistro', 'B5', 594.0, 346.5, 32, 32, 0, 'round', 20)
+  ('bistro', 'B05', 594.0, 346.5, 32, 32, 0, 'round', 5),
+  ('lateral', '06', 632.0, 384.5, 76, 36, 21, 'rect', 6),
+  ('lateral', '07', 722.0, 419.5, 76, 36, 21, 'rect', 7),
+  ('lateral', '08', 812.0, 442.0, 76, 36, 21, 'rect', 8),
+  ('bistro', 'B09', 396.5, 374.0, 32, 32, 0, 'round', 9),
+  ('bistro', 'B10', 366.5, 441.5, 32, 32, 0, 'round', 10),
+  ('central', '11', 447.5, 452.5, 50, 50, 11, 'rect', 11),
+  ('central', '12', 557.5, 470.0, 50, 50, 11, 'rect', 12),
+  ('central', '13', 670.0, 490.0, 50, 50, 11, 'rect', 13),
+  ('central', '14', 780.0, 515.0, 50, 50, 11, 'rect', 14),
+  ('bistro', 'B15', 359.0, 514.0, 32, 32, 0, 'round', 15),
+  ('bistro', 'B16', 344.0, 579.0, 32, 32, 0, 'round', 16),
+  ('central', '17', 432.5, 602.5, 50, 50, 4, 'rect', 17),
+  ('central', '18', 562.5, 610.0, 50, 50, 4, 'rect', 18),
+  ('central', '19', 692.5, 617.5, 50, 50, 4, 'rect', 19),
+  ('central', '20', 800.0, 625.0, 50, 50, 4, 'rect', 20)
 ) as v(type_code, label, x, y, w, h, rotation, shape, sort_order) on true
 join public.rv_table_types tt on tt.event_id = e.id and tt.code = v.type_code
 where e.slug = 'reveillon-2027'

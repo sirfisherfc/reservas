@@ -25,7 +25,7 @@ pré-reserva ──(pago ≥ sinal)──▶ sinal pago ──(pago ≥ total, o
 No celular, abra **Painel → Réveillon → Configurar**:
 
 1. **Evento, Pix e WhatsApp:** confira a data, o endereço, a chave Pix (já está o CNPJ 37.889.047/0001-68) e o WhatsApp. O titular do Pix é opcional.
-2. **Limite de cadeiras:** as 7 laterais (8 cadeiras cada) e as 8 centrais (4 cada) somam 88 cadeiras-base, mas o limite do evento é **96 pessoas nessas mesas** (campo "Limite de cadeiras (sem bistrô)" em Regras). A folga serve para cadeiras extras: a lateral aceita até 16 e a central até 8, desde que a soma geral não passe de 96. Os bistrôs ficam fora dessa conta. O banco confere o limite em toda criação, edição e troca de mesa, inclusive com duas reservas chegando ao mesmo tempo.
+2. **Limite de cadeiras:** as 7 laterais (8 cadeiras cada) e as 9 centrais (4 cada) somam 92 cadeiras-base, mas o limite do evento é **96 pessoas nessas mesas** (campo "Limite de cadeiras (sem bistrô)" em Regras). A folga serve para cadeiras extras: a lateral aceita até 16 e a central até 8, desde que a soma geral não passe de 96. Os bistrôs ficam fora dessa conta. O banco confere o limite em toda criação, edição e troca de mesa, inclusive com duas reservas chegando ao mesmo tempo.
 3. **Regras de pagamento e prazos:** sinal (30%), desconto no Pix (5%), validade da pré-reserva (48h), aviso antes de expirar (12h), data do saldo (20/12/2026), desconto por criança (R$ 100) e idade (11 anos).
 4. **Lotes e preços:** o **Lote 1** vem com os preços combinados. Para criar um Lote 2, toque em **+ Novo lote**. Ele copia os preços e nasce inativo; ajuste valores e vigência e ative. Vale o primeiro lote ativo, pela ordem, dentro da vigência. **Reservas já feitas mantêm o preço do lote em que foram criadas.**
 5. **Termos:** o texto integral está lá. Editar cria uma nova versão, e cada reserva guarda a versão que o cliente aceitou, com data e hora.
@@ -136,7 +136,7 @@ Todos já foram aplicados no projeto `lucpxoynpvogkvzepagi`. Para um projeto nov
 1. `supabase/reveillon-schema.sql`: tabelas, o índice único de 1 reserva ativa por mesa e a coluna `rv_booking_id` em `notification_queue`.
 2. `supabase/reveillon-functions.sql`: `rv_calc_price` (função única de preço), RPCs, triggers e o job pg_cron `rv-reveillon-tick` (a cada 15 min).
 3. `supabase/reveillon-rls.sql`: RLS, grants e a publicação Realtime de `rv_table_state`.
-4. `supabase/reveillon-seed.sql`: evento Réveillon 2027, termos, tipos, 20 mesas (7 laterais, 8 centrais, 5 bistrôs) e Lote 1.
+4. `supabase/reveillon-seed.sql`: evento Réveillon 2027, termos, tipos, 21 mesas (7 laterais, 9 centrais, 5 bistrôs; numeradas pela posição, bistrô com "B" e sem número repetido) e Lote 1.
 5. `supabase/reveillon-integration.sql`: bloqueio de 31/12 e aviso na reserva comum.
 
 `supabase/reveillon-tests.sql` roda todos os testes dentro de uma transação com ROLLBACK (nada fica gravado): preços, anti-colisão, expiração e permissões de anon e operador. O resultado esperado é `TODOS OS TESTES PASSARAM`.

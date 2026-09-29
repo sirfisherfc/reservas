@@ -455,7 +455,7 @@ Esta é uma pré-proposta. Vamos confirmar disponibilidade, operação e eventua
 
 ## 19. Limites conhecidos
 
-- A Edge Function e os SQLs ainda não foram aplicados no Supabase.
+- Implantado em produção em 29/09/2026: migration `20260929000000`, função `event-quote`, página pública e rotina interna.
 - O cálculo de disponibilidade usa reservas e capacidade existentes, mas precisa ser validado contra a operação real de eventos, que ocupa área e janela diferentes de uma mesa comum.
 - O agregado de oportunidade está vazio; não há taxa de alta demanda inventada.
 - PDF, aceite, sinal e resultado real pertencem às próximas etapas.

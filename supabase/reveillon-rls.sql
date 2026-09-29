@@ -122,6 +122,7 @@ grant execute on function public.rv_admin_void_payment(uuid, text) to authentica
 grant execute on function public.rv_admin_apply_discount(uuid, text, numeric, text) to authenticated;
 grant execute on function public.rv_admin_mark_paid(uuid, text) to authenticated;
 grant execute on function public.rv_admin_extend_hold(uuid, int) to authenticated;
+grant execute on function public.rv_admin_set_hold(uuid, timestamptz) to authenticated;
 grant execute on function public.rv_admin_cancel(uuid, text) to authenticated;
 grant execute on function public.rv_admin_move(uuid, uuid, boolean, boolean) to authenticated;
 grant execute on function public.rv_admin_update_booking(uuid, text, text, text, int, int, int, text, text, boolean) to authenticated;

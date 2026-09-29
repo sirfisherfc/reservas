@@ -1409,6 +1409,41 @@ begin
 end;
 $$;
 
+-- Prazo do sinal numa data/hora escolhida pelo admin (pode encurtar ou alongar).
+-- Os botões +12h/+24h/+48h do painel só preenchem essa data.
+create or replace function public.rv_admin_set_hold(p_booking_id uuid, p_until timestamptz)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  b public.rv_bookings%rowtype;
+  v_starts timestamptz;
+begin
+  perform public.rv_require_admin();
+  if p_until is null or p_until <= now() + interval '5 minutes' then
+    raise exception 'INVALID_INPUT: Escolha uma data e hora no futuro.';
+  end if;
+  select * into b from public.rv_bookings where id = p_booking_id for update;
+  if not found or b.status <> 'pre_reserva' then
+    raise exception 'INVALID_STATUS: Só pré-reservas têm prazo para estender.';
+  end if;
+  select starts_at into v_starts from public.rv_events where id = b.event_id;
+  if p_until > v_starts then
+    raise exception 'INVALID_INPUT: O prazo não pode passar do início do evento.';
+  end if;
+  update public.rv_bookings set hold_expires_at = p_until where id = b.id;
+  -- novo prazo = pode avisar de novo antes de expirar
+  delete from public.notification_queue q
+   where q.rv_booking_id = b.id and q.type = 'rv_expiry_warning' and q.status in ('sent', 'failed', 'skipped');
+  perform public.rv_log(b.id, 'prazo_estendido', b.status, b.status,
+    jsonb_build_object('de', b.hold_expires_at, 'para', p_until));
+  return public.rv_booking_detail(b.id);
+end;
+$$;
+
+
 create or replace function public.rv_admin_cancel(p_booking_id uuid, p_reason text)
 returns jsonb
 language plpgsql

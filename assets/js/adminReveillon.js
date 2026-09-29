@@ -367,7 +367,7 @@ function renderBookingSheet(d) {
     html += `<p class="rv-subhead">Ações</p><div class="rv-actions">
       <button class="btn btn--outline" type="button" data-act="discount">Desconto</button>
       ${d.status !== 'quitada' ? '<button class="btn btn--outline" type="button" data-act="paid">Marcar quitada</button>' : ''}
-      ${d.status === 'pre_reserva' ? '<button class="btn btn--outline" type="button" data-act="extend">Estender prazo</button>' : ''}
+      ${d.status === 'pre_reserva' ? '<button class="btn btn--outline" type="button" data-act="extend">Alterar prazo</button>' : ''}
       <button class="btn btn--outline" type="button" data-act="move">Mover de mesa</button>
       <button class="btn btn--outline" type="button" data-act="edit">Editar dados</button>
       <button class="btn btn--danger" type="button" data-act="cancel">Cancelar</button>
@@ -550,20 +550,30 @@ function openMarkPaidForm(d) {
 }
 
 function openExtendForm(d) {
-  const inner = `<p class="text-soft">Prazo atual: ${esc(dateTimeBR(d.hold_expires_at, board.event.timezone))}</p>
+  const tz = board.event.timezone;
+  // Os atalhos somam a partir do prazo atual (ou de agora, se já venceu) e
+  // só preenchem o campo; o admin pode escolher qualquer data e hora.
+  const base = Math.max(new Date(d.hold_expires_at || Date.now()).getTime(), Date.now());
+  const plus = (h) => toLocalInput(new Date(base + h * 3600e3).toISOString(), tz);
+  const inner = `<p class="text-soft">Prazo atual: ${esc(dateTimeBR(d.hold_expires_at, tz))}</p>
     <div class="rv-seg" id="ext-seg">
       <button type="button" data-h="12">+12h</button>
       <button type="button" data-h="24" class="is-active">+24h</button>
       <button type="button" data-h="48">+48h</button>
-    </div>`;
-  let hours = 24;
-  const root = mountForm(d, formShell(d, 'Estender prazo do sinal', inner, 'Estender'), () => supabase.rpc('rv_admin_extend_hold', {
-    p_booking_id: d.id, p_hours: hours,
-  }));
+    </div>
+    <div class="form-field"><label for="ext-until">Novo prazo</label>
+      <input id="ext-until" type="datetime-local" value="${plus(24)}" max="${toLocalInput(board.event.starts_at, tz)}" required /></div>`;
+  const root = mountForm(d, formShell(d, 'Alterar prazo do sinal', inner, 'Salvar prazo'), (r) => {
+    const until = fromLocalInput(qs('#ext-until', r).value, tz);
+    if (!until) return { data: null, error: { message: 'INVALID_INPUT: Escolha a data e a hora.' } };
+    return supabase.rpc('rv_admin_set_hold', { p_booking_id: d.id, p_until: until });
+  });
+  const input = qs('#ext-until', root);
   qsa('#ext-seg button', root).forEach((b) => b.addEventListener('click', () => {
-    hours = Number(b.dataset.h);
+    input.value = plus(Number(b.dataset.h));
     qsa('#ext-seg button', root).forEach((x) => x.classList.toggle('is-active', x === b));
   }));
+  input.addEventListener('input', () => qsa('#ext-seg button', root).forEach((x) => x.classList.remove('is-active')));
 }
 
 function openMoveForm(d) {

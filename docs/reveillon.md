@@ -66,7 +66,7 @@ O status muda sozinho e o cliente recebe o e-mail de "sinal recebido" ou de "qui
 - **WhatsApp:** quatro botões com mensagem pronta para o cliente: cobrar sinal, sinal recebido, lembrar saldo e confirmação final. Os textos são editáveis em Configurar → Mensagens de WhatsApp.
 - **Desconto:** em % ou R$, com motivo obrigatório. Fica registrado quem aplicou.
 - **Marcar quitada:** se ainda houver saldo, pede uma justificativa.
-- **Estender prazo:** +12h, +24h ou +48h (só em pré-reserva).
+- **Alterar prazo:** qualquer data e hora até o início do evento; os botões +12h, +24h e +48h só preenchem o campo (só em pré-reserva). RPC `rv_admin_set_hold`.
 - **Mover de mesa:** mostra o valor novo antes de confirmar se o tipo de mesa mudar.
 - **Editar dados:** nome, WhatsApp, e-mail, pessoas e observações. O valor é recalculado.
 - **Cancelar:** com motivo. Os pagamentos continuam registrados; a devolução, se houver, é feita por fora.

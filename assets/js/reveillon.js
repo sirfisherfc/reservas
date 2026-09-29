@@ -237,6 +237,9 @@ function initMapZoom() {
   qsa('.rv-zoom button').forEach((b) => b.addEventListener('click', () => {
     setWidth(width() * (b.dataset.zoom === 'in' ? 1.35 : 1 / 1.35));
   }));
+
+  // No celular o mapa abre inteiro na tela; quem quiser aproxima.
+  if (wrap.scrollWidth > wrap.clientWidth) setWidth(wrap.clientWidth);
 }
 
 // Botão fixo no celular: aparece depois do topo e some quando o mapa, o

@@ -287,15 +287,15 @@
 .rv-map-frame { position: relative; }
 .rv-zoom {
   position: absolute;
-  right: 10px;
-  bottom: 10px;
+  top: 6px;
+  right: 8px;
   display: flex;
-  flex-direction: column;
   gap: 6px;
 }
+/* Em cima da faixa do mar, onde não cobre nenhuma mesa */
 .rv-zoom button {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border: 1px solid var(--rv-line);
   border-radius: 50%;
   background: rgba(255, 255, 255, .92);

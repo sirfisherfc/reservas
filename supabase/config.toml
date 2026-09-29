@@ -396,6 +396,11 @@ verify_jwt = false
 [functions.send-openai-ads-conversions]
 verify_jwt = false
 
+# Configurador público de eventos. A rota pública calcula e envia solicitações;
+# rotas administrativas validam manualmente o JWT e o cadastro em app_users.
+[functions.event-quote]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

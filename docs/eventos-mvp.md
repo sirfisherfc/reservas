@@ -13,7 +13,7 @@ Atualizado em 29/09/2026. Este documento separa decisões confirmadas, cálculos
 - **PROVISÓRIA:** CMV de cada produto = 35% do preço vigente, até existir custo real confiável.
 - **PROVISÓRIA:** margem de contribuição protegida de 52% no cálculo técnico e piso de alerta de 45% depois dos custos estimados.
 - **PROVISÓRIA:** diária adicional de R$ 100 e regras de dimensionamento descritas abaixo.
-- **PENDENTE DE APROVAÇÃO:** publicar a Edge Function, aplicar a migration canônica e publicar os frontends. A rotina do `gestao` já está integrada localmente e começa exclusiva do admin.
+- **PUBLICADO:** Edge Function, migrations, página pública e rotina interna estão em produção. A rotina começa exclusiva do admin e os demais papéis continuam configuráveis em `permissoes.html`.
 - **PENDENTE DE DADOS:** custo de oportunidade e capacidade histórica ao vivo. O MVP não inventa adicional de alta demanda; marca o caso para validação quando o agregado não existe.
 
 ## 2. Diagnóstico dos arquivos e dados
@@ -334,7 +334,7 @@ O navegador nunca recebe CMV, margem, piso, custo de oportunidade, custo de equi
 
 ## 13. Rotina interna e permissões
 
-Integração implementada localmente no `gestao`:
+Integração publicada no `gestao`:
 
 1. `eventos.html` segue `assets/auth.js` e o padrão visual das rotinas;
 2. `eventos.html` está na lista de páginas configuráveis, em Rotinas e em `permissoes.html`;
@@ -407,7 +407,7 @@ Esta é uma pré-proposta. Vamos confirmar disponibilidade, operação e eventua
 
 ## 17. Plano por etapas
 
-### Etapa A - MVP implementado localmente
+### Etapa A - MVP publicado
 
 - página pública e privacidade;
 - motor server-side e 10 cenários automatizados;
@@ -415,23 +415,22 @@ Esta é uma pré-proposta. Vamos confirmar disponibilidade, operação e eventua
 - classificação dos 81 produtos;
 - armazenamento, auditoria e rotas administrativas da Edge Function.
 
-### Etapa B - aplicação controlada
+### Etapa B - aplicação controlada concluída
 
-- revisar regras com cozinha/proprietário;
-- aplicar `eventos-schema.sql`, `eventos-rls.sql`, `eventos-seed.sql`;
-- publicar `event-quote` com `verify_jwt=false` e validação interna das rotas admin;
-- testar CORS, rate limit e RLS em staging;
-- alimentar agregados de demanda;
-- publicar o site.
+- migrations `20260929000000` e `20260929010000` aplicadas no projeto `portal`;
+- `event-quote` publicada com validação própria das rotas administrativas;
+- CORS, rate limit, RLS, cotação pública, e-mail e WhatsApp conferidos em produção;
+- páginas pública e administrativa publicadas;
+- agregados de demanda continuam vazios até haver uma fonte validada.
 
-### Etapa C - rotina no `gestao` (implementada)
+### Etapa C - rotina no `gestao` (publicada)
 
 - editar configuração, quantidades, preço e condições comerciais com auditoria;
 - gerar PDF versionado com regras, quantidades e investimento;
 - avisar administradores ativos por e-mail quando chegar uma solicitação;
 - oferecer ao cliente contato por WhatsApp com o código preenchido;
-- aprovar proposta, aceite e sinal;
-- registrar realizado do evento e recalibrar consumo/margem.
+- aprovar ou recusar a proposta e registrar a trilha administrativa;
+- aceite eletrônico, cobrança do sinal, bloqueio automático da data e registro do realizado permanecem como próxima fase.
 
 ### Etapa D - aprendizado
 

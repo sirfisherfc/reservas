@@ -424,10 +424,12 @@ Esta é uma pré-proposta. Vamos confirmar disponibilidade, operação e eventua
 - alimentar agregados de demanda;
 - publicar o site.
 
-### Etapa C - rotina no `gestao` (interface implementada; publicação pendente)
+### Etapa C - rotina no `gestao` (implementada)
 
-- publicar página, migration e permissão editável já implementadas;
-- gerar PDF e resumo de WhatsApp;
+- editar configuração, quantidades, preço e condições comerciais com auditoria;
+- gerar PDF versionado com regras, quantidades e investimento;
+- avisar administradores ativos por e-mail quando chegar uma solicitação;
+- oferecer ao cliente contato por WhatsApp com o código preenchido;
 - aprovar proposta, aceite e sinal;
 - registrar realizado do evento e recalibrar consumo/margem.
 
@@ -455,8 +457,8 @@ Esta é uma pré-proposta. Vamos confirmar disponibilidade, operação e eventua
 
 ## 19. Limites conhecidos
 
-- Implantado em produção em 29/09/2026: migration `20260929000000`, função `event-quote`, página pública e rotina interna.
+- Implantado em produção em 29/09/2026: migrations `20260929000000` e `20260929010000`, função `event-quote`, página pública e rotina interna.
 - O cálculo de disponibilidade usa reservas e capacidade existentes, mas precisa ser validado contra a operação real de eventos, que ocupa área e janela diferentes de uma mesa comum.
 - O agregado de oportunidade está vazio; não há taxa de alta demanda inventada.
-- PDF, aceite, sinal e resultado real pertencem às próximas etapas.
+- Aceite eletrônico, cobrança do sinal, bloqueio automático da data e resultado real pertencem às próximas etapas.
 - O preço é proposta comercial, não estimativa de lucro líquido.

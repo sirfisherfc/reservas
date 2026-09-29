@@ -4,11 +4,19 @@ import {
   type LiveSignals,
   type PricingOverrides,
   type QuoteInput,
+  validateInput,
 } from "./pricing.ts";
+import { buildProposalPdf } from "./proposal_pdf.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+const RESEND_FROM = Deno.env.get("RESEND_FROM") ??
+  "Sir Fisher Praia <reservas@sirfisher.com.br>";
+const EVENT_NOTIFICATION_EMAIL = Deno.env.get("EVENT_NOTIFICATION_EMAIL") ?? "";
+const EVENT_WHATSAPP_NUMBER = (Deno.env.get("EVENT_WHATSAPP_NUMBER") ??
+  Deno.env.get("WHATSAPP_NUMBER") ?? "5585988544274").replace(/\D/g, "");
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
   auth: { persistSession: false },
 });
@@ -33,6 +41,41 @@ function json(body: unknown, status = 200) {
 
 function cleanText(value: unknown, max: number): string {
   return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, max);
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? "").replace(/[&<>"']/g, (char) =>
+    ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    })[char] ?? char);
+}
+
+function cleanList(value: unknown, maxItems = 20): string[] {
+  const source = Array.isArray(value) ? value : String(value ?? "").split("\n");
+  return source.map((item) => cleanText(item, 160)).filter(Boolean).slice(
+    0,
+    maxItems,
+  );
+}
+
+function cleanQuantities(value: unknown): Record<string, number> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .map(([key, quantity]) =>
+        [
+          key.replace(/[^a-z0-9_]/gi, "").slice(0, 60),
+          Math.ceil(Number(quantity)),
+        ] as const
+      )
+      .filter(([key, quantity]) =>
+        key && Number.isFinite(quantity) && quantity >= 0 && quantity <= 10000
+      ),
+  );
 }
 
 function normalizePhone(value: unknown): string {
@@ -247,6 +290,85 @@ async function quote(input: QuoteInput) {
   };
 }
 
+async function notifyStaff(request: Record<string, unknown>) {
+  try {
+    if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY não configurada");
+    const recipients = new Set(
+      EVENT_NOTIFICATION_EMAIL.split(",").map((email) =>
+        email.trim().toLowerCase()
+      ).filter(Boolean),
+    );
+    const { data: profiles, error: profileError } = await admin.from(
+      "perfil_usuario",
+    )
+      .select("user_id").eq("papel", "admin").eq("ativo", true);
+    if (profileError) throw profileError;
+    const adminIds = new Set(
+      (profiles ?? []).map((profile) => profile.user_id),
+    );
+    if (adminIds.size) {
+      const { data: usersData, error: usersError } = await admin.auth.admin
+        .listUsers({ page: 1, perPage: 1000 });
+      if (usersError) throw usersError;
+      for (const user of usersData.users) {
+        if (adminIds.has(user.id) && user.email) {
+          recipients.add(user.email.toLowerCase());
+        }
+      }
+    }
+    if (!recipients.size) {
+      throw new Error("Nenhum administrador ativo com e-mail");
+    }
+    const pub = (request.public_snapshot ?? {}) as Record<string, unknown>;
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: RESEND_FROM,
+        to: [...recipients],
+        subject: `Novo orçamento de evento ${request.public_code}`,
+        html:
+          `<div style="font-family:Arial,sans-serif;color:#12293d;line-height:1.55;max-width:620px">
+          <h1 style="font-size:22px">Novo orçamento de evento</h1>
+          <p><strong>${
+            escapeHtml(request.public_code)
+          }</strong> foi enviado por ${escapeHtml(request.customer_name)}.</p>
+          <p><strong>Data:</strong> ${escapeHtml(request.event_date)} às ${
+            escapeHtml(String(request.start_time).slice(0, 5))
+          }<br>
+          <strong>Convidados:</strong> ${escapeHtml(request.guests)}<br>
+          <strong>Opção:</strong> ${escapeHtml(pub.name)}<br>
+          <strong>Total:</strong> ${
+            escapeHtml(
+              new Intl.NumberFormat("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              }).format(Number(pub.total) || 0),
+            )
+          }</p>
+          <p><a href="https://admin.sirfisher.com.br/eventos.html" style="display:inline-block;background:#df5b3b;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px">Abrir no painel</a></p>
+        </div>`,
+      }),
+    });
+    if (!response.ok) throw new Error(`Resend HTTP ${response.status}`);
+    await admin.from("event_requests").update({
+      notification_sent_at: new Date().toISOString(),
+      notification_error: null,
+    }).eq("id", request.id);
+  } catch (error) {
+    console.error("event notification failed", error);
+    await admin.from("event_requests").update({
+      notification_error: cleanText(
+        error instanceof Error ? error.message : "Falha desconhecida",
+        500,
+      ),
+    }).eq("id", request.id);
+  }
+}
+
 async function submit(body: Record<string, unknown>) {
   if (body.website) throw new Error("Solicitação inválida.");
   if (body.acceptedPrivacy !== true) {
@@ -301,7 +423,9 @@ async function submit(body: Record<string, unknown>) {
     menu_version: selected.menuVersion,
     accepted_privacy_at: new Date().toISOString(),
     source: "site",
-  }).select("id,public_code").single();
+  }).select(
+    "id,public_code,customer_name,event_date,start_time,guests,public_snapshot",
+  ).single();
   if (error) throw error;
   await admin.from("event_request_audit").insert({
     request_id: data.id,
@@ -312,9 +436,15 @@ async function submit(body: Record<string, unknown>) {
       selected_option_id: selected.id,
     },
   });
+  await notifyStaff(data);
+  const whatsappText = encodeURIComponent(
+    `Olá! Acabei de gerar a proposta ${data.public_code} para meu evento e gostaria de falar com a equipe.`,
+  );
   return json({
     publicCode: data.public_code,
     message: "Configuração enviada para validação.",
+    whatsappUrl:
+      `https://api.whatsapp.com/send?phone=${EVENT_WHATSAPP_NUMBER}&text=${whatsappText}`,
   }, 201);
 }
 
@@ -327,7 +457,7 @@ async function adminAction(
   if (!staff) return json({ error: "Não autorizado." }, 401);
   if (action === "admin-list") {
     const { data, error } = await admin.from("event_requests").select(
-      "id,public_code,customer_name,event_date,start_time,guests,risk_level,status,public_snapshot,created_at",
+      "id,public_code,customer_name,event_date,start_time,guests,risk_level,status,public_snapshot,notification_sent_at,notification_error,created_at",
     ).order("created_at", { ascending: false }).limit(100);
     if (error) throw error;
     return json({ requests: data ?? [] });
@@ -338,6 +468,198 @@ async function adminAction(
   ).select("*").eq("id", id).single();
   if (currentError) throw currentError;
   if (action === "admin-detail") return json({ request: current });
+
+  if (action === "admin-adjust") {
+    const raw = body.adjustment && typeof body.adjustment === "object"
+      ? body.adjustment as Record<string, unknown>
+      : {};
+    const configuration = {
+      ...(current.configuration as Record<string, unknown>),
+      date: cleanText(raw.date ?? current.event_date, 10),
+      startTime: cleanText(
+        raw.startTime ?? String(current.start_time).slice(0, 5),
+        5,
+      ),
+      durationHours: Number(raw.durationHours ?? current.duration_hours),
+      guests: Number(raw.guests ?? current.guests),
+      children: Number(raw.children ?? current.children),
+    } as QuoteInput;
+    const validationErrors = validateInput(configuration);
+    if (validationErrors.length) throw new Error(validationErrors.join(" "));
+    const pricePerPerson = Number(
+      raw.pricePerPerson ?? current.public_snapshot?.pricePerPerson,
+    );
+    if (
+      !Number.isFinite(pricePerPerson) || pricePerPerson <= 0 ||
+      pricePerPerson > 10000
+    ) {
+      throw new Error("Informe um valor por pessoa válido.");
+    }
+    const note = cleanText(body.note, 1000);
+    const lowerPrice =
+      pricePerPerson < Number(current.public_snapshot?.pricePerPerson ?? 0);
+    if (
+      lowerPrice &&
+      (staff.role !== "admin" || body.discountApproved !== true || !note)
+    ) {
+      return json({
+        error:
+          "Redução de preço exige administrador, aprovação de desconto e justificativa.",
+      }, 403);
+    }
+    const termsRaw = raw.terms && typeof raw.terms === "object"
+      ? raw.terms as Record<string, unknown>
+      : {};
+    const proposalTerms = {
+      validityDays: Math.min(
+        30,
+        Math.max(1, Math.round(Number(termsRaw.validityDays) || 5)),
+      ),
+      depositPercent: Math.min(
+        100,
+        Math.max(0, Number(termsRaw.depositPercent) || 20),
+      ),
+      balanceDaysBefore: Math.min(
+        60,
+        Math.max(0, Math.round(Number(termsRaw.balanceDaysBefore) || 7)),
+      ),
+      additionalNotes: cleanText(termsRaw.additionalNotes, 1000),
+    };
+    const publicSnapshot = {
+      ...current.public_snapshot,
+      name: cleanText(raw.name ?? current.public_snapshot?.name, 140),
+      description: cleanText(
+        raw.description ?? current.public_snapshot?.description,
+        500,
+      ),
+      beverageLabel: cleanText(
+        raw.beverageLabel ?? current.public_snapshot?.beverageLabel,
+        180,
+      ),
+      durationHours: configuration.durationHours,
+      pricePerPerson: Math.round(pricePerPerson * 100) / 100,
+      total: Math.round(pricePerPerson * configuration.guests * 100) / 100,
+      additions: raw.additions == null
+        ? current.public_snapshot?.additions
+        : cleanList(raw.additions),
+      notIncluded: raw.notIncluded == null
+        ? current.public_snapshot?.notIncluded
+        : cleanList(raw.notIncluded),
+      exact: false,
+      validationMessage:
+        "Proposta ajustada manualmente e sujeita ao aceite do cliente.",
+    };
+    const previousInternal = current.internal_snapshot as Record<
+      string,
+      unknown
+    >;
+    const alerts = cleanList(previousInternal.alerts ?? []);
+    if (!alerts.includes("Proposta ajustada manualmente.")) {
+      alerts.push("Proposta ajustada manualmente.");
+    }
+    const internalSnapshot = {
+      ...previousInternal,
+      ...publicSnapshot,
+      adults: Math.max(0, configuration.guests - (configuration.children ?? 0)),
+      portions: raw.portions == null
+        ? previousInternal.portions
+        : cleanQuantities(raw.portions),
+      drinks: raw.drinks == null
+        ? previousInternal.drinks
+        : cleanQuantities(raw.drinks),
+      alerts,
+      manualAdjustment: true,
+    };
+    const patch: Record<string, unknown> = {
+      event_date: configuration.date,
+      start_time: configuration.startTime,
+      duration_hours: configuration.durationHours,
+      guests: configuration.guests,
+      children: configuration.children ?? 0,
+      configuration,
+      public_snapshot: publicSnapshot,
+      internal_snapshot: internalSnapshot,
+      proposal_terms: proposalTerms,
+      status: "pending",
+      last_adjusted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      reviewed_by_user_id: staff.id,
+    };
+    if (lowerPrice) {
+      patch.discount_approved = true;
+      patch.discount_reason = note;
+      patch.discount_approved_by_user_id = staff.id;
+    }
+    const { data: adjusted, error: adjustmentError } = await admin.from(
+      "event_requests",
+    )
+      .update(patch).eq("id", id).select("*").single();
+    if (adjustmentError) throw adjustmentError;
+    await admin.from("event_request_audit").insert({
+      request_id: id,
+      action: "adjusted",
+      actor_type: staff.role,
+      actor_user_id: staff.id,
+      before_data: {
+        public_snapshot: current.public_snapshot,
+        internal_snapshot: current.internal_snapshot,
+      },
+      after_data: {
+        public_snapshot: publicSnapshot,
+        internal_snapshot: internalSnapshot,
+        note,
+      },
+    });
+    return json({ request: adjusted });
+  }
+
+  if (action === "admin-proposal-pdf") {
+    const generatedAt = new Date().toISOString();
+    const nextVersion = Number(current.proposal_version ?? 0) + 1;
+    const pdfBytes = await buildProposalPdf({
+      ...current,
+      proposal_version: nextVersion,
+      proposal_generated_at: generatedAt,
+    });
+    const { data: proposal, error: proposalError } = await admin.from(
+      "event_requests",
+    ).update({
+      status: "final_proposal_ready",
+      proposal_version: nextVersion,
+      proposal_generated_at: generatedAt,
+      updated_at: generatedAt,
+      reviewed_by_user_id: staff.id,
+    }).eq("id", id).select("*").single();
+    if (proposalError) throw proposalError;
+    await admin.from("event_request_audit").insert({
+      request_id: id,
+      action: "proposal_generated",
+      actor_type: staff.role,
+      actor_user_id: staff.id,
+      before_data: {
+        status: current.status,
+        proposal_version: current.proposal_version,
+      },
+      after_data: {
+        status: "final_proposal_ready",
+        proposal_version: nextVersion,
+      },
+    });
+    const pdfBuffer = pdfBytes.buffer.slice(
+      pdfBytes.byteOffset,
+      pdfBytes.byteOffset + pdfBytes.byteLength,
+    ) as ArrayBuffer;
+    return new Response(new Blob([pdfBuffer], { type: "application/pdf" }), {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/pdf",
+        "Content-Disposition":
+          `attachment; filename="proposta-${proposal.public_code}-v${nextVersion}.pdf"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  }
 
   const allowed = [
     "approved",

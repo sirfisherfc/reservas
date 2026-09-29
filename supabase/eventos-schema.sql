@@ -104,6 +104,17 @@ create table if not exists public.event_requests (
   discount_approved boolean not null default false,
   discount_reason text,
   discount_approved_by_user_id uuid,
+  proposal_terms jsonb not null default jsonb_build_object(
+    'validityDays', 5,
+    'depositPercent', 20,
+    'balanceDaysBefore', 7,
+    'additionalNotes', ''
+  ),
+  proposal_version int not null default 0,
+  proposal_generated_at timestamptz,
+  last_adjusted_at timestamptz,
+  notification_sent_at timestamptz,
+  notification_error text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint event_discount_approval_complete check (

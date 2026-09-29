@@ -127,7 +127,6 @@ function selectTable(table) {
   lastSim = null;
   drawMap();
   renderTablePanel();
-  qs('#sucesso').classList.add('hidden');
   qs('#mesa').classList.remove('hidden');
   qs('#form-alert-area').innerHTML = '';
   qs('#mesa').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -312,9 +311,28 @@ qs('#rv-form').addEventListener('submit', async (evt) => {
 
   justBookedTableId = selected.id;
   trackPrebooking(result, { name, phone, email });
+  saveBooking(result);
   showSuccess(result);
   refresh();
 });
+
+// A última pré-reserva fica salva no aparelho do cliente até o prazo do sinal:
+// no celular, abrir o WhatsApp pode descartar a aba, e sem isto ele perderia
+// o código e a chave Pix.
+const BOOKING_KEY = 'sf_rv_last_booking';
+
+function saveBooking(r) {
+  try { window.localStorage.setItem(BOOKING_KEY, JSON.stringify(r)); } catch { /* storage bloqueado */ }
+}
+
+function loadBooking() {
+  try {
+    const r = JSON.parse(window.localStorage.getItem(BOOKING_KEY) || 'null');
+    if (r && new Date(r.hold_expires_at) > new Date()) return r;
+    window.localStorage.removeItem(BOOKING_KEY);
+  } catch { /* storage bloqueado ou dado inválido */ }
+  return null;
+}
 
 function showSuccess(r) {
   const e = data.event;
@@ -365,11 +383,15 @@ function showSuccess(r) {
   setText('#success-deadline', `${fillTemplate(t.guarantee_note, vars)} Prazo: ${dateTimeBR(r.hold_expires_at, tz)}.`);
   const msg = fillTemplate(e.whatsapp_template, bookingMessageVars(r, e));
   qs('#success-whatsapp').href = waHref(r.whatsapp || e.whatsapp_number, msg);
+  qs('#success-help').href = waHref(r.whatsapp || e.whatsapp_number,
+    `Olá! Tenho uma dúvida sobre a minha pré-reserva ${r.public_code} do ${e.name}.`);
+  setText('#my-booking-link', `Ver minha pré-reserva ${r.public_code}`);
+  qs('#my-booking').classList.remove('hidden');
   qs('#sucesso').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// Só rola até o mapa: a confirmação continua na página, logo abaixo.
 qs('#success-back').addEventListener('click', () => {
-  qs('#sucesso').classList.add('hidden');
   qs('#mapa').scrollIntoView({ behavior: 'smooth' });
 });
 
@@ -467,6 +489,8 @@ async function init() {
   renderStatic();
   drawMap();
   centerMapScroll(svg);
+  const saved = loadBooking();
+  if (saved) showSuccess(saved);
   subscribe();
 }
 

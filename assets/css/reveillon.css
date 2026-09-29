@@ -144,6 +144,14 @@
 }
 .rv-pix__label { margin: 0; font-size: .85rem; color: var(--color-text-soft); }
 .rv-pix__key { margin: 4px 0; font-size: 1.3rem; font-weight: 800; letter-spacing: .02em; word-break: break-all; }
+/* O contorno padrão do .btn--outline some sobre o fundo areia. */
+#pix-copy {
+  background: var(--color-secondary);
+  border-color: var(--color-secondary);
+  color: #fff;
+}
+#pix-copy:hover { background: var(--color-secondary-dark); }
+#pix-copy:focus-visible { outline: 3px solid var(--color-secondary-dark); outline-offset: 2px; }
 
 /* Termos */
 .rv-dialog {

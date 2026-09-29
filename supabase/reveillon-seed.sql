@@ -115,9 +115,9 @@ insert into public.rv_table_types (event_id, code, name, description, color, min
 select e.id, v.code, v.name, v.description, v.color, v.min_people, v.included_people, v.max_people, v.allows_extra, v.max_infants, v.sort_order, v.code <> 'bistro'
 from public.rv_events e
 cross join (values
-  ('lateral', 'Mesa lateral', 'Junto à mureta, de frente para a praia. Duas mesas unidas, 8 cadeiras.', '#2f6fb3', 8, 8, 16, true, 4, 1),
+  ('lateral', 'Mesa lateral', 'Junto à mureta, de frente para a praia. Duas mesas unidas, 8 cadeiras.', '#2f6fb3', 1, 8, 16, true, 4, 1),
   ('central', 'Mesa central', 'No centro do salão. O valor cobre até 4 pessoas.', '#2e8b57', 1, 4, 8, true, 3, 2),
-  ('bistro', 'Bistrô', 'Mesa alta para 2 pessoas.', '#7b4bb3', 2, 2, 2, false, 1, 3)
+  ('bistro', 'Bistrô', 'Mesa alta para 2 pessoas.', '#7b4bb3', 1, 2, 2, false, 1, 3)
 ) as v(code, name, description, color, min_people, included_people, max_people, allows_extra, max_infants, sort_order)
 where e.slug = 'reveillon-2027'
 on conflict (event_id, code) do nothing;

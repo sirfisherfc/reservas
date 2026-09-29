@@ -163,7 +163,7 @@ function renderAvailability() {
     const n = ofType.filter((tb) => tb.state === 'livre').length;
     const left = n === 0 ? 'Esgotadas' : n === 1 ? 'Última disponível' : `${n} disponíveis`;
     const inc = ty.included_people;
-    let people = `Para ${ty.min_people === inc ? '' : 'até '}${inc} pessoas`;
+    let people = `Valor da mesa para até ${inc} pessoas`;
     if (ty.allows_extra_chairs && ty.max_people > inc) people += ` · até ${ty.max_people} com cadeiras extras`;
     const price = ty.table_price != null ? `
         <p class="rv-type__price">${esc(money(ty.table_price))}</p>
@@ -294,7 +294,7 @@ function renderTablePanel() {
   setText('#tp-title', `${ty.name} ${selected.label}`);
   setText('#tp-desc', ty.description);
   const facts = [
-    ['Pessoas', peopleRange(ty) + (ty.min_people <= 1 && ty.included_people > 1 ? ` (valor cobre ${ty.included_people})` : '')],
+    ['Pessoas', peopleRange(ty) + (ty.max_people > ty.included_people ? ` (valor cobre ${ty.included_people})` : '')],
     ['Valor da mesa', money(ty.table_price)],
     ['Consumação inclusa', money(ty.table_consumption)],
   ];
@@ -323,6 +323,14 @@ function renderSteppers() {
     row.querySelector('[data-step="-1"]').disabled = counts[field] <= min;
     row.querySelector('[data-step="1"]').disabled = counts[field] >= max;
   });
+  // Valor fixo da mesa: com menos gente o preço não cai, e isso precisa estar
+  // dito na hora, senão parece erro.
+  const seated = counts.adults + counts.children;
+  const note = qs('#fixed-note');
+  note.textContent = seated < ty.included_people
+    ? `O valor da mesa é o mesmo para até ${ty.included_people} pessoas. A consumação de ${money(ty.table_consumption)} fica para o grupo.`
+    : '';
+  note.classList.toggle('hidden', !note.textContent);
 }
 
 qsa('.rv-stepper').forEach((row) => {

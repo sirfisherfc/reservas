@@ -400,11 +400,6 @@ const BEVERAGE: Record<BeverageKey, {
   },
 };
 
-const PROFILE_NAME: Record<ProfileKey, string> = {
-  essencial: "Essencial",
-  equilibrada: "Equilibrada",
-  completa: "Completa",
-};
 const roundMoney = (value: number) =>
   Math.round((value + Number.EPSILON) * 100) / 100;
 const roundUpReal = (value: number) => Math.ceil(value);
@@ -621,7 +616,7 @@ export function buildQuote(
 
     const internal: InternalOption = {
       id: `${foodStyle}-${profile}-${beverageMode}`,
-      name: `${food.label} · ${PROFILE_NAME[profile]}`,
+      name: food.label,
       description: food.description,
       mainFoods: food.foods,
       beverageLabel: beverage.label,

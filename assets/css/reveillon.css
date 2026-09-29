@@ -1,5 +1,5 @@
 /* Réveillon — página pública. Estende style.css (mesma paleta praia/pôr do sol). */
-@import url("./reveillon-map.css");
+@import url("./reveillon-map.css?v=20260928");
 
 /* Página de vendas: fundo claro, fotos reais, títulos em serifa. O degradê
    laranja/verde do style.css fica só nas outras páginas. */

@@ -67,6 +67,7 @@ O evento sai **abaixo do cardápio**: o cliente paga antes, fecha a quantidade e
    - **volume:** 3% (30–40 convidados), 6% (41–60), 8% (61–80), 10% (81 ou mais);
    - **horário:** até 10%. É 10% × (1 − movimento do horário). Com o salão vazio, 10%; no pico, perto de 0%. Evento exclusivo não recebe essa parte;
    - **formato:** petiscos 3%, petiscos + lanche 2%, almoço/jantar 0% (itens em lote custam menos para a cozinha).
+   - **nível** (aplicado depois do teto): Essencial −3 pontos, Equilibrada 0, Completa +3 pontos, para o cliente ver vantagem em subir de nível. Ex.: 10% / 13% / 16%.
 3. **Pisos**, que o preço nunca fura:
    - **custo:** (CMV + freelancers de salão + cozinheiros extras + horas extras + sobra de bebida) ÷ (1 − 35%) × 1,10. Garante margem mínima de 35%. A equipe fixa da cozinha não entra, porque é paga com ou sem evento;
    - **oportunidade:** faturamento esperado do salão na janela do evento × parte do salão ocupada (convidados ÷ capacidade, ou 100% se exclusivo). O evento nunca sai por menos do que o salão faria normalmente naquele horário.

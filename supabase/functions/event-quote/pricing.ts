@@ -158,7 +158,12 @@ export const BASE_HOURS = 3;
 /** Cada hora além da base acrescenta este percentual ao valor do evento (mesma regra da hora extra do contrato). */
 export const EXTRA_HOUR_RATE = 0.10;
 
-export type DiscountKey = "antecipado" | "volume" | "horario" | "cardapio";
+export type DiscountKey =
+  | "antecipado"
+  | "volume"
+  | "horario"
+  | "cardapio"
+  | "nivel";
 /** Descontos sobre o valor de cardápio. Provisórios: recalibrar com eventos reais. */
 export const DISCOUNT = {
   /** Pagamento antecipado e quantidade fechada, com risco de sobra do cliente. */
@@ -174,7 +179,13 @@ export const DISCOUNT = {
     string,
     number
   >,
+  /** Teto da soma antes do ajuste por nível. */
   teto: 0.25,
+  /** Ajuste por nível, aplicado depois do teto: quem leva mais, ganha mais desconto. */
+  nivel: { essencial: -0.03, equilibrada: 0, completa: 0.03 } as Record<
+    string,
+    number
+  >,
 };
 
 /**
@@ -653,7 +664,7 @@ export function buildQuote(
     (value, [min, rate]) => input.guests >= min ? rate : value,
     0,
   );
-  const discountBreakdown: Record<DiscountKey, number> = {
+  const baseBreakdown: Record<Exclude<DiscountKey, "nivel">, number> = {
     antecipado: DISCOUNT.antecipado,
     volume: volumeDiscount,
     horario: input.exclusive
@@ -661,9 +672,9 @@ export function buildQuote(
       : roundMoney(DISCOUNT.horarioMax * (1 - demandIndex) * 1000) / 1000,
     cardapio: DISCOUNT.cardapio[foodStyle] ?? 0,
   };
-  const discountTarget = Math.min(
+  const baseDiscount = Math.min(
     DISCOUNT.teto,
-    Object.values(discountBreakdown).reduce((a, b) => a + b, 0),
+    Object.values(baseBreakdown).reduce((a, b) => a + b, 0),
   );
   const capacity = signals.capacity && signals.capacity > 0
     ? signals.capacity
@@ -718,6 +729,12 @@ export function buildQuote(
       ? null
       : signals.opportunityCostTotal * displacedShare;
     const listPriceTotal = menuEquivalentTotal + durationSurchargeTotal;
+    const levelDiscount = DISCOUNT.nivel[profile] ?? 0;
+    const discountTarget = Math.max(0, baseDiscount + levelDiscount);
+    const discountBreakdown: Record<DiscountKey, number> = {
+      ...baseBreakdown,
+      nivel: levelDiscount,
+    };
     const discountedTotal = listPriceTotal * (1 - discountTarget);
     const commercialMinimum = Math.max(
       discountedTotal,

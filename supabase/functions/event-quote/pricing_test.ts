@@ -213,3 +213,9 @@ Deno.test("cozinha é custo fixo; cozinheiro extra só acima de 60 convidados", 
     2,
   );
 });
+
+Deno.test("Completa tem desconto maior que Equilibrada, que tem maior que Essencial", () => {
+  const [e, q, c] = buildQuote({ ...base, guests: 50 }).internal;
+  assertGreater(q.discountTarget, e.discountTarget);
+  assertGreater(c.discountTarget, q.discountTarget);
+});

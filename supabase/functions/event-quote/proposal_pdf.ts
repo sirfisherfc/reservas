@@ -897,7 +897,10 @@ export async function buildProposalPdf(
   // Investimento
   newPage();
   section("Investimento", "Valores e forma de pagamento");
-  const panelH = 128;
+  const menuValue = Number(pub.menuValueTotal) || 0;
+  const saving = menuValue > total ? menuValue - total : 0;
+  const savingPct = saving ? Math.round((saving / menuValue) * 100) : 0;
+  const panelH = saving ? 150 : 128;
   ensure(panelH + 10);
   const py = y - panelH;
   page.drawRectangle({ x: M, y: py, width: CW, height: panelH, color: C.navy });
@@ -945,7 +948,7 @@ export async function buildProposalPdf(
     color: C.white,
   });
   page.drawLine({
-    start: { x: M + CW / 2, y: py + 44 },
+    start: { x: M + CW / 2, y: py + (saving ? 70 : 44) },
     end: { x: M + CW / 2, y: py + panelH - 24 },
     thickness: 0.5,
     color: C.gold,
@@ -964,15 +967,35 @@ export async function buildProposalPdf(
       color: C.goldSoft,
     },
   );
+  if (saving) {
+    const savingText = `Você economiza ${
+      money(saving)
+    } (${savingPct}%) em relação ao cardápio`;
+    page.drawRectangle({
+      x: M + 30,
+      y: py + 40,
+      width: sansBold.widthOfTextAtSize(savingText, 9.5) + 20,
+      height: 20,
+      color: C.gold,
+    });
+    page.drawText(savingText, {
+      x: M + 40,
+      y: py + 46.5,
+      size: 9.5,
+      font: sansBold,
+      color: C.deep,
+    });
+  }
   y = py - 18;
 
-  const menuValue = Number(pub.menuValueTotal) || 0;
   const rows: Array<[string, string, string]> = [];
-  if (menuValue > total) {
+  if (saving) {
     rows.push([
       "Condição de evento",
-      `Os mesmos itens pedidos no cardápio sairiam por ${money(menuValue)}`,
-      `${Math.round((1 - total / menuValue) * 100)}% de economia`,
+      `Pedindo os mesmos itens${
+        duration > BASE_HOURS ? " e horas" : ""
+      } no cardápio: ${money(menuValue)}`,
+      `- ${money(saving)} (${savingPct}%)`,
     ]);
   }
   rows.push(

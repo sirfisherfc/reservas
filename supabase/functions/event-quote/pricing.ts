@@ -92,7 +92,7 @@ export interface PublicOption {
   durationHours: number;
   pricePerPerson: number;
   total: number;
-  /** Quanto os mesmos itens custariam no cardápio, com os 10%. */
+  /** Valor de referência: mesmos itens no cardápio com os 10%, mais as horas além de 3h pelo preço de tabela. */
   menuValueTotal: number;
   serviceIncluded: true;
   additions: string[];
@@ -854,7 +854,7 @@ export function buildQuote(
       durationHours: input.durationHours,
       pricePerPerson,
       total,
-      menuValueTotal: roundMoney(menuEquivalentTotal),
+      menuValueTotal: roundMoney(listPriceTotal),
       serviceIncluded: true,
       additions: [
         "Hora adicional durante o evento: 10% do valor por hora",

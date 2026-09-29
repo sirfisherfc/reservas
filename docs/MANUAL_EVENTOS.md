@@ -73,6 +73,12 @@ O evento sai **abaixo do cardápio**: o cliente paga antes, fecha a quantidade e
    - **oportunidade:** faturamento esperado do salão na janela do evento × parte do salão ocupada (convidados ÷ capacidade, ou 100% se exclusivo). O evento nunca sai por menos do que o salão faria normalmente naquele horário.
 4. Preço = o maior entre cardápio com desconto e os dois pisos, arredondado para cima por pessoa.
 
+### Como a economia aparece para o cliente
+
+- **Valor de referência:** mesmos itens no cardápio, com os 10%, mais as horas além de 3h pelo preço de tabela (10% por hora).
+- **Site:** selo "−X% sobre o cardápio" no topo do cartão e o quadro "Você economiza R$ Y", com o valor por pessoa e o preço de referência riscado.
+- **PDF:** faixa dourada "Você economiza R$ Y (X%)" no quadro do investimento e a linha "Condição de evento".
+
 ### De onde vêm os dados
 
 | Dado | Fonte |

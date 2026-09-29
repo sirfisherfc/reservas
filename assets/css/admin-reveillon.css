@@ -76,6 +76,7 @@
 .rv-status--cancelada, .rv-status--expirada { background: #eee; color: #666; }
 .rv-status--bloqueada { background: #eee; color: #555; }
 .rv-status--livre { background: #eef6f6; color: var(--color-secondary); }
+.rv-status--em_negociacao { background: #fbf0c4; color: #7a5d00; }
 
 .rv-row-link { cursor: pointer; }
 

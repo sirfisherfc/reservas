@@ -363,7 +363,7 @@ as $$
       select 1 from public.rv_bookings b
       where b.table_id = t.id and b.status in ('sinal_pago', 'quitada')
     ) then 'reservada'
-    when exists (
+    when t.negotiating or exists (
       select 1 from public.rv_bookings b
       where b.table_id = t.id and b.status = 'pre_reserva'
         and (b.hold_expires_at is null or b.hold_expires_at > now()
@@ -681,7 +681,7 @@ create trigger trg_rv_payments_state
 
 drop trigger if exists trg_rv_tables_state on public.rv_tables;
 create trigger trg_rv_tables_state
-  after insert or update of blocked, active, table_type_id on public.rv_tables
+  after insert or update of blocked, active, table_type_id, negotiating on public.rv_tables
   for each row execute function public.rv_tg_table_state();
 
 drop trigger if exists trg_rv_events_updated_at on public.rv_events;
@@ -963,7 +963,7 @@ begin
     raise exception '%', v_err;
   end if;
 
-  if t.blocked then
+  if t.blocked or (t.negotiating and not v_is_admin) then
     raise exception 'TABLE_TAKEN: Esta mesa não está disponível. Escolha outra no mapa.';
   end if;
 
@@ -1060,6 +1060,10 @@ begin
   exception when unique_violation then
     raise exception 'TABLE_TAKEN: Esta mesa acabou de ser reservada por outra pessoa. Escolha outra no mapa.';
   end;
+  -- a reserva manual substitui a marcação "em negociação"
+  if t.negotiating then
+    update public.rv_tables set negotiating = false, negotiation_note = null where id = t.id;
+  end if;
 
   perform public.rv_log(v_booking_id, 'criada', null, 'pre_reserva',
     jsonb_build_object('mesa', t.label, 'lote', v_lot_id, 'total', v_price->'total',
@@ -1121,6 +1125,7 @@ begin
         'id', t.id, 'label', t.label, 'type_id', t.table_type_id,
         'x', t.x, 'y', t.y, 'w', t.w, 'h', t.h, 'rotation', t.rotation, 'shape', t.shape,
         'active', t.active, 'blocked', t.blocked, 'block_reason', t.block_reason,
+        'negotiating', t.negotiating, 'negotiation_note', t.negotiation_note,
         'state', public.rv_table_live_state(t.id),
         'booking', (
           select jsonb_build_object(
@@ -1512,8 +1517,8 @@ begin
   if not found or t_new.event_id <> b.event_id then
     raise exception 'TABLE_NOT_FOUND: Mesa de destino não encontrada.';
   end if;
-  if t_new.blocked then
-    raise exception 'TABLE_TAKEN: A mesa de destino está bloqueada.';
+  if t_new.blocked or t_new.negotiating then
+    raise exception 'TABLE_TAKEN: A mesa de destino está bloqueada ou em negociação.';
   end if;
   perform public.rv_expire_due(t_new.id);
   if exists (select 1 from public.rv_bookings x
@@ -1667,7 +1672,41 @@ begin
     end if;
   end if;
   update public.rv_tables set blocked = coalesce(p_blocked, false),
-    block_reason = case when p_blocked then nullif(trim(coalesce(p_reason, '')), '') end
+    block_reason = case when p_blocked then nullif(trim(coalesce(p_reason, '')), '') end,
+    negotiating = case when p_blocked then false else negotiating end,
+    negotiation_note = case when p_blocked then null else negotiation_note end
+  where id = p_table_id;
+end;
+$$;
+
+-- "Em negociação" sem cliente e sem prazo: a mesa sai do site até o admin
+-- liberar ou criar a reserva manual (que desfaz a marcação).
+create or replace function public.rv_admin_set_table_negotiating(p_table_id uuid, p_on boolean, p_note text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  t public.rv_tables%rowtype;
+begin
+  perform public.rv_require_admin();
+  select * into t from public.rv_tables where id = p_table_id for update;
+  if not found then
+    raise exception 'TABLE_NOT_FOUND: Mesa não encontrada.';
+  end if;
+  if p_on then
+    if t.blocked or not t.active then
+      raise exception 'TABLE_BLOCKED: Desbloqueie a mesa antes.';
+    end if;
+    perform public.rv_expire_due(p_table_id);
+    if exists (select 1 from public.rv_bookings b
+               where b.table_id = p_table_id and b.status in ('pre_reserva', 'sinal_pago', 'quitada')) then
+      raise exception 'TABLE_HAS_BOOKING: Esta mesa já tem reserva.';
+    end if;
+  end if;
+  update public.rv_tables set negotiating = coalesce(p_on, false),
+    negotiation_note = case when p_on then nullif(trim(coalesce(p_note, '')), '') end
   where id = p_table_id;
 end;
 $$;

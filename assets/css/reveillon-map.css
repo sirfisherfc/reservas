@@ -85,6 +85,7 @@
 .rv-table--bloqueada .rv-table__shape { stroke-dasharray: 8 6; stroke-width: 3; }
 
 /* estados do painel (status da reserva) */
+.rv-table--em_negociacao .rv-table__shape { fill: #f7df8a; stroke: #b8920f; stroke-width: 3; stroke-dasharray: 8 6; }
 .rv-table--pre_reserva .rv-table__shape { fill: #f4a93b; stroke: #c98217; }
 .rv-table--pre_reserva_vencida .rv-table__shape { fill: #e4572e; stroke: #b33b17; }
 .rv-table--sinal_pago .rv-table__shape { fill: #2a7fbf; stroke: #1c5d8e; }
@@ -128,6 +129,7 @@
 .rv-chip::before { content: none; }
 .rv-chip--livre::before,
 .rv-chip--negociacao::before,
+.rv-chip--em_negociacao::before,
 .rv-chip--reservada::before,
 .rv-chip--pre_reserva::before,
 .rv-chip--sinal_pago::before,
@@ -144,6 +146,7 @@
 .rv-chip--negociacao::before {
   background: repeating-linear-gradient(45deg, rgba(91, 143, 176, .6) 0 4px, rgba(255, 255, 255, .7) 4px 7px);
 }
+.rv-chip--em_negociacao::before { background: #f7df8a; outline: 2px dashed #b8920f; outline-offset: -2px; }
 .rv-chip--reservada::before { background: #c7c0b4; }
 .rv-chip--pre_reserva::before { background: #f4a93b; }
 .rv-chip--vencida::before { background: #e4572e; }

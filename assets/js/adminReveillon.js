@@ -96,7 +96,7 @@ function tableById(id) {
 function tableState(t) {
   if (!t.active || t.blocked) return 'bloqueada';
   const b = t.booking;
-  if (!b) return 'livre_admin';
+  if (!b) return t.negotiating ? 'em_negociacao' : 'livre_admin';
   if (b.status === 'pre_reserva' && b.hold_expires_at && new Date(b.hold_expires_at).getTime() <= nowMs()) {
     return 'pre_reserva_vencida';
   }
@@ -114,10 +114,11 @@ function tableBadge(t) {
 }
 
 function renderCounters() {
-  const c = { livre: 0, pre: 0, sinal: 0, quitada: 0, bloqueada: 0, pessoas: 0 };
+  const c = { livre: 0, neg: 0, pre: 0, sinal: 0, quitada: 0, bloqueada: 0, pessoas: 0 };
   for (const t of board.tables) {
     const st = tableState(t);
     if (st === 'livre_admin') c.livre += 1;
+    else if (st === 'em_negociacao') c.neg += 1;
     else if (st === 'bloqueada') c.bloqueada += 1;
     else if (st.startsWith('pre_reserva')) c.pre += 1;
     else if (st === 'sinal_pago') c.sinal += 1;
@@ -125,7 +126,7 @@ function renderCounters() {
     if (t.booking) c.pessoas += Number(t.booking.adults) + Number(t.booking.children);
   }
   qs('#counters').innerHTML = [
-    ['Livres', c.livre], ['Pré-reserva', c.pre], ['Sinal pago', c.sinal],
+    ['Livres', c.livre], ['Em negociação', c.neg], ['Pré-reserva', c.pre], ['Sinal pago', c.sinal],
     ['Quitadas', c.quitada], ['Bloqueadas', c.bloqueada], ['Pessoas', c.pessoas],
   ].map(([k, v]) => `<div class="rv-counter"><span>${k}</span><strong>${v}</strong></div>`).join('');
 }
@@ -232,22 +233,45 @@ function openTableSheet(tableId) {
   }
   const ty = typeOf(t.type_id);
   const blocked = t.blocked || !t.active;
+  const negotiating = !blocked && t.negotiating;
+  const status = blocked ? 'bloqueada' : negotiating ? 'em_negociacao' : 'livre';
   let body = kv([
     ['Tipo', ty.name],
     ['Pessoas', ty.min_people === ty.max_people ? `${ty.max_people}` : `${ty.min_people} a ${ty.max_people} (valor cobre ${ty.included_people})`],
     blocked ? ['Bloqueio', t.block_reason || (t.active ? 'sem motivo' : 'mesa desativada')] : null,
+    negotiating ? ['Negociação', t.negotiation_note || 'sem observação · sem prazo'] : null,
   ]);
   if (isAdmin) {
-    body += blocked
-      ? `<div class="rv-actions"><button class="btn btn--primary rv-wide rv-big" id="unblock-btn" type="button">Desbloquear mesa</button></div>`
-      : `<div class="rv-actions">
+    if (blocked) {
+      body += `<div class="rv-actions"><button class="btn btn--primary rv-wide rv-big" id="unblock-btn" type="button">Desbloquear mesa</button></div>`;
+    } else if (negotiating) {
+      body += `<div class="rv-actions">
           <button class="btn btn--primary rv-wide rv-big" id="manual-btn" type="button">Criar reserva manual</button>
+          <button class="btn btn--outline rv-wide" id="unneg-btn" type="button">Liberar mesa (tirar de negociação)</button>
+        </div>`;
+    } else {
+      body += `<div class="rv-actions">
+          <button class="btn btn--primary rv-wide rv-big" id="manual-btn" type="button">Criar reserva manual</button>
+          <button class="btn btn--outline rv-wide" id="neg-btn" type="button">Marcar em negociação</button>
           <button class="btn btn--outline rv-wide" id="block-btn" type="button">Bloquear mesa</button>
         </div>`;
+    }
   }
-  const root = openSheet(sheetHead(`Mesa ${t.label}`, esc(ty.name), `<span class="rv-status rv-status--${blocked ? 'bloqueada' : 'livre'}">${blocked ? 'bloqueada' : 'livre'}</span>`) + body,
+  const root = openSheet(sheetHead(`Mesa ${t.label}`, esc(ty.name), `<span class="rv-status rv-status--${status}">${stateLabel(status === 'em_negociacao' ? 'negociacao' : status)}</span>`) + body,
     { mode: 'table', tableId: t.id });
   qs('#manual-btn', root)?.addEventListener('click', () => openManualForm(t));
+  const setNegotiating = async (on, note) => {
+    const { error } = await supabase.rpc('rv_admin_set_table_negotiating', { p_table_id: t.id, p_on: on, p_note: note });
+    if (error) { showToast(rpcError(error), 'danger'); return; }
+    showToast(on ? `Mesa ${t.label} em negociação.` : `Mesa ${t.label} liberada.`);
+    closeSheet();
+    loadBoard();
+  };
+  qs('#neg-btn', root)?.addEventListener('click', () => {
+    const note = window.prompt('Com quem está negociando? (opcional)', '');
+    if (note !== null) setNegotiating(true, note);
+  });
+  qs('#unneg-btn', root)?.addEventListener('click', () => setNegotiating(false, null));
   qs('#block-btn', root)?.addEventListener('click', async () => {
     const reason = window.prompt('Motivo do bloqueio (ex.: patrocinador, equipe):', '');
     if (reason === null) return;

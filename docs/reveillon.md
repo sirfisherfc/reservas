@@ -43,6 +43,7 @@ Tudo o que aparece no site (preços, prazos, textos, mensagens de WhatsApp) sai 
 | Cor | Significado |
 |---|---|
 | Branca com borda | livre |
+| Amarela tracejada | em negociação (marcada à mão, sem cliente e sem prazo) |
 | Laranja | pré-reserva (mostra quanto falta do prazo) |
 | Vermelha | prazo vencido com pagamento parcial (decida: estender, cobrar ou cancelar) |
 | Azul | sinal pago |
@@ -67,6 +68,7 @@ O status muda sozinho e o cliente recebe o e-mail de "sinal recebido" ou de "qui
 - **Desconto:** em % ou R$, com motivo obrigatório. Fica registrado quem aplicou.
 - **Marcar quitada:** se ainda houver saldo, pede uma justificativa.
 - **Alterar prazo:** qualquer data e hora até o início do evento; os botões +12h, +24h e +48h só preenchem o campo (só em pré-reserva). RPC `rv_admin_set_hold`.
+- **Marcar em negociação** (mesa livre): tira a mesa do site sem cliente e sem prazo, com uma observação opcional. Some com **Liberar mesa** ou ao **Criar reserva manual** nela. RPC `rv_admin_set_table_negotiating`.
 - **Mover de mesa:** mostra o valor novo antes de confirmar se o tipo de mesa mudar.
 - **Editar dados:** nome, WhatsApp, e-mail, pessoas e observações. O valor é recalculado.
 - **Cancelar:** com motivo. Os pagamentos continuam registrados; a devolução, se houver, é feita por fora.

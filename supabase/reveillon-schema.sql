@@ -105,6 +105,9 @@ create table if not exists public.rv_tables (
   shape text not null default 'rect' check (shape in ('rect', 'round')),
   blocked boolean not null default false,
   block_reason text check (block_reason is null or length(block_reason) <= 200),
+  -- "Em negociação" marcado à mão pelo admin: sem cliente e sem prazo.
+  negotiating boolean not null default false,
+  negotiation_note text check (negotiation_note is null or length(negotiation_note) <= 200),
   active boolean not null default true,
   sort_order int not null default 0,
   created_at timestamptz not null default now(),

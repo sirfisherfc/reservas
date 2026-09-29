@@ -127,6 +127,7 @@ grant execute on function public.rv_admin_cancel(uuid, text) to authenticated;
 grant execute on function public.rv_admin_move(uuid, uuid, boolean, boolean) to authenticated;
 grant execute on function public.rv_admin_update_booking(uuid, text, text, text, int, int, int, text, text, boolean) to authenticated;
 grant execute on function public.rv_admin_set_table_block(uuid, boolean, text) to authenticated;
+grant execute on function public.rv_admin_set_table_negotiating(uuid, boolean, text) to authenticated;
 grant execute on function public.rv_admin_save_terms(uuid, text) to authenticated;
 grant execute on function public.rv_admin_summary(text) to authenticated;
 grant execute on function public.rv_admin_export(text) to authenticated;

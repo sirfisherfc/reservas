@@ -966,7 +966,16 @@ export async function buildProposalPdf(
   );
   y = py - 18;
 
-  const rows: Array<[string, string, string]> = [
+  const menuValue = Number(pub.menuValueTotal) || 0;
+  const rows: Array<[string, string, string]> = [];
+  if (menuValue > total) {
+    rows.push([
+      "Condição de evento",
+      `Os mesmos itens pedidos no cardápio sairiam por ${money(menuValue)}`,
+      `${Math.round((1 - total / menuValue) * 100)}% de economia`,
+    ]);
+  }
+  rows.push(
     [
       `Sinal (${depositPercent}%)`,
       "Na assinatura do contrato, para reservar a data",
@@ -984,7 +993,7 @@ export async function buildProposalPdf(
       `Acréscimo de ${cardPercent}% sobre o valor pago no cartão`,
       `${money(total * (1 + cardPercent / 100))} se tudo no cartão`,
     ],
-  ];
+  );
   if (duration > BASE_HOURS) {
     rows.push([
       "Duração",

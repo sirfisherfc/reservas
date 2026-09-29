@@ -9,6 +9,7 @@ Atualizado em 29/09/2026. Estado: v2 publicada (função e site); migration v2 p
 - Comida: só petiscos; petiscos + lanche (1 por pessoa: Edimburger, Fisher Burger ou Fish & Chips); petiscos + almoço/jantar em travessas com proteínas definidas por nível.
 - Bebidas: sem bebidas; sem álcool; sem álcool + chope; sem álcool + chope + coquetel. Open bar, fichas, crédito e pacote selecionado saíram do site.
 - Duração: base de 3 horas; cada hora a mais soma 10% do valor de cardápio.
+- Preço abaixo do cardápio: desconto por antecipação, volume, movimento do horário (histórico por dia da semana × hora e fator do mês) e formato, limitado por piso de custo (margem mínima de 35%) e piso de oportunidade. Detalhes no manual.
 - PDF refeito: capa com foto, cardápio com fotos, investimento com datas, PIX, acréscimo do cartão e todas as regras do contrato-modelo.
 - Painel: análise interna explicada, comparação com o cardápio e campo de acréscimo do cartão.
 - A função só usa regras do banco quando a versão ativa for `eventos-2026-09-v2`; até lá, usa as constantes de `pricing.ts`.

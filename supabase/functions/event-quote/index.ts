@@ -110,6 +110,106 @@ function parseInput(value: unknown): QuoteInput {
   };
 }
 
+/** Mês (1-12) de uma linha do resumo mensal, aceitando "2026-08", data ou número. */
+function monthOf(
+  row: Record<string, unknown>,
+): { key: string; month: number } | null {
+  const text = String(row.ano_mes ?? row.mes ?? "");
+  const match = /(\d{4})-(\d{1,2})/.exec(text);
+  if (match) {
+    return {
+      key: `${match[1]}-${match[2].padStart(2, "0")}`,
+      month: Number(match[2]),
+    };
+  }
+  const month = Number(row.mes);
+  const year = Number(row.ano);
+  return month >= 1 && month <= 12 && year
+    ? { key: `${year}-${month}`, month }
+    : null;
+}
+
+/**
+ * Faturamento esperado na janela do evento, índice de movimento (0-1),
+ * fator do mês e CMV real, a partir das views do painel de gestão.
+ */
+async function demandSignals(input: QuoteInput): Promise<Partial<LiveSignals>> {
+  const [hourly, monthly] = await Promise.all([
+    admin.from("escala_demanda_base").select("dia_semana,hora,valor_hora"),
+    admin.from("painel_resumo_mensal").select("*").limit(48),
+  ]);
+  const result: Partial<LiveSignals> = {};
+
+  // Mês: média do mesmo mês do calendário ÷ média de todos os meses fechados.
+  const currentKey = new Date().toISOString().slice(0, 7);
+  const months = (monthly.data ?? [])
+    .map((row) => ({
+      row: row as Record<string, unknown>,
+      when: monthOf(row as Record<string, unknown>),
+    }))
+    .filter(({ row, when }) =>
+      when && when.key !== currentKey && Number(row.faturamento) > 0
+    );
+  if (!monthly.error && months.length >= 6) {
+    const eventMonth = Number(input.date.slice(5, 7));
+    const all = months.map(({ row }) => Number(row.faturamento));
+    const same = months.filter(({ when }) => when!.month === eventMonth).map((
+      { row },
+    ) => Number(row.faturamento));
+    const avg = (values: number[]) =>
+      values.reduce((a, b) => a + b, 0) / values.length;
+    if (same.length) {
+      result.monthFactor = Math.min(1.5, Math.max(0.6, avg(same) / avg(all)));
+    }
+    const cmv = months
+      .sort((a, b) => a.when!.key < b.when!.key ? 1 : -1)
+      .slice(0, 6)
+      .map(({ row }) => Number(row.cmv_perc))
+      .filter((value) => Number.isFinite(value) && value > 0)
+      .map((value) => value > 1 ? value / 100 : value);
+    if (cmv.length >= 3) result.realCmvRate = avg(cmv);
+  }
+
+  // Hora: soma do faturamento médio de cada hora coberta pelo evento.
+  const rows = hourly.error ? [] : (hourly.data ?? []);
+  if (hourly.error) {
+    result.demandNote = cleanText(hourly.error.message, 200);
+  } else if (rows.length < 24) {
+    result.demandNote =
+      `Histórico por hora insuficiente (${rows.length} linhas).`;
+  }
+  if (rows.length >= 24) {
+    const date = new Date(`${input.date}T12:00:00Z`);
+    const isoWeekday = date.getUTCDay() === 0 ? 7 : date.getUTCDay();
+    const byHour = new Map<string, number>();
+    let peak = 0;
+    for (const row of rows) {
+      const value = Number(row.valor_hora) || 0;
+      byHour.set(`${row.dia_semana}-${row.hora}`, value);
+      peak = Math.max(peak, value);
+    }
+    const start = Number(input.startTime.slice(0, 2)) +
+      Number(input.startTime.slice(3, 5)) / 60;
+    const end = start + input.durationHours;
+    let expected = 0;
+    for (let hour = Math.floor(start); hour < end; hour++) {
+      const covered = Math.min(end, hour + 1) - Math.max(start, hour);
+      const day = hour >= 24 ? (isoWeekday % 7) + 1 : isoWeekday;
+      expected += (byHour.get(`${day}-${hour % 24}`) ?? 0) * covered;
+    }
+    const monthFactor = result.monthFactor ?? 1;
+    if (peak > 0) {
+      result.expectedWindowRevenue = expected * monthFactor;
+      result.demandIndex = Math.min(
+        1,
+        (expected / input.durationHours) * monthFactor / peak,
+      );
+      result.demandDataAvailable = true;
+    }
+  }
+  return result;
+}
+
 async function liveSignals(input: QuoteInput): Promise<LiveSignals> {
   const signals: LiveSignals = { demandDataAvailable: false };
   const weekday = new Date(`${input.date}T12:00:00Z`).getUTCDay();
@@ -143,6 +243,13 @@ async function liveSignals(input: QuoteInput): Promise<LiveSignals> {
         Number(input.startTime.slice(0, 2)),
       ).maybeSingle(),
     ]);
+
+  try {
+    Object.assign(signals, await demandSignals(input));
+  } catch (error) {
+    console.error("event demand signals failed", error);
+  }
+  signals.capacity = null;
 
   signals.availabilityUnverified = [
     blockedDate,
@@ -180,6 +287,7 @@ async function liveSignals(input: QuoteInput): Promise<LiveSignals> {
     },
     0,
   );
+  signals.capacity = totalCapacity;
   const projected = overlappingPeople + input.guests;
   signals.capacityExceeded = projected > totalCapacity;
   signals.nearCapacity = !signals.capacityExceeded &&

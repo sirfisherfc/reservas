@@ -36,6 +36,18 @@ export interface LiveSignals {
   comparableRevenueHigh?: number | null;
   demandDataAvailable?: boolean;
   availabilityUnverified?: boolean;
+  /** Faturamento esperado do salão na janela do evento (histórico dia da semana × hora, ajustado pelo mês). */
+  expectedWindowRevenue?: number | null;
+  /** Movimento da janela ÷ hora mais movimentada da semana (0 a 1), já ajustado pelo mês. */
+  demandIndex?: number | null;
+  /** Faturamento médio do mês do evento ÷ média dos meses. */
+  monthFactor?: number | null;
+  /** Capacidade de pessoas do salão. */
+  capacity?: number | null;
+  /** CMV real médio dos últimos meses (0 a 1). */
+  realCmvRate?: number | null;
+  /** Por que o histórico por hora não foi usado, quando não foi. */
+  demandNote?: string | null;
 }
 
 export interface PricingOverrides {
@@ -80,6 +92,8 @@ export interface PublicOption {
   durationHours: number;
   pricePerPerson: number;
   total: number;
+  /** Quanto os mesmos itens custariam no cardápio, com os 10%. */
+  menuValueTotal: number;
   serviceIncluded: true;
   additions: string[];
   notIncluded: string[];
@@ -103,9 +117,19 @@ export interface InternalOption extends PublicOption {
   estimatedContributionMargin: number;
   menuEquivalentTotal: number;
   durationSurchargeTotal: number;
+  /** Piso de custo: nunca cobrar abaixo disso. */
   technicalMinimumTotal: number;
   opportunityFloorTotal: number | null;
-  priceDriver: "cardapio" | "tecnico" | "oportunidade";
+  listPriceTotal: number;
+  discountTarget: number;
+  discountApplied: number;
+  discountBreakdown: Record<DiscountKey, number>;
+  demandIndex: number;
+  demandSource: "historico" | "estimativa";
+  monthFactor: number;
+  expectedWindowRevenue: number | null;
+  cmvRateUsed: number;
+  priceDriver: "desconto" | "custo" | "oportunidade";
   alerts: string[];
   pricingVersion: string;
   menuVersion: string;
@@ -121,12 +145,62 @@ export const PRICING_VERSION = "eventos-2026-09-v2";
 const MENU_VERSION = "cardapio-1-2026-09-22";
 const CMV_RATE = 0.35;
 const SERVICE_RATE = 0.10;
-const TARGET_CONTRIBUTION_MARGIN = 0.52;
+/** Margem mínima de contribuição: o piso de custo garante pelo menos isso. */
+const MIN_CONTRIBUTION_MARGIN = 0.35;
+/** Abaixo desta margem o pedido fica amarelo. */
+const MARGIN_ALERT = 0.45;
 const FREELANCER_DAY = 100;
 /** Duração incluída em todos os pacotes. */
 export const BASE_HOURS = 3;
 /** Cada hora além da base acrescenta este percentual ao valor do evento (mesma regra da hora extra do contrato). */
 export const EXTRA_HOUR_RATE = 0.10;
+
+export type DiscountKey = "antecipado" | "volume" | "horario" | "cardapio";
+/** Descontos sobre o valor de cardápio. Provisórios: recalibrar com eventos reais. */
+export const DISCOUNT = {
+  /** Pagamento antecipado e quantidade fechada, com risco de sobra do cliente. */
+  antecipado: 0.05,
+  /** Por número de convidados: [mínimo, desconto]. */
+  volume: [[30, 0.03], [41, 0.06], [61, 0.08], [81, 0.10]] as Array<
+    [number, number]
+  >,
+  /** Máximo por horário vazio; cai até zero no horário mais movimentado. */
+  horarioMax: 0.10,
+  /** Formatos produzidos em lote custam menos para a cozinha. */
+  cardapio: { petiscos: 0.03, petiscos_principal: 0.02, refeicao: 0 } as Record<
+    string,
+    number
+  >,
+  teto: 0.25,
+};
+
+/**
+ * Movimento esperado (0 a 1) quando ainda não há histórico: sexta e sábado à
+ * noite e domingo de dia são os horários fortes da casa.
+ */
+export function estimatedDemandIndex(
+  isoWeekday: number,
+  startHour: number,
+  durationHours: number,
+): number {
+  const hours = Array.from(
+    { length: Math.max(1, Math.ceil(durationHours)) },
+    (_, i) => (startHour + i) % 24,
+  );
+  const hourIndex = (h: number) => {
+    const night = h >= 17 && h <= 22;
+    const lunch = h >= 11 && h <= 15;
+    if ((isoWeekday === 5 || isoWeekday === 6) && night) return 0.9;
+    if (isoWeekday === 7 && (lunch || h === 16)) return 0.8;
+    if (isoWeekday === 6 && lunch) return 0.65;
+    if (isoWeekday === 7 && night) return 0.5;
+    if (isoWeekday === 4 && night) return 0.55;
+    if (night) return 0.4;
+    if (lunch) return 0.35;
+    return 0.2;
+  };
+  return hours.reduce((sum, h) => sum + hourIndex(h), 0) / hours.length;
+}
 
 type ProfileKey = Exclude<Profile, "comparar">;
 type FoodKey = Exclude<FoodStyle, "recomendacao">;
@@ -550,8 +624,46 @@ export function buildQuote(
   const demandReview = weekend || strongMonth;
   const cmvRate = overrides?.cmvRate ?? CMV_RATE;
   const serviceRate = overrides?.serviceRate ?? SERVICE_RATE;
-  const targetMargin = overrides?.targetContributionMargin ??
-    TARGET_CONTRIBUTION_MARGIN;
+  const minMargin = overrides?.targetContributionMargin ??
+    MIN_CONTRIBUTION_MARGIN;
+  const realCmv = signals.realCmvRate;
+  const cmvUsed = realCmv != null && realCmv >= 0.15 && realCmv <= 0.6
+    ? realCmv
+    : cmvRate;
+  const isoWeekday = date.getUTCDay() === 0 ? 7 : date.getUTCDay();
+  const startHour = Number(input.startTime.slice(0, 2));
+  const demandSource: InternalOption["demandSource"] =
+    signals.demandIndex != null ? "historico" : "estimativa";
+  const monthFactor = signals.monthFactor ??
+    (strongMonth ? 1.2 : 1);
+  const demandIndex = Math.min(
+    1,
+    Math.max(
+      0,
+      signals.demandIndex ??
+        estimatedDemandIndex(isoWeekday, startHour, input.durationHours) *
+          monthFactor,
+    ),
+  );
+  const volumeDiscount = DISCOUNT.volume.reduce(
+    (value, [min, rate]) => input.guests >= min ? rate : value,
+    0,
+  );
+  const discountBreakdown: Record<DiscountKey, number> = {
+    antecipado: DISCOUNT.antecipado,
+    volume: volumeDiscount,
+    horario: input.exclusive
+      ? 0
+      : roundMoney(DISCOUNT.horarioMax * (1 - demandIndex) * 1000) / 1000,
+    cardapio: DISCOUNT.cardapio[foodStyle] ?? 0,
+  };
+  const discountTarget = Math.min(
+    DISCOUNT.teto,
+    Object.values(discountBreakdown).reduce((a, b) => a + b, 0),
+  );
+  const capacity = signals.capacity && signals.capacity > 0
+    ? signals.capacity
+    : 100;
   const freelancerDay = overrides?.freelancerDay ?? FREELANCER_DAY;
   const extraHours = Math.max(0, input.durationHours - BASE_HOURS);
   const beverage = beverageFrom(beverageMode, overrides);
@@ -580,31 +692,35 @@ export function buildQuote(
       (1 + serviceRate);
     const durationSurchargeTotal = menuEquivalentTotal * EXTRA_HOUR_RATE *
       extraHours;
-    const cmvTotal = (foodRetailTotal + beverageRetailTotal) * cmvRate;
+    const cmvTotal = (foodRetailTotal + beverageRetailTotal) * cmvUsed;
     const laborTotal = food.kitchenLaborPerPerson * input.guests +
       freelancerCount * freelancerDay;
     const durationCost = extraHours *
       (input.guests * 1.5 + freelancerCount * 20);
     const riskCost = beverageRetailTotal * beverage.wasteRisk;
     const technicalMinimumTotal =
-      ((cmvTotal + laborTotal + durationCost + riskCost) / (1 - targetMargin)) *
+      ((cmvTotal + laborTotal + durationCost + riskCost) / (1 - minMargin)) *
       (1 + serviceRate);
-    const opportunityFloor = signals.opportunityCostTotal == null
+    const displacedShare = input.exclusive
+      ? 1
+      : Math.min(1, input.guests / capacity);
+    const opportunityFloor = signals.expectedWindowRevenue != null
+      ? signals.expectedWindowRevenue * displacedShare
+      : signals.opportunityCostTotal == null
       ? null
-      : input.exclusive
-      ? signals.opportunityCostTotal
-      : signals.opportunityCostTotal * Math.min(1, input.guests / 100);
-    const menuWithDuration = menuEquivalentTotal + durationSurchargeTotal;
+      : signals.opportunityCostTotal * displacedShare;
+    const listPriceTotal = menuEquivalentTotal + durationSurchargeTotal;
+    const discountedTotal = listPriceTotal * (1 - discountTarget);
     const commercialMinimum = Math.max(
-      menuWithDuration,
+      discountedTotal,
       technicalMinimumTotal,
       opportunityFloor ?? 0,
     );
     const priceDriver: InternalOption["priceDriver"] =
-      commercialMinimum === menuWithDuration
-        ? "cardapio"
+      commercialMinimum === discountedTotal
+        ? "desconto"
         : commercialMinimum === technicalMinimumTotal
-        ? "tecnico"
+        ? "custo"
         : "oportunidade";
     const pricePerPerson = roundUpReal(commercialMinimum / input.guests);
     const total = roundMoney(pricePerPerson * input.guests);
@@ -644,13 +760,18 @@ export function buildQuote(
     else if (signals.nearCapacity) {
       alerts.push("Operação próxima da capacidade.");
     }
-    if (demandReview) {
-      alerts.push(
-        "Período potencialmente forte; conferir dados históricos comparáveis.",
-      );
+    if (demandIndex >= 0.75) {
+      alerts.push("Horário forte da casa; conferir impacto no salão.");
     }
-    if (!signals.demandDataAvailable && demandReview) {
-      alerts.push("Custo de oportunidade ainda sem dados analíticos ao vivo.");
+    if (demandSource === "estimativa" && demandReview) {
+      alerts.push("Movimento do horário estimado, sem histórico carregado.");
+    }
+    if (priceDriver !== "desconto") {
+      alerts.push(
+        priceDriver === "custo"
+          ? "Desconto limitado pelo piso de custo."
+          : "Desconto limitado pelo faturamento esperado do horário.",
+      );
     }
     if (signals.availabilityUnverified) {
       alerts.push(
@@ -660,8 +781,8 @@ export function buildQuote(
     if (opportunityFloor != null && total < opportunityFloor) {
       alerts.push("Valor abaixo do custo de oportunidade.");
     }
-    if (estimatedContributionMargin < 0.45) {
-      alerts.push("Margem estimada abaixo do piso provisório.");
+    if (estimatedContributionMargin < MARGIN_ALERT) {
+      alerts.push("Margem estimada abaixo de 45%.");
     }
     if (
       input.budgetPerPerson != null && input.budgetPerPerson < pricePerPerson
@@ -673,7 +794,8 @@ export function buildQuote(
 
     const red = Boolean(
       signals.blocked || signals.reservationConflict ||
-        signals.capacityExceeded || estimatedContributionMargin < 0.45 ||
+        signals.capacityExceeded ||
+        estimatedContributionMargin < minMargin - 0.005 ||
         (opportunityFloor != null && total < opportunityFloor),
     );
     const yellow = !red &&
@@ -704,9 +826,10 @@ export function buildQuote(
       durationHours: input.durationHours,
       pricePerPerson,
       total,
+      menuValueTotal: roundMoney(menuEquivalentTotal),
       serviceIncluded: true,
       additions: [
-        "Hora adicional: 10% do valor do evento por hora",
+        "Hora adicional durante o evento: 10% do valor por hora",
         "Bebidas além das incluídas, na comanda individual",
         "Exclusividade do espaço, sob avaliação",
       ],
@@ -750,6 +873,19 @@ export function buildQuote(
       opportunityFloorTotal: opportunityFloor == null
         ? null
         : roundMoney(opportunityFloor),
+      listPriceTotal: roundMoney(listPriceTotal),
+      discountTarget: roundMoney(discountTarget * 1000) / 1000,
+      discountApplied: listPriceTotal > 0
+        ? roundMoney((1 - total / listPriceTotal) * 1000) / 1000
+        : 0,
+      discountBreakdown,
+      demandIndex: roundMoney(demandIndex),
+      demandSource,
+      monthFactor: roundMoney(monthFactor),
+      expectedWindowRevenue: signals.expectedWindowRevenue == null
+        ? null
+        : roundMoney(signals.expectedWindowRevenue),
+      cmvRateUsed: cmvUsed,
       priceDriver,
       alerts,
       pricingVersion: overrides?.versionCode ?? PRICING_VERSION,
@@ -785,6 +921,15 @@ export function buildQuote(
     extraHours: _r,
     durationSurchargeTotal: _s,
     priceDriver: _t,
+    listPriceTotal: _u,
+    discountTarget: _v,
+    discountApplied: _w,
+    discountBreakdown: _x,
+    demandIndex: _y,
+    demandSource: _z,
+    monthFactor: _aa,
+    expectedWindowRevenue: _ab,
+    cmvRateUsed: _ac,
     ...safe
   }) => safe);
   return { options: publicOptions, internal: options, requestRiskLevel };

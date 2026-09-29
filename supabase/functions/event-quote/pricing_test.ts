@@ -81,7 +81,11 @@ Deno.test("cada hora além de 3 acrescenta 10% ao valor do cardápio", () => {
     demandDataAvailable: true,
   });
   assertEquals(five.internal[0].extraHours, 2);
-  assertGreater(five.options[0].total, three.options[0].total * 1.19);
+  assertEquals(
+    Math.round(five.internal[0].listPriceTotal),
+    Math.round(three.internal[0].listPriceTotal * 1.2),
+  );
+  assertGreater(five.options[0].total, three.options[0].total * 1.1);
 });
 
 Deno.test("perfil escolhido devolve só aquele perfil", () => {
@@ -117,7 +121,7 @@ Deno.test("data bloqueada é vermelha", () => {
   assertEquals(q.requestRiskLevel, "vermelho");
 });
 
-Deno.test("configuração abaixo do piso de margem é vermelha", () => {
+Deno.test("CMV alto é segurado pelo piso de custo", () => {
   const q = buildQuote(base, {}, {
     versionCode: "teste-margem-baixa",
     cmvRate: 0.90,
@@ -125,7 +129,8 @@ Deno.test("configuração abaixo do piso de margem é vermelha", () => {
     targetContributionMargin: 0.30,
     freelancerDay: 100,
   });
-  assertEquals(q.requestRiskLevel, "vermelho");
+  assertEquals(q.internal[0].priceDriver, "custo");
+  assertGreater(q.internal[0].estimatedContributionMargin, 0.29);
 });
 
 Deno.test("alterar quantidade recalcula totais no servidor", () => {
@@ -144,4 +149,52 @@ Deno.test("preço enviado pelo navegador não participa do contrato de entrada",
   };
   const q = buildQuote(tampered);
   assertGreater(q.options[0].pricePerPerson, 1);
+});
+
+Deno.test("evento sai abaixo do valor de cardápio", () => {
+  for (
+    const foodStyle of ["petiscos", "petiscos_principal", "refeicao"] as const
+  ) {
+    const q = buildQuote({ ...base, guests: 60, foodStyle }, {
+      demandDataAvailable: true,
+    });
+    for (const option of q.internal) {
+      assertGreater(option.menuValueTotal, option.total);
+    }
+  }
+});
+
+Deno.test("mais convidados recebem desconto maior", () => {
+  const small = buildQuote({ ...base, guests: 35 }).internal[1];
+  const large = buildQuote({ ...base, guests: 90 }).internal[1];
+  assertGreater(large.discountTarget, small.discountTarget);
+});
+
+Deno.test("horário forte dá menos desconto que horário vazio", () => {
+  const weekdayLunch =
+    buildQuote({ ...base, date: "2026-10-14", startTime: "14:00" }).internal[1];
+  const saturdayNight =
+    buildQuote({ ...base, date: "2026-10-17", startTime: "19:00" }).internal[1];
+  assertGreater(
+    weekdayLunch.discountBreakdown.horario,
+    saturdayNight.discountBreakdown.horario,
+  );
+});
+
+Deno.test("histórico de faturamento vira piso de oportunidade", () => {
+  const q = buildQuote({ ...base, guests: 50 }, {
+    demandIndex: 0.9,
+    expectedWindowRevenue: 20000,
+    capacity: 100,
+  });
+  assertEquals(q.internal[0].demandSource, "historico");
+  assertEquals(q.internal[0].priceDriver, "oportunidade");
+  assertGreater(q.internal[0].total, 9999);
+});
+
+Deno.test("CMV real substitui o provisório quando é plausível", () => {
+  const q = buildQuote(base, { realCmvRate: 0.28 });
+  assertEquals(q.internal[0].cmvRateUsed, 0.28);
+  const absurd = buildQuote(base, { realCmvRate: 0.9 });
+  assertEquals(absurd.internal[0].cmvRateUsed, 0.35);
 });

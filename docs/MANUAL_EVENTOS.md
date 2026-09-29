@@ -59,32 +59,52 @@ Todos os pacotes incluem **3 horas**. Cada hora a mais acrescenta **10% do valor
 
 ## 2. Como o preço é calculado
 
-1. **Mesmos itens no cardápio** = porções × preço do cardápio + bebidas × preço do cardápio, mais 10% de serviço.
-2. **+ horas além de 3h**: 10% do item 1 por hora.
-3. **Mínimo técnico** = (CMV + cozinha por pessoa + freelancers + custo de duração + risco de sobra de bebida) ÷ (1 − 52%) × 1,10.
-4. **Piso de oportunidade**: faturamento típico do salão naquele dia e horário. **Hoje está vazio** (não há base histórica carregada), então não influencia.
-5. O valor cobrado é o **maior** entre 1+2, 3 e 4, arredondado para cima por pessoa.
+O evento sai **abaixo do cardápio**: o cliente paga antes, fecha a quantidade e assume o risco de sobra, e a casa ganha no volume.
 
-Parâmetros provisórios: CMV = 35% do preço de cardápio; margem-alvo 52%; alerta abaixo de 45%; freelancer R$ 100 por diária; cozinha de R$ 7 a R$ 13 por pessoa conforme o pacote. Para o lanche, a base é a média dos três (R$ 39,67); para as travessas, o prato mais caro liberado no nível.
+1. **Valor de cardápio** = porções × preço do cardápio + bebidas × preço do cardápio, mais 10% de serviço. Cada hora além de 3h soma 10%.
+2. **Desconto** (teto de 25%), somando:
+   - **antecipado:** 5% sempre;
+   - **volume:** 3% (30–40 convidados), 6% (41–60), 8% (61–80), 10% (81 ou mais);
+   - **horário:** até 10%. É 10% × (1 − movimento do horário). Com o salão vazio, 10%; no pico, perto de 0%. Evento exclusivo não recebe essa parte;
+   - **formato:** petiscos 3%, petiscos + lanche 2%, almoço/jantar 0% (itens em lote custam menos para a cozinha).
+3. **Pisos**, que o preço nunca fura:
+   - **custo:** (CMV + cozinha por pessoa + freelancers + horas extras + sobra de bebida) ÷ (1 − 35%) × 1,10. Garante margem mínima de 35%;
+   - **oportunidade:** faturamento esperado do salão na janela do evento × parte do salão ocupada (convidados ÷ capacidade, ou 100% se exclusivo). O evento nunca sai por menos do que o salão faria normalmente naquele horário.
+4. Preço = o maior entre cardápio com desconto e os dois pisos, arredondado para cima por pessoa.
+
+### De onde vêm os dados
+
+| Dado | Fonte |
+|---|---|
+| Movimento por dia da semana e hora | `escala_demanda_base` (faturamento médio por hora, últimos 12 meses, no horário do pedido) |
+| Fator do mês | `painel_resumo_mensal`: faturamento médio do mesmo mês ÷ média dos meses |
+| CMV | `painel_resumo_mensal`: média do CMV % dos últimos 6 meses; sem dado, 35% |
+| Capacidade | `restaurant_settings.total_capacity` |
+
+Sem o histórico por hora, a função usa uma estimativa fixa: sexta e sábado à noite = 90% do pico; domingo de dia = 80%; sábado no almoço = 65%; quinta à noite = 55%; outras noites = 40%; almoço em dia de semana = 35%; demais horários = 20%. Jan, jul e dez valem 20% a mais quando também não há histórico mensal. O painel mostra se o pedido usou "histórico" ou "estimativa".
+
+Todos os percentuais são provisórios: calibrar depois dos primeiros eventos reais.
 
 ## 3. Como ler a "Análise interna" do painel
 
 | Campo | Significado |
 |---|---|
 | Valor cobrado | Total da proposta. |
-| Mesmos itens no cardápio | Quanto o grupo pagaria pedindo as mesmas porções e bebidas à la carte, com os 10%. |
-| Diferença p/ cardápio | Quanto o evento sai acima (ou abaixo) do à la carte. |
-| Horas além de 3h | Acréscimo pela duração. |
-| Mínimo técnico | O menor valor que preserva 52% de margem com os custos provisórios. |
-| Quem definiu o preço | Qual dos três pisos venceu: cardápio, técnico ou oportunidade. |
-| CMV estimado | 35% do valor de cardápio dos itens. Provisório. |
-| Margem estimada | (valor − CMV − mão de obra − duração − sobra) ÷ valor. Abaixo de 45% fica vermelho. |
-| Piso de oportunidade / Mediana comparável | Faturamento típico do salão no mesmo dia e horário. "Sem dado" até a base histórica existir. |
+| Mesmos itens no cardápio | O que o grupo pagaria à la carte, com os 10%. |
+| Diferença p/ cardápio | Quanto o evento sai abaixo do cardápio (negativo = mais barato). |
+| Desconto calculado / composição | Antecipado, volume, horário e formato. |
+| Movimento do horário | Faturamento das horas do evento ÷ hora mais movimentada da semana, com a fonte. |
+| Fator do mês | Força do mês em relação à média. |
+| Faturamento esperado na janela | Quanto o salão costuma faturar nessas horas. |
+| Piso de oportunidade / Piso de custo | Os dois limites mínimos. |
+| Quem definiu o preço | Cardápio com desconto, piso de custo ou faturamento do horário. |
+| CMV usado / estimado | Percentual usado (real ou 35%) e valor em reais. |
+| Margem estimada | (valor − CMV − mão de obra − duração − sobra) ÷ valor. Abaixo de 45% fica amarelo. |
 
-## 4. O que ainda não entra no preço
+## 4. Pontos ainda provisórios
 
-- **Dia da semana, mês e horário**: só geram alertas ("período potencialmente forte"). O custo de oportunidade estava no escopo inicial, mas depende de carregar a tabela `event_demand_baselines` com o histórico de vendas por dia e hora, o que ainda não foi feito.
-- **Custo real por produto**: o CMV de 35% é uma estimativa.
+- Custo de cozinha por pessoa (R$ 7 a R$ 13) é estimativa. É ele que mais segura o desconto em "só petiscos".
+- Os percentuais de desconto e a margem mínima de 35% precisam de calibração com eventos reais.
 
 ## 5. Regras que vão no PDF
 

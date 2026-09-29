@@ -68,7 +68,7 @@ O evento sai **abaixo do cardápio**: o cliente paga antes, fecha a quantidade e
    - **horário:** até 10%. É 10% × (1 − movimento do horário). Com o salão vazio, 10%; no pico, perto de 0%. Evento exclusivo não recebe essa parte;
    - **formato:** petiscos 3%, petiscos + lanche 2%, almoço/jantar 0% (itens em lote custam menos para a cozinha).
 3. **Pisos**, que o preço nunca fura:
-   - **custo:** (CMV + cozinha por pessoa + freelancers + horas extras + sobra de bebida) ÷ (1 − 35%) × 1,10. Garante margem mínima de 35%;
+   - **custo:** (CMV + freelancers de salão + cozinheiros extras + horas extras + sobra de bebida) ÷ (1 − 35%) × 1,10. Garante margem mínima de 35%. A equipe fixa da cozinha não entra, porque é paga com ou sem evento;
    - **oportunidade:** faturamento esperado do salão na janela do evento × parte do salão ocupada (convidados ÷ capacidade, ou 100% se exclusivo). O evento nunca sai por menos do que o salão faria normalmente naquele horário.
 4. Preço = o maior entre cardápio com desconto e os dois pisos, arredondado para cima por pessoa.
 
@@ -103,7 +103,7 @@ Todos os percentuais são provisórios: calibrar depois dos primeiros eventos re
 
 ## 4. Pontos ainda provisórios
 
-- Custo de cozinha por pessoa (R$ 7 a R$ 13) é estimativa. É ele que mais segura o desconto em "só petiscos".
+- Equipe extra (diária de R$ 100): salão +1 acima de 50 convidados, +1 com coquetel acima de 50 adultos ou chope acima de 70, +1 acima de 4 horas; cozinha +1 a partir de 61 convidados e +2 a partir de 91.
 - Os percentuais de desconto e a margem mínima de 35% precisam de calibração com eventos reais.
 
 ## 5. Regras que vão no PDF

@@ -112,6 +112,7 @@ export interface InternalOption extends PublicOption {
   portions: Record<string, number>;
   drinks: Record<string, number>;
   freelancerCount: number;
+  kitchenExtraCount: number;
   extraHours: number;
   estimatedCmvTotal: number;
   estimatedContributionMargin: number;
@@ -150,6 +151,8 @@ const MIN_CONTRIBUTION_MARGIN = 0.35;
 /** Abaixo desta margem o pedido fica amarelo. */
 const MARGIN_ALERT = 0.45;
 const FREELANCER_DAY = 100;
+/** Cozinheiros extras por número de convidados: [a partir de, quantidade]. */
+export const KITCHEN_EXTRA: Array<[number, number]> = [[61, 1], [91, 2]];
 /** Duração incluída em todos os pacotes. */
 export const BASE_HOURS = 3;
 /** Cada hora além da base acrescenta este percentual ao valor do evento (mesma regra da hora extra do contrato). */
@@ -348,6 +351,7 @@ const PROFILE_LABEL: Record<ProfileKey, string> = {
 
 interface FoodRule {
   profileNote: string;
+  /** Custo variável de cozinha por convidado. Zero: a equipe da cozinha é custo fixo. */
   kitchenLaborPerPerson: number;
   portionsPerPerson: Record<string, number>;
 }
@@ -357,7 +361,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
   petiscos: {
     essencial: {
       profileNote: "4 petiscos clássicos, cerca de 7 unidades por pessoa.",
-      kitchenLaborPerPerson: 7,
+      kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.2,
         bolinha_peixe: 1 / 6,
@@ -367,7 +371,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
     },
     equilibrada: {
       profileNote: "5 petiscos, cerca de 8 unidades por pessoa.",
-      kitchenLaborPerPerson: 8,
+      kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.2,
         bolinha_peixe: 1 / 6,
@@ -378,7 +382,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
     },
     completa: {
       profileNote: "6 petiscos com camarão, cerca de 10 unidades por pessoa.",
-      kitchenLaborPerPerson: 10,
+      kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.2,
         bolinha_peixe: 1 / 6,
@@ -392,7 +396,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
   petiscos_principal: {
     essencial: {
       profileNote: "3 petiscos (cerca de 4 unidades por pessoa) + 1 lanche.",
-      kitchenLaborPerPerson: 9,
+      kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.15,
         crocante_carne_sol: 1 / 6,
@@ -402,7 +406,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
     },
     equilibrada: {
       profileNote: "4 petiscos (cerca de 5 unidades por pessoa) + 1 lanche.",
-      kitchenLaborPerPerson: 10,
+      kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.16,
         bolinha_peixe: 1 / 6,
@@ -414,7 +418,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
     completa: {
       profileNote:
         "5 petiscos com camarão (cerca de 7 unidades por pessoa) + 1 lanche + sobremesa.",
-      kitchenLaborPerPerson: 12,
+      kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.18,
         bolinha_peixe: 1 / 6,
@@ -430,7 +434,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
     essencial: {
       profileNote:
         "2 petiscos na recepção (cerca de 3 unidades por pessoa) + prato principal.",
-      kitchenLaborPerPerson: 9,
+      kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.1,
         dadinho_tapioca: 0.125,
@@ -440,7 +444,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
     equilibrada: {
       profileNote:
         "3 petiscos na recepção (cerca de 4 unidades por pessoa) + prato principal + sobremesa.",
-      kitchenLaborPerPerson: 10,
+      kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.15,
         bolinha_peixe: 1 / 6,
@@ -452,7 +456,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
     completa: {
       profileNote:
         "4 petiscos com camarão (cerca de 5 unidades por pessoa) + prato principal premium + sobremesa.",
-      kitchenLaborPerPerson: 13,
+      kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.15,
         bolinha_peixe: 1 / 6,
@@ -686,6 +690,10 @@ export function buildQuote(
     if (beverageMode === "chope_coquetel" && adults > 50) freelancerCount += 1;
     else if (beverageMode === "chope" && adults > 70) freelancerCount += 1;
     if (input.durationHours > 4) freelancerCount += 1;
+    const kitchenExtraCount = KITCHEN_EXTRA.reduce(
+      (count, [min, extra]) => input.guests >= min ? extra : count,
+      0,
+    );
 
     const foodRetailTotal = retailOf(food.portionsPerPerson) * input.guests;
     const menuEquivalentTotal = (foodRetailTotal + beverageRetailTotal) *
@@ -694,7 +702,7 @@ export function buildQuote(
       extraHours;
     const cmvTotal = (foodRetailTotal + beverageRetailTotal) * cmvUsed;
     const laborTotal = food.kitchenLaborPerPerson * input.guests +
-      freelancerCount * freelancerDay;
+      (freelancerCount + kitchenExtraCount) * freelancerDay;
     const durationCost = extraHours *
       (input.guests * 1.5 + freelancerCount * 20);
     const riskCost = beverageRetailTotal * beverage.wasteRisk;
@@ -746,6 +754,9 @@ export function buildQuote(
     }
     if (input.dietaryRestriction) {
       alerts.push("Restrição alimentar relevante informada.");
+    }
+    if (kitchenExtraCount > 0) {
+      alerts.push(`${kitchenExtraCount} cozinheiro(s) extra(s) para o volume.`);
     }
     if (freelancerCount > 0) {
       alerts.push(
@@ -864,6 +875,7 @@ export function buildQuote(
         return guestDrinks;
       })(),
       freelancerCount,
+      kitchenExtraCount,
       extraHours,
       estimatedCmvTotal: roundMoney(cmvTotal),
       estimatedContributionMargin: roundMoney(estimatedContributionMargin),
@@ -907,6 +919,7 @@ export function buildQuote(
     portions: _d,
     drinks: _e,
     freelancerCount: _f,
+    kitchenExtraCount: _ad,
     estimatedCmvTotal: _g,
     estimatedContributionMargin: _h,
     menuEquivalentTotal: _i,

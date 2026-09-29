@@ -198,3 +198,18 @@ Deno.test("CMV real substitui o provisório quando é plausível", () => {
   const absurd = buildQuote(base, { realCmvRate: 0.9 });
   assertEquals(absurd.internal[0].cmvRateUsed, 0.35);
 });
+
+Deno.test("cozinha é custo fixo; cozinheiro extra só acima de 60 convidados", () => {
+  assertEquals(
+    buildQuote({ ...base, guests: 60 }).internal[0].kitchenExtraCount,
+    0,
+  );
+  assertEquals(
+    buildQuote({ ...base, guests: 61 }).internal[0].kitchenExtraCount,
+    1,
+  );
+  assertEquals(
+    buildQuote({ ...base, guests: 95 }).internal[0].kitchenExtraCount,
+    2,
+  );
+});

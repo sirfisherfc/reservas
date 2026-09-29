@@ -1,6 +1,6 @@
 # Configurador de eventos - diagnóstico, regras e arquitetura do MVP
 
-Atualizado em 29/09/2026. Este documento separa decisões confirmadas, cálculos, recomendações, hipóteses provisórias e itens que exigem aprovação.
+Atualizado em 29/09/2026. **Pacotes, bebidas e etapas foram substituídos pela v2: ver `MANUAL_EVENTOS.md`.** Este documento separa decisões confirmadas, cálculos, recomendações, hipóteses provisórias e itens que exigem aprovação.
 
 ## 1. Resumo executivo
 

@@ -13,7 +13,7 @@ const base: QuoteInput = {
   children: 0,
   foodStyle: "refeicao",
   beverageMode: "sem_alcool",
-  profile: "equilibrada",
+  profile: "comparar",
 };
 
 Deno.test("30 pessoas em almoço de semana gera preço fechado com atendimento", () => {
@@ -62,10 +62,54 @@ Deno.test("100 pessoas com duração maior recomenda equipe adicional", () => {
   assertGreater(q.internal[0].freelancerCount, 1);
 });
 
-Deno.test("open bar tem limite de três horas no rótulo e validação", () => {
-  const q = buildQuote({ ...base, beverageMode: "open_bar" });
-  assertMatch(q.options[0].beverageLabel, /3 horas/i);
+Deno.test("chope + coquetel conta álcool só para adultos e exige conferência", () => {
+  const q = buildQuote({
+    ...base,
+    guests: 40,
+    children: 10,
+    beverageMode: "chope_coquetel",
+  });
+  assertEquals(q.internal[0].drinks.chope, 60);
+  assertEquals(q.internal[0].drinks.coquetel, 30);
+  assertEquals(q.internal[0].drinks.agua, 20);
   assertEquals(q.requestRiskLevel, "amarelo");
+});
+
+Deno.test("cada hora além de 3 acrescenta 10% ao valor do cardápio", () => {
+  const three = buildQuote(base, { demandDataAvailable: true });
+  const five = buildQuote({ ...base, durationHours: 5 }, {
+    demandDataAvailable: true,
+  });
+  assertEquals(five.internal[0].extraHours, 2);
+  assertGreater(five.options[0].total, three.options[0].total * 1.19);
+});
+
+Deno.test("perfil escolhido devolve só aquele perfil", () => {
+  const q = buildQuote({ ...base, profile: "essencial" });
+  assertEquals(q.options.length, 1);
+  assertMatch(q.options[0].name, /Essencial/);
+});
+
+Deno.test("petiscos + lanche serve 1 lanche por convidado", () => {
+  const q = buildQuote({
+    ...base,
+    guests: 47,
+    foodStyle: "petiscos_principal",
+  });
+  assertEquals(q.internal.every((o) => o.portions.lanche === 47), true);
+});
+
+Deno.test("opção de bebida desconhecida é recusada", () => {
+  let message = "";
+  try {
+    buildQuote({
+      ...base,
+      beverageMode: "open_bar" as QuoteInput["beverageMode"],
+    });
+  } catch (error) {
+    message = (error as Error).message;
+  }
+  assertMatch(message, /bebidas inválida/);
 });
 
 Deno.test("data bloqueada é vermelha", () => {
@@ -89,8 +133,8 @@ Deno.test("alterar quantidade recalcula totais no servidor", () => {
   const b = buildQuote({ ...base, guests: 55 });
   assertGreater(b.options[0].total, a.options[0].total);
   assertGreater(
-    b.internal[0].portions.principal,
-    a.internal[0].portions.principal,
+    b.internal[0].portions.travessa_essencial,
+    a.internal[0].portions.travessa_essencial,
   );
 });
 

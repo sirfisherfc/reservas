@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   buildQuote,
   type LiveSignals,
+  PRICING_VERSION,
   type PricingOverrides,
   type QuoteInput,
   validateInput,
@@ -205,13 +206,13 @@ async function pricingOverrides(
       "id,code,cmv_rate,service_rate,target_contribution_margin,freelancer_day",
     )
     .eq("status", "active").maybeSingle();
-  if (!version) return undefined;
+  // Regras do banco só valem quando a versão ativa é a mesma do código.
+  // Enquanto isso, as constantes versionadas de pricing.ts são a referência.
+  if (!version || version.code !== PRICING_VERSION) return undefined;
   const foodStyle = input.foodStyle === "recomendacao"
     ? "petiscos_principal"
     : input.foodStyle;
-  const beverageMode = input.beverageMode === "recomendacao"
-    ? "sem_alcool"
-    : input.beverageMode;
+  const beverageMode = input.beverageMode;
   const [{ data: packages }, { data: beverages }] = await Promise.all([
     admin.from("event_package_rules").select(
       "food_style,profile,food_units_per_person,retail_per_person,kitchen_labor_per_person,composition",
@@ -523,6 +524,10 @@ async function adminAction(
         60,
         Math.max(0, Math.round(Number(termsRaw.balanceDaysBefore) || 7)),
       ),
+      cardSurchargePercent: Math.min(
+        30,
+        Math.max(0, Number(termsRaw.cardSurchargePercent ?? 10) || 0),
+      ),
       additionalNotes: cleanText(termsRaw.additionalNotes, 1000),
     };
     const publicSnapshot = {
@@ -535,6 +540,10 @@ async function adminAction(
       beverageLabel: cleanText(
         raw.beverageLabel ?? current.public_snapshot?.beverageLabel,
         180,
+      ),
+      beverageDetail: cleanText(
+        raw.beverageDetail ?? current.public_snapshot?.beverageDetail,
+        400,
       ),
       durationHours: configuration.durationHours,
       pricePerPerson: Math.round(pricePerPerson * 100) / 100,
@@ -732,7 +741,7 @@ Deno.serve(async (req) => {
     console.error(error);
     const rawMessage = error instanceof Error ? error.message : "";
     const safeClientError =
-      /^(Data inválida|Horário inválido|Quantidade|Duração|Informe|Confirme|Configuração|Solicitação inválida|Muitas tentativas|Ação inválida|Não autorizado|Caso vermelho|Desconto exige)/
+      /^(Data inválida|Horário inválido|Quantidade|Duração|Opção|Informe|Confirme|Configuração|Solicitação inválida|Muitas tentativas|Ação inválida|Não autorizado|Caso vermelho|Desconto exige)/
         .test(rawMessage);
     const message = safeClientError
       ? rawMessage

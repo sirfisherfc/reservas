@@ -34,6 +34,14 @@ No celular, abra **Painel → Réveillon → Configurar**:
 
 Tudo o que aparece no site (preços, prazos, textos, mensagens de WhatsApp) sai dessas telas. Nada fica fixo no código.
 
+### A página pública (estrutura de venda)
+
+Topo com foto → **A noite** (4 fotos com legenda) → **Incluso** → **As mesas** (preço do lote atual e quantas estão livres, por tipo) → mapa e formulário → **Perguntas frequentes** → chamada final. No celular, um botão fixo "Escolher minha mesa" aparece enquanto o mapa não está na tela.
+
+- Em **Textos da página**: título de "A noite", legendas das fotos (`Título | texto`, uma por linha, na ordem das fotos), linha de prova (vazia = não aparece), perguntas extras (`Pergunta | Resposta`) e a chamada final. As demais perguntas frequentes (horário, pagamento, crianças, grupo, regras) são montadas dos textos que já existem, para a regra não ficar escrita em dois lugares.
+- A frase "Restam N das M mesas" no topo só aparece quando 40% ou mais das mesas já saíram. Antes disso, número baixo de vendas não é mostrado.
+- As fotos são as do site principal (`www.sirfisher.com.br/assets/img`). O cartão "Os fogos de toda a orla" ainda não tem foto: trocar pela da virada quando houver (em `reveillon.html`).
+
 ## Uso no dia a dia (celular)
 
 ### Ver a situação

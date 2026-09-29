@@ -45,6 +45,12 @@ function setText(sel, value) {
   if (node) node.textContent = value ?? '';
 }
 
+// "20:00" -> "20h", "02:30" -> "2h30"
+function hourBR(ts, tz) {
+  const [h, m] = timeBR(ts, tz).split(':');
+  return `${Number(h)}h${m === '00' ? '' : m}`;
+}
+
 function fillList(sel, items) {
   const ul = qs(sel);
   ul.innerHTML = (items || []).map((i) => `<li>${esc(fillTemplate(i, vars))}</li>`).join('');
@@ -57,10 +63,27 @@ function renderStatic() {
   setText('#hero-kicker', t.hero_kicker);
   setText('#hero-title', t.hero_title || e.name);
   setText('#hero-subtitle', fillTemplate(t.hero_subtitle, vars));
+  const day = new Date(e.starts_at).toLocaleDateString('pt-BR', { timeZone: e.timezone, day: 'numeric', month: 'long' });
+  setText('#hero-when', `${day} · das ${hourBR(e.starts_at, e.timezone)} às ${hourBR(e.ends_at, e.timezone)} · ${e.venue_name || 'Sir Fisher Praia'}`);
+
+  if (t.experience_title) setText('#experience-title', t.experience_title);
+  // "Título | texto", um por momento, na ordem das fotos da página.
+  (t.moments || []).forEach((line, i) => {
+    const [title, text] = String(line).split('|').map((s) => s.trim());
+    const fig = qsa('.rv-moment')[i];
+    if (!fig || !title) return;
+    fig.querySelector('.js-moment-title').textContent = title;
+    fig.querySelector('.js-moment-text').textContent = text || '';
+  });
+  setText('#proof-line', t.proof_line);
+  qs('#proof-line').classList.toggle('hidden', !t.proof_line);
+  if (t.final_title) setText('#final-title', t.final_title);
+  if (t.final_subtitle) setText('#final-subtitle', fillTemplate(t.final_subtitle, vars));
+  renderFaq(e, t);
 
   const dateStr = longDateBR(e.starts_at, e.timezone);
   setText('#fact-date', dateStr.charAt(0).toUpperCase() + dateStr.slice(1));
-  setText('#fact-time', `Das ${timeBR(e.starts_at, e.timezone)} às ${timeBR(e.ends_at, e.timezone)}`);
+  setText('#fact-time', `Das ${hourBR(e.starts_at, e.timezone)} às ${hourBR(e.ends_at, e.timezone)}`);
   setText('#fact-venue', e.venue_name);
   const addr = qs('#fact-address');
   addr.textContent = e.address || '';
@@ -73,13 +96,7 @@ function renderStatic() {
   if (e.menu_url) menu.href = e.menu_url; else menu.classList.add('hidden');
 
   setText('#group-note', fillTemplate(t.group_note, vars));
-  setText('#pix-note', fillTemplate(t.pix_note, vars));
-  setText('#card-note', fillTemplate(t.card_note, vars));
-  setText('#guarantee-note', fillTemplate(t.guarantee_note, vars));
-  setText('#balance-note', fillTemplate(t.balance_note, vars));
   setText('#guarantee-inline', fillTemplate(t.guarantee_note, vars));
-  fillList('#children-rules', t.children_rules);
-  fillList('#terms-summary', t.terms_summary);
   qsa('.js-child-age').forEach((n) => { n.textContent = String(e.child_max_age); });
   setText('#children-hint', money(e.child_discount) ? `${money(e.child_discount)} de desconto cada` : '');
 
@@ -88,6 +105,7 @@ function renderStatic() {
   const wa = waHref(e.whatsapp_number, `Olá! Tenho uma dúvida sobre o ${e.name}.`);
   qs('#footer-whatsapp').href = wa;
   qs('#closed-whatsapp').href = wa;
+  qs('#final-whatsapp').href = wa;
 
   qs('#legend-types').innerHTML = data.types.map((ty) => `
     <span class="rv-chip" style="--rv-type:${esc(ty.color)}"><i></i>${esc(ty.name)}</span>`).join('');
@@ -96,6 +114,69 @@ function renderStatic() {
   qs('#closed-notice').classList.toggle('hidden', !closed);
   setText('#closed-text', fillTemplate(t.closed_message, vars));
   setText('#map-hint', closed ? '' : 'Toque numa mesa livre para ver o valor.');
+}
+
+// Perguntas frequentes: as extras do painel (texts.faq, "Pergunta | Resposta")
+// e as que já existem em outros textos (pagamento, crianças, termos), para não
+// haver duas versões da mesma regra.
+const DEFAULT_FAQ = [
+  'Dá para ver a queima de fogos? | Sim. Da nossa orla dá para ver a queima oficial do Aterro e também as de vários clubes e hotéis da Beira-Mar.',
+  'Tem música? | DJ e cantor ao vivo durante toda a noite.',
+];
+
+function renderFaq(e, t) {
+  const f = (s) => fillTemplate(s, vars);
+  const para = (s) => (s ? `<p>${esc(f(s))}</p>` : '');
+  const list = (items) => (items?.length ? `<ul>${items.map((i) => `<li>${esc(f(i))}</li>`).join('')}</ul>` : '');
+  const custom = (t.faq?.length ? t.faq : DEFAULT_FAQ).map((line) => {
+    const [q, ...a] = String(line).split('|');
+    return [q.trim(), para(a.join('|').trim())];
+  });
+  const items = [
+    ['Que horas começa e termina?', para(`Das ${hourBR(e.starts_at, e.timezone)} às ${hourBR(e.ends_at, e.timezone)}.`)],
+    ...custom,
+    ['Como funciona a consumação?', para(t.menu_note)],
+    ['Como faço o pagamento?', [t.pix_note, t.card_note, t.guarantee_note, t.balance_note].map(para).join('')],
+    ['Posso levar crianças?', list(t.children_rules)],
+    ['Somos um grupo grande. Como fazemos?', para(t.group_note)],
+    ['Quais são as regras e o cancelamento?', list(t.terms_summary)],
+  ].filter(([q, a]) => q && a);
+  qs('#faq-list').innerHTML = items.map(([q, a]) => `
+    <details class="rv-faq__item"><summary>${esc(q)}</summary><div class="rv-faq__a">${a}</div></details>`).join('');
+}
+
+// Cartões por tipo de mesa + linha de disponibilidade no topo. Recalcula a cada
+// atualização do mapa (Realtime/polling), então a escassez mostrada é a real.
+function renderAvailability() {
+  const open = data.tables.filter((tb) => tb.state !== 'bloqueada');
+  const free = open.filter((tb) => tb.state === 'livre').length;
+  const avail = qs('#hero-availability');
+  let msg = '';
+  if (open.length && free === 0) msg = 'Todas as mesas já foram reservadas.';
+  else if (open.length && free / open.length <= 0.6) msg = `Restam ${free} das ${open.length} mesas.`;
+  avail.textContent = msg;
+  avail.classList.toggle('hidden', !msg);
+
+  qs('#types-cards').innerHTML = data.types.map((ty) => {
+    const ofType = open.filter((tb) => tb.type_id === ty.id);
+    if (!ofType.length) return '';
+    const n = ofType.filter((tb) => tb.state === 'livre').length;
+    const left = n === 0 ? 'Esgotadas' : n === 1 ? 'Última disponível' : `${n} disponíveis`;
+    const inc = ty.included_people;
+    let people = `Para ${ty.min_people === inc ? '' : 'até '}${inc} pessoas`;
+    if (ty.allows_extra_chairs && ty.max_people > inc) people += ` · até ${ty.max_people} com cadeiras extras`;
+    const price = ty.table_price != null ? `
+        <p class="rv-type__price">${esc(money(ty.table_price))}</p>
+        <p class="rv-type__cons">${esc(money(ty.table_consumption))} de consumação inclusa</p>` : '';
+    return `
+      <article class="rv-type${n === 0 ? ' is-out' : ''}" style="--rv-type:${esc(ty.color)}">
+        <h3><i aria-hidden="true"></i>${esc(ty.name)}</h3>
+        <p class="rv-type__desc">${esc(ty.description || '')}</p>
+        <p class="rv-type__people">${esc(people)}</p>${price}
+        <p class="rv-type__left">${esc(left)}</p>
+        <a href="#mapa" class="rv-link">Ver no mapa →</a>
+      </article>`;
+  }).join('');
 }
 
 function drawMap() {
@@ -107,6 +188,23 @@ function drawMap() {
     selectedId: selected?.id,
     onSelect: selectTable,
   });
+  renderAvailability();
+}
+
+// Botão fixo no celular: aparece depois do topo e some quando o mapa, o
+// formulário, a confirmação ou a chamada final estão na tela.
+function initStickyCta() {
+  const sticky = qs('#sticky-cta');
+  if (!('IntersectionObserver' in window)) return;
+  const visible = new Set();
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((en) => (en.isIntersecting ? visible.add(en.target) : visible.delete(en.target)));
+    const show = visible.size === 0;
+    sticky.classList.toggle('is-on', show);
+    sticky.setAttribute('aria-hidden', String(!show));
+    sticky.tabIndex = show ? 0 : -1;
+  });
+  ['.rv-hero', '#mapa', '#mesa', '#sucesso', '#final'].forEach((sel) => io.observe(qs(sel)));
 }
 
 // -------------------------------------------------------------------------
@@ -489,6 +587,7 @@ async function init() {
   renderStatic();
   drawMap();
   centerMapScroll(svg);
+  initStickyCta();
   const saved = loadBooking();
   if (saved) showSuccess(saved);
   subscribe();

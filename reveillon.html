@@ -4,8 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Réveillon — Sir Fisher Praia</title>
-  <meta name="description" content="Escolha sua mesa para o Réveillon no Sir Fisher Praia, à beira-mar em Fortaleza. Veja o valor na hora e faça sua pré-reserva." />
+  <meta name="description" content="Vire o ano de frente para o mar no Sir Fisher Praia, na Beira-Mar de Fortaleza. DJ e cantor ao vivo, fogos de toda a orla à vista e consumação inclusa. Escolha sua mesa." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Réveillon no Sir Fisher Praia" />
+  <meta property="og:description" content="Vire o ano de frente para o mar, na Beira-Mar de Fortaleza. Escolha sua mesa." />
+  <meta property="og:image" content="https://www.sirfisher.com.br/assets/img/pordosol-1200.jpg" />
   <link rel="icon" type="image/png" href="https://www.sirfisher.com.br/assets/img/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap" />
   <link rel="stylesheet" href="./assets/css/style.css" />
   <link rel="stylesheet" href="./assets/css/reveillon.css" />
   <!-- Mesmas tags base do index.html (medição de visita). As CONVERSÕES do
@@ -37,12 +44,20 @@
     </div>
   </div>
 
-  <header class="hero rv-hero">
-    <div class="container">
+  <!-- Fotos: as mesmas do site principal (www.sirfisher.com.br), em AVIF/WebP/JPG. -->
+  <header class="rv-hero">
+    <picture class="rv-hero__bg">
+      <source type="image/avif" srcset="https://www.sirfisher.com.br/assets/img/pordosol-800.avif 800w, https://www.sirfisher.com.br/assets/img/pordosol-1200.avif 1200w" sizes="100vw" />
+      <source type="image/webp" srcset="https://www.sirfisher.com.br/assets/img/pordosol-800.webp 800w, https://www.sirfisher.com.br/assets/img/pordosol-1200.webp 1200w" sizes="100vw" />
+      <img src="https://www.sirfisher.com.br/assets/img/pordosol-1200.jpg" srcset="https://www.sirfisher.com.br/assets/img/pordosol-800.jpg 800w, https://www.sirfisher.com.br/assets/img/pordosol-1200.jpg 1200w" sizes="100vw" width="1200" height="800" alt="Pôr do sol na Beira-Mar de Fortaleza, visto do Sir Fisher Praia" fetchpriority="high" />
+    </picture>
+    <div class="container rv-hero__content">
       <p class="rv-hero__kicker" id="hero-kicker">&nbsp;</p>
-      <h1 id="hero-title">Réveillon no Sir Fisher Praia</h1>
-      <p id="hero-subtitle">Carregando informações do evento…</p>
-      <a href="#mapa" class="btn btn--primary rv-hero__cta">Escolher minha mesa</a>
+      <h1 class="rv-hero__title" id="hero-title">Réveillon no Sir Fisher Praia</h1>
+      <p class="rv-hero__sub" id="hero-subtitle">&nbsp;</p>
+      <p class="rv-hero__when" id="hero-when">&nbsp;</p>
+      <a href="#mapa" class="btn rv-cta" id="hero-cta">Escolher minha mesa</a>
+      <p class="rv-hero__avail hidden" id="hero-availability"></p>
     </div>
   </header>
 
@@ -51,21 +66,70 @@
       <div class="alert alert--danger">Não foi possível carregar o evento agora. Atualize a página em instantes.</div>
     </div>
 
-    <section class="section container" id="evento">
-      <div class="card rv-info">
-        <ul class="rv-facts">
-          <li><span class="rv-facts__icon" aria-hidden="true">📅</span><div><strong id="fact-date">&nbsp;</strong><span id="fact-time" class="text-soft"></span></div></li>
-          <li><span class="rv-facts__icon" aria-hidden="true">📍</span><div><strong id="fact-venue">&nbsp;</strong><a id="fact-address" class="text-soft" target="_blank" rel="noopener" href="#"></a></div></li>
-        </ul>
-        <h2 class="section-title" id="included-title">Incluso em todas as mesas</h2>
+    <!-- A noite: 4 momentos. Títulos e textos editáveis em Configurar → Textos (moments). -->
+    <section class="rv-section" id="experiencia">
+      <div class="container rv-wide">
+        <p class="rv-eyebrow">A noite</p>
+        <h2 class="rv-h2" id="experience-title">Uma virada para lembrar</h2>
+        <div class="rv-moments">
+          <figure class="rv-moment">
+            <picture>
+              <source type="image/avif" srcset="https://www.sirfisher.com.br/assets/img/mesa-cheia-vista-mar-sir-fisher-440.avif 440w, https://www.sirfisher.com.br/assets/img/mesa-cheia-vista-mar-sir-fisher-660.avif 660w" sizes="(min-width: 900px) 260px, 78vw" />
+              <source type="image/webp" srcset="https://www.sirfisher.com.br/assets/img/mesa-cheia-vista-mar-sir-fisher-440.webp 440w, https://www.sirfisher.com.br/assets/img/mesa-cheia-vista-mar-sir-fisher-660.webp 660w" sizes="(min-width: 900px) 260px, 78vw" />
+              <img src="https://www.sirfisher.com.br/assets/img/mesa-cheia-vista-mar-sir-fisher-660.jpg" width="660" height="825" loading="lazy" alt="Mesa com vista para o mar no Sir Fisher Praia" />
+            </picture>
+            <figcaption><strong class="js-moment-title">De frente para o mar</strong><span class="js-moment-text">Mesas pé na areia, com a Beira-Mar inteira à sua frente.</span></figcaption>
+          </figure>
+          <figure class="rv-moment">
+            <picture>
+              <source type="image/avif" srcset="https://www.sirfisher.com.br/assets/img/prato-800.avif 800w" sizes="(min-width: 900px) 260px, 78vw" />
+              <source type="image/webp" srcset="https://www.sirfisher.com.br/assets/img/prato-800.webp 800w" sizes="(min-width: 900px) 260px, 78vw" />
+              <img src="https://www.sirfisher.com.br/assets/img/prato-800.jpg" width="800" height="640" loading="lazy" alt="Fish and chips do Sir Fisher" />
+            </picture>
+            <figcaption><strong class="js-moment-title">O cardápio do Sir Fisher</strong><span class="js-moment-text">Peixes, camarões e petiscos da casa, servidos a noite toda.</span></figcaption>
+          </figure>
+          <figure class="rv-moment">
+            <picture>
+              <source type="image/avif" srcset="https://www.sirfisher.com.br/assets/img/clientes-fim-de-tarde-sir-fisher-440.avif 440w, https://www.sirfisher.com.br/assets/img/clientes-fim-de-tarde-sir-fisher-660.avif 660w" sizes="(min-width: 900px) 260px, 78vw" />
+              <source type="image/webp" srcset="https://www.sirfisher.com.br/assets/img/clientes-fim-de-tarde-sir-fisher-440.webp 440w, https://www.sirfisher.com.br/assets/img/clientes-fim-de-tarde-sir-fisher-660.webp 660w" sizes="(min-width: 900px) 260px, 78vw" />
+              <img src="https://www.sirfisher.com.br/assets/img/clientes-fim-de-tarde-sir-fisher-660.jpg" width="660" height="825" loading="lazy" alt="Clientes brindando no Sir Fisher Praia" />
+            </picture>
+            <figcaption><strong class="js-moment-title">DJ e cantor ao vivo</strong><span class="js-moment-text">Música do começo da noite até as 2h, para brindar com quem você gosta.</span></figcaption>
+          </figure>
+          <!-- Sem foto da virada por enquanto: cartão tipográfico. Trocar por foto do Instagram. -->
+          <figure class="rv-moment rv-moment--night">
+            <div class="rv-moment__night" aria-hidden="true"><span>00:00</span></div>
+            <figcaption><strong class="js-moment-title">Os fogos de toda a orla</strong><span class="js-moment-text">À meia-noite, a queima oficial do Aterro e as de vários clubes e hotéis da Beira-Mar, todas à vista.</span></figcaption>
+          </figure>
+        </div>
+        <p class="rv-proof hidden" id="proof-line"></p>
+      </div>
+    </section>
+
+    <section class="rv-section rv-section--tint" id="evento">
+      <div class="container">
+        <p class="rv-eyebrow">O que está incluso</p>
+        <h2 class="rv-h2" id="included-title">Incluso em todas as mesas</h2>
         <ul class="rv-included" id="included-list"></ul>
-        <p class="text-soft rv-small" id="menu-note"></p>
-        <a class="btn btn--outline btn--sm" id="menu-link" target="_blank" rel="noopener" href="#">Ver o cardápio</a>
+        <p class="rv-small text-soft" id="menu-note"></p>
+        <a class="rv-link" id="menu-link" target="_blank" rel="noopener" href="#">Ver o cardápio →</a>
+        <ul class="rv-facts">
+          <li><span class="rv-facts__label">Quando</span><div><strong id="fact-date">&nbsp;</strong><span id="fact-time" class="text-soft"></span></div></li>
+          <li><span class="rv-facts__label">Onde</span><div><strong id="fact-venue">&nbsp;</strong><a id="fact-address" class="text-soft" target="_blank" rel="noopener" href="#"></a></div></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="rv-section" id="mesas">
+      <div class="container rv-wide">
+        <p class="rv-eyebrow">As mesas</p>
+        <h2 class="rv-h2">Escolha o seu lugar</h2>
+        <div class="rv-types" id="types-cards"></div>
       </div>
     </section>
 
     <section class="section container" id="mapa">
-      <h2 class="section-title rv-on-dark">Escolha sua mesa</h2>
+      <h2 class="rv-h2 text-center">Escolha sua mesa no mapa</h2>
       <div class="card rv-map-card">
         <div class="rv-legend" id="legend-types"></div>
         <div class="rv-legend rv-legend--states">
@@ -202,23 +266,31 @@
       </div>
     </section>
 
-    <section class="section container" id="pagamento">
-      <div class="card">
-        <h2 class="section-title">Como pagar</h2>
-        <ul class="rv-bullets">
-          <li id="pix-note"></li>
-          <li id="card-note"></li>
-          <li id="guarantee-note"></li>
-          <li id="balance-note"></li>
-        </ul>
-        <h2 class="section-title">Crianças</h2>
-        <ul class="rv-bullets" id="children-rules"></ul>
-        <h2 class="section-title">Termos resumidos</h2>
-        <ul class="rv-bullets" id="terms-summary"></ul>
-        <button type="button" class="btn btn--outline js-open-terms">Ler os termos completos</button>
+    <section class="rv-section" id="duvidas">
+      <div class="container">
+        <p class="rv-eyebrow">Dúvidas</p>
+        <h2 class="rv-h2">Perguntas frequentes</h2>
+        <div class="rv-faq" id="faq-list"></div>
+        <button type="button" class="rv-link js-open-terms">Ler os termos completos →</button>
+      </div>
+    </section>
+
+    <section class="rv-final" id="final">
+      <picture class="rv-final__bg">
+        <source type="image/avif" srcset="https://www.sirfisher.com.br/assets/img/pordosol-800.avif" />
+        <source type="image/webp" srcset="https://www.sirfisher.com.br/assets/img/pordosol-800.webp" />
+        <img src="https://www.sirfisher.com.br/assets/img/pordosol-800.jpg" width="800" height="534" loading="lazy" alt="" />
+      </picture>
+      <div class="container rv-final__content">
+        <h2 class="rv-h2" id="final-title">A próxima virada começa aqui</h2>
+        <p id="final-subtitle">Escolha sua mesa, faça a pré-reserva e garanta o lugar com o sinal no Pix.</p>
+        <a href="#mapa" class="btn rv-cta">Escolher minha mesa</a>
+        <p><a id="final-whatsapp" href="#" target="_blank" rel="noopener">Prefere conversar? Fale com a gente no WhatsApp</a></p>
       </div>
     </section>
   </main>
+
+  <a href="#mapa" class="rv-sticky" id="sticky-cta" aria-hidden="true" tabindex="-1">Escolher minha mesa</a>
 
   <dialog id="terms-dialog" class="rv-dialog">
     <div class="rv-dialog__head">

@@ -281,6 +281,39 @@
 
 /* Mapa */
 .rv-map-card { padding: 16px; }
+/* O zoom é do próprio mapa (reveillon.js): o navegador não pode tratar a pinça
+   sobre ele como zoom da página. */
+.rv .rv-map { touch-action: pan-x pan-y; }
+.rv-map-frame { position: relative; }
+.rv-zoom {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rv-zoom button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--rv-line);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .92);
+  color: var(--rv-ink);
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
+}
+/* No celular o mapa vai de ponta a ponta: sem margem da seção nem do cartão. */
+@media (max-width: 700px) {
+  .rv-main #mapa.section { padding-left: 0; padding-right: 0; }
+  #mapa .rv-h2 { padding: 0 16px; }
+  #mapa .rv-map-card { padding: 12px 0; border-left: 0; border-right: 0; border-radius: 0; box-shadow: none; }
+  #mapa .rv-map-card > :not(.rv-map-frame) { margin-left: 16px; margin-right: 16px; }
+  #mapa .rv-map-wrap { border-radius: 0; }
+}
 .rv-map-card .alert { margin: 12px 0 0; }
 .rv-legend--states { margin-bottom: 10px; }
 

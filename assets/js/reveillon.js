@@ -191,6 +191,54 @@ function drawMap() {
   renderAvailability();
 }
 
+// Zoom só do mapa: pinça com dois dedos, botões − / + e Ctrl+roda no computador.
+// Muda a largura do SVG (o viewBox mantém a proporção) e ajusta a rolagem para o
+// ponto entre os dedos ficar parado. Vai de "mapa inteiro na tela" a 2,5×.
+function initMapZoom() {
+  const wrap = svg.parentElement;
+  let base = 0;
+  const width = () => svg.getBoundingClientRect().width;
+
+  function setWidth(target, cx, cy) {
+    if (!base) base = width();
+    const lo = Math.min(1, wrap.clientWidth / base);
+    const next = Math.min(Math.max(target, base * lo), base * 2.5);
+    const old = width();
+    if (Math.abs(next - old) < 0.5) return;
+    const rect = wrap.getBoundingClientRect();
+    const px = (cx ?? rect.left + rect.width / 2) - rect.left;
+    const fx = px + wrap.scrollLeft;
+    const fy = cy == null ? 0 : cy - svg.getBoundingClientRect().top;
+    const k = next / old;
+    svg.style.width = `${next}px`;
+    svg.style.maxWidth = 'none';
+    wrap.scrollLeft = fx * k - px;
+    if (fy) window.scrollBy(0, fy * (k - 1));
+  }
+
+  let pinch = null;
+  const dist = (e) => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+  wrap.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) pinch = { d: dist(e), w: width() };
+  }, { passive: true });
+  wrap.addEventListener('touchmove', (e) => {
+    if (e.touches.length !== 2 || !pinch) return;
+    e.preventDefault();
+    const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    setWidth(pinch.w * (dist(e) / pinch.d), mx, my);
+  }, { passive: false });
+  wrap.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; });
+  wrap.addEventListener('wheel', (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    setWidth(width() * (e.deltaY < 0 ? 1.1 : 0.9), e.clientX, e.clientY);
+  }, { passive: false });
+  qsa('.rv-zoom button').forEach((b) => b.addEventListener('click', () => {
+    setWidth(width() * (b.dataset.zoom === 'in' ? 1.35 : 1 / 1.35));
+  }));
+}
+
 // Botão fixo no celular: aparece depois do topo e some quando o mapa, o
 // formulário, a confirmação ou a chamada final estão na tela.
 function initStickyCta() {
@@ -587,6 +635,7 @@ async function init() {
   renderStatic();
   drawMap();
   centerMapScroll(svg);
+  initMapZoom();
   initStickyCta();
   const saved = loadBooking();
   if (saved) showSuccess(saved);

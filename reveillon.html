@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap" />
   <!-- ?v= força o celular a baixar CSS/JS novos junto com o HTML novo. Mude a cada alteração. -->
-  <link rel="stylesheet" href="./assets/css/style.css?v=20260928" />
-  <link rel="stylesheet" href="./assets/css/reveillon.css?v=20260928" />
+  <link rel="stylesheet" href="./assets/css/style.css?v=2026092802" />
+  <link rel="stylesheet" href="./assets/css/reveillon.css?v=2026092802" />
   <!-- Mesmas tags base do index.html (medição de visita). As CONVERSÕES do
        réveillon só disparam se ligadas em rv_events.tracking (padrão: tudo off). -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-F40Z5Y9QT6"></script>
@@ -138,9 +138,15 @@
           <span class="rv-chip rv-chip--negociacao">Em negociação</span>
           <span class="rv-chip rv-chip--reservada">Reservada</span>
         </div>
-        <p class="hint rv-map-scroll-hint">Arraste o mapa para o lado para ver todas as mesas.</p>
+        <p class="hint rv-map-scroll-hint">Arraste para o lado e use dois dedos para aproximar ou afastar.</p>
+        <div class="rv-map-frame">
           <div class="rv-map-wrap">
-          <svg id="rv-map" class="rv-map" role="group" aria-label="Mapa das mesas"></svg>
+            <svg id="rv-map" class="rv-map" role="group" aria-label="Mapa das mesas"></svg>
+          </div>
+          <div class="rv-zoom">
+            <button type="button" data-zoom="out" aria-label="Afastar o mapa">−</button>
+            <button type="button" data-zoom="in" aria-label="Aproximar o mapa">+</button>
+          </div>
         </div>
         <p class="hint text-center" id="map-hint">Toque numa mesa livre para ver o valor.</p>
         <p class="text-center hidden" id="my-booking"><a href="#sucesso" id="my-booking-link">Ver minha pré-reserva</a></p>
@@ -307,6 +313,6 @@
     <p><a href="https://www.sirfisher.com.br/privacidade/" target="_blank" rel="noopener">Aviso de Privacidade</a></p>
   </footer>
 
-  <script type="module" src="./assets/js/reveillon.js?v=20260928"></script>
+  <script type="module" src="./assets/js/reveillon.js?v=2026092802"></script>
 </body>
 </html>

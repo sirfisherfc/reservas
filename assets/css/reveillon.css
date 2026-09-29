@@ -17,7 +17,21 @@
   color: var(--color-primary-dark);
   padding: 13px 26px;
 }
-.rv-hero__cta:hover { background: #ffffff; }
+/* Mesma especificidade de .btn--primary:hover:not(:disabled), que senão pinta
+   o fundo de laranja-escuro e some com o texto. */
+.rv-hero__cta:hover:not(:disabled),
+.rv-hero__cta:focus-visible {
+  background: #ffffff;
+  color: var(--color-secondary-dark);
+}
+.rv-hero__cta:focus-visible { outline: 3px solid #fff8ee; outline-offset: 3px; }
+
+/* Logo maior só nesta página (56px × 1,75). */
+.rv .masthead__logo { height: 98px; }
+
+/* Rodapé fica sobre o degradê do fundo: texto claro em vez do cinza padrão. */
+.rv .site-footer,
+.rv .site-footer a { color: #fff8ee; text-shadow: 0 1px 6px rgba(0, 0, 0, .25); }
 
 .rv-main .section { padding: 14px 12px; }
 .rv-on-dark { color: #fff8ee; text-shadow: 0 1px 6px rgba(0, 0, 0, .15); }

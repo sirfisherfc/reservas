@@ -1,6 +1,6 @@
 # Handoff — módulo de Réveillon 2027
 
-Atualizado em 30/09/2026. Este documento permite que outra IA retome o módulo de Réveillon sem depender do histórico da conversa. Manual de uso: [`reveillon.md`](reveillon.md).
+Atualizado em 30/09/2026 (página indexável movida para o www). Este documento permite que outra IA retome o módulo de Réveillon sem depender do histórico da conversa. Manual de uso: [`reveillon.md`](reveillon.md).
 
 ## Estado atual (em produção)
 
@@ -127,14 +127,18 @@ Peças-chave do banco:
 - JSON-LD `Event` no `<head>` (`#event-jsonld`); `syncEventJsonLd` reescreve `offers` com preço e `InStock`/`SoldOut` do banco a cada atualização do mapa.
 - Fotos: a da pista leva "Foto do Réveillon 2025 no Sir Fisher"; a dos fogos, "Imagem ilustrativa (montagem sobre foto do local)". Tirar a legenda da montagem quando houver foto real.
 
-- Links internos: home (2), `/eventos/` e `/como-chegar/` do site principal apontam para `reveillon.html` (`data-evt="click_reveillon"`).
+- **Desde 30/09/2026 a página indexável é `www.sirfisher.com.br/reveillon/`** (repo `site`, `reveillon/index.html`): conteúdo estático, JSON-LD `Event`, `FAQPage` e `BreadcrumbList`, no sitemap do www. O motivo: o www tem a autoridade do domínio, e a página do subdomínio estava "rastreada, mas não indexada". Os botões levam a `reveillon.html#mapa`, com `utm_content=pagina_reveillon*`.
+- `reveillon.html` (subdomínio) virou só a página de venda: `noindex, follow`, sem canonical e fora do `sitemap.xml` do subdomínio. O JSON-LD dela foi mantido (inofensivo), porque o JS o reescreve.
+- A home do app (`reservas.sirfisher.com.br/`) continua indexável de propósito: quem busca "reserva Sir Fisher" cai direto no formulário.
+- Links internos: home (2), `/eventos/` e `/como-chegar/` do site principal apontam para `/reveillon/` (`data-evt="click_reveillon"`). O post do Perfil da Empresa e os anúncios continuam indo direto para `reveillon.html`, que converte com um clique a menos.
+- As fotos da festa e dos fogos foram copiadas para `site/assets/img/` (mesmos nomes). Ao trocar uma, trocar nos dois repos.
 - Perfil da Empresa: post padrão com botão "Reservar" publicado em 30/09/2026 (texto sem preço, foto da pista 2025, link com `utm_campaign=gbp_post&utm_content=reveillon_2027`). As visitas dele aparecem no GA4 com essa UTM.
 
 **Manutenção (a cada troca de lote, esgotamento ou edição):**
-1. Troca de lote: atualizar no `reveillon.html` os preços do JSON-LD e dos fallbacks (cartões e FAQ) e subir o `?v=`.
-2. Esgotou: nada a fazer no código (o JS marca `SoldOut`); conferir o texto do topo.
-3. Depois de 01/01/2027: trocar o texto para "Réveillon 2027 encerrado · lista de interesse para 2028" e manter a URL (não apagar a página); tirar o JSON-LD `Event` ou atualizar para a edição seguinte assim que as datas estiverem definidas.
-4. Nova edição: mesma URL `reveillon.html`, novo `rv_events` e revisão de title, description, JSON-LD e fallbacks.
+1. Troca de lote ou de desconto do Pix: atualizar no `reveillon.html` os preços do JSON-LD e dos fallbacks (cartões e FAQ) e subir o `?v=`. **E também em `site/reveillon/index.html`**: tabela de valores, lista de consumação, quadro do Pix ("Valores do 1º lote"), FAQ visível, `FAQPage`, `offers` do `Event` e a meta description ("a partir de R$ 800").
+2. Esgotou: no subdomínio o JS marca `SoldOut`. Em `site/reveillon/index.html`, trocar à mão as `offers` para `SoldOut` e ajustar os textos e botões.
+3. Depois de 01/01/2027: em `site/reveillon/` e em `reveillon.html`, trocar o texto para "Réveillon 2027 encerrado · lista de interesse para 2028" e manter a URL (não apagar a página); tirar o JSON-LD `Event` ou atualizar para a edição seguinte assim que as datas estiverem definidas.
+4. Nova edição: mesmas URLs (`/reveillon/` indexável e `reveillon.html` de venda), novo `rv_events` e revisão de title, description, JSON-LD e fallbacks nas duas.
 
 ## Edição de imagem com IA (Gemini)
 

@@ -340,7 +340,7 @@ export const ITEMS: Record<
 const FOOD_STYLE_INFO: Record<FoodKey, { label: string; description: string }> =
   {
     petiscos: {
-      label: "Só petiscos",
+      label: "Petiscos",
       description:
         "Petiscos servidos por garçons circulando entre os convidados, durante todo o evento.",
     },

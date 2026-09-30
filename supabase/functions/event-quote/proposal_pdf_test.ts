@@ -15,7 +15,7 @@ Deno.test("gera proposta PDF paginada com conteúdo comercial", async () => {
     guests: 50,
     children: 0,
     public_snapshot: {
-      name: "Só petiscos · Equilibrada",
+      name: "Petiscos · Equilibrada",
       summary: "5 petiscos, cerca de 8 unidades por pessoa.",
       beverageDetail: "2 bebidas por convidado.",
       description: "Seleção dimensionada para o grupo.",

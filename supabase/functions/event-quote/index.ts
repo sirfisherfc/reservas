@@ -9,6 +9,7 @@ import {
 } from "./pricing.ts";
 import { buildProposalPdf } from "./proposal_pdf.ts";
 import { demandWeekday } from "./holidays.ts";
+import { slotsToBlock } from "./agenda.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -266,9 +267,9 @@ async function liveSignals(input: QuoteInput): Promise<LiveSignals> {
   const settingMap = Object.fromEntries(
     (settings.data ?? []).map((row) => [row.key, row.value]),
   );
-  const totalCapacity = Number(
-    settingMap.total_capacity ?? rule.data?.max_people ?? 100,
-  );
+  // Capacidade da casa para o evento. A cota de cada horário da grade
+  // (availability_rules.max_people) é só a parte reservável e não limita evento.
+  const totalCapacity = Number(settingMap.total_capacity ?? 100) || 100;
   const durationMinutes = Number(settingMap.table_duration_minutes ?? 120);
   const bufferMinutes = Number(settingMap.reservation_buffer_minutes ?? 60);
   const start = Number(input.startTime.slice(0, 2)) * 60 +
@@ -292,9 +293,12 @@ async function liveSignals(input: QuoteInput): Promise<LiveSignals> {
   signals.capacityExceeded = projected > totalCapacity;
   signals.nearCapacity = !signals.capacityExceeded &&
     projected >= totalCapacity * 0.85;
-  signals.reservationConflict = Boolean(
-    rule.data?.max_people && projected > Number(rule.data.max_people),
-  );
+  signals.reservationConflict = false;
+  if (overlappingPeople > 0) {
+    signals.nearCapacity = true;
+    signals.availabilityNote =
+      `${overlappingPeople} pessoa(s) já reservada(s) no período do evento; essas reservas continuam valendo após o bloqueio.`;
+  }
 
   if (signals.availabilityUnverified) {
     Object.assign(signals, await availabilityFromReservations(input));
@@ -937,6 +941,133 @@ async function adminAction(
     });
   }
 
+  if (action === "admin-confirm") {
+    if (["confirmed", "cancelled", "rejected"].includes(current.status)) {
+      return json({ error: "Ação inválida para o status atual." }, 400);
+    }
+    const weekday = new Date(`${current.event_date}T12:00:00Z`).getUTCDay();
+    const [rules, settings, existing] = await Promise.all([
+      admin.from("availability_rules").select("time_slot").eq(
+        "weekday",
+        weekday,
+      ).eq("enabled", true),
+      admin.from("restaurant_settings").select("value").eq(
+        "key",
+        "table_duration_minutes",
+      ).maybeSingle(),
+      admin.from("blocked_time_slots").select("time_slot").eq(
+        "date",
+        current.event_date,
+      ).eq("active", true),
+    ]);
+    const readError = rules.error ?? settings.error ?? existing.error;
+    if (readError) {
+      throw new Error(
+        `Não foi possível ler a agenda de reservas (${readError.message}). Aplique a migration 20260930010000_eventos_confirmacao_agenda.sql.`,
+      );
+    }
+    const tableMinutes = Number(settings.data?.value ?? 120) || 120;
+    const alreadyBlocked = new Set(
+      (existing.data ?? []).map((row) => String(row.time_slot)),
+    );
+    const toBlock = slotsToBlock(
+      (rules.data ?? []).map((row) => String(row.time_slot)),
+      String(current.start_time).slice(0, 5),
+      Number(current.duration_hours),
+      tableMinutes,
+    ).filter((slot) => !alreadyBlocked.has(slot));
+    let blocks: Array<{ id: string; time_slot: string }> = [];
+    if (toBlock.length) {
+      const { data: inserted, error: insertError } = await admin.from(
+        "blocked_time_slots",
+      ).insert(toBlock.map((time_slot) => ({
+        date: current.event_date,
+        time_slot,
+        reason: `Evento ${current.public_code} (${current.guests} pessoas)`,
+        active: true,
+      }))).select("id,time_slot");
+      if (insertError) {
+        throw new Error(
+          `Não foi possível bloquear a agenda (${insertError.message}).`,
+        );
+      }
+      blocks = inserted ?? [];
+    }
+    const confirmedAt = new Date().toISOString();
+    const { data: confirmed, error: confirmError } = await admin.from(
+      "event_requests",
+    ).update({
+      status: "confirmed",
+      confirmed_at: confirmedAt,
+      agenda_blocks: blocks,
+      updated_at: confirmedAt,
+      reviewed_by_user_id: staff.id,
+    }).eq("id", id).select("*").single();
+    if (confirmError) {
+      if (blocks.length) {
+        await admin.from("blocked_time_slots").delete().in(
+          "id",
+          blocks.map((block) => block.id),
+        );
+      }
+      throw confirmError;
+    }
+    await admin.from("event_request_audit").insert({
+      request_id: id,
+      action: "confirmed",
+      actor_type: staff.role,
+      actor_user_id: staff.id,
+      before_data: { status: current.status },
+      after_data: {
+        status: "confirmed",
+        agenda_blocks: blocks,
+        note: cleanText(body.note, 1000),
+      },
+    });
+    return json({
+      request: confirmed,
+      blocked: blocks.map((b) => b.time_slot),
+    });
+  }
+
+  if (action === "admin-cancel") {
+    if (current.status !== "confirmed") {
+      return json(
+        { error: "Só eventos confirmados podem ser cancelados." },
+        400,
+      );
+    }
+    const blocks = (current.agenda_blocks ?? []) as Array<{ id: string }>;
+    if (blocks.length) {
+      const { error: deleteError } = await admin.from("blocked_time_slots")
+        .delete().in("id", blocks.map((block) => block.id));
+      if (deleteError) {
+        throw new Error(
+          `Não foi possível liberar a agenda (${deleteError.message}).`,
+        );
+      }
+    }
+    const cancelledAt = new Date().toISOString();
+    const { data: cancelled, error: cancelError } = await admin.from(
+      "event_requests",
+    ).update({
+      status: "cancelled",
+      agenda_blocks: [],
+      updated_at: cancelledAt,
+      reviewed_by_user_id: staff.id,
+    }).eq("id", id).select("*").single();
+    if (cancelError) throw cancelError;
+    await admin.from("event_request_audit").insert({
+      request_id: id,
+      action: "cancelled",
+      actor_type: staff.role,
+      actor_user_id: staff.id,
+      before_data: { status: current.status, agenda_blocks: blocks },
+      after_data: { status: "cancelled", note: cleanText(body.note, 1000) },
+    });
+    return json({ request: cancelled });
+  }
+
   const allowed = [
     "approved",
     "adjustment_requested",
@@ -1010,7 +1141,7 @@ Deno.serve(async (req) => {
     console.error(error);
     const rawMessage = error instanceof Error ? error.message : "";
     const safeClientError =
-      /^(Data inválida|Horário inválido|Quantidade|Duração|Opção|Informe|Confirme|Configuração|Solicitação inválida|Muitas tentativas|Ação inválida|Não autorizado|Caso vermelho|Desconto exige)/
+      /^(Data inválida|Horário inválido|Quantidade|Duração|Opção|Informe|Não foi possível ler a agenda|Não foi possível bloquear|Não foi possível liberar|Confirme|Configuração|Solicitação inválida|Muitas tentativas|Ação inválida|Não autorizado|Caso vermelho|Desconto exige)/
         .test(rawMessage);
     const message = safeClientError
       ? rawMessage

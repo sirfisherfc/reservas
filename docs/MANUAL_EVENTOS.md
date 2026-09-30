@@ -119,7 +119,13 @@ Todos os percentuais são provisórios: calibrar depois dos primeiros eventos re
 
 Os quadros do topo contam só pedidos **pendentes**.
 
-A agenda é conferida lendo as tabelas de reservas. Enquanto a migration `20260930000000_eventos_leitura_agenda.sql` não for aplicada, a função usa a rotina pública `get_available_time_slots`, que cobre datas até 60 dias à frente.
+A agenda é conferida lendo as tabelas de reservas (se a leitura falhar, a função usa a rotina pública `get_available_time_slots`, que cobre 60 dias). A cota de cada horário da grade de reservas (ex.: 48 lugares na quarta) é só a parte reservável e não limita o evento; o limite é a capacidade da casa (100). Reservas já confirmadas no período deixam o pedido amarelo.
+
+### Confirmar o evento e bloquear a agenda
+
+No detalhe do pedido, **"Sinal recebido: confirmar evento"** muda o status para *Confirmado* e bloqueia no site de reservas todos os horários cuja mesa ainda estaria ocupada no início do evento e os que começam antes do fim dele (ex.: evento 17h–21h com mesa de 2h bloqueia 15h30 a 20h). O bloqueio aparece no painel de reservas com o motivo "Evento EV-…". Reservas já feitas continuam valendo.
+
+**"Cancelar evento e liberar agenda"** remove só os bloqueios criados por aquele evento. Bloqueios manuais que já existiam não são mexidos.
 
 ## 4. Como ler a "Análise interna" do painel
 

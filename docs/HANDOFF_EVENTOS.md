@@ -1,6 +1,6 @@
 # Handoff — Configurador e propostas de eventos
 
-Atualizado em 29/09/2026. Estado: v2 publicada (função e site); migration v2 pendente de aplicação no banco.
+Atualizado em 29/09/2026. Estado: v2 publicada e migrations aplicadas em 30/09/2026 (pacotes v2, leitura da agenda, confirmação com bloqueio de horários).
 
 ## Versão 2 (29/09/2026)
 
@@ -13,7 +13,7 @@ Atualizado em 29/09/2026. Estado: v2 publicada (função e site); migration v2 p
 - PDF refeito: capa com foto, cardápio com fotos, investimento com datas, PIX, acréscimo do cartão e todas as regras do contrato-modelo.
 - Painel: análise interna explicada, comparação com o cardápio e campo de acréscimo do cartão.
 - A função só usa regras do banco quando a versão ativa for `eventos-2026-09-v2`; até lá, usa as constantes de `pricing.ts`.
-- **Pendente:** aplicar `gestao/supabase/migrations/20260929020000_eventos_pacotes_v2.sql` e apagar as solicitações de teste do proprietário.
+- **Pendente:** apagar as 7 solicitações de teste (proprietário e sócios) em `event_requests` e `event_request_audit`.
 
 ## Acessos
 

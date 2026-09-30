@@ -119,7 +119,8 @@ Peças-chave do banco:
 ### SEO da página (branch `seo-reveillon`)
 
 - `<title>` "Réveillon 2027 na Beira-Mar de Fortaleza | Sir Fisher Praia"; o JS monta o mesmo formato com `rv_events.name`.
-- O kicker do topo entrou no `<h1>` (visual igual). Hoje o h1 renderizado é "Réveillon 2027 · 31 de dezembro / Vire o ano de frente para o mar".
+- O kicker do topo entrou no `<h1>` (visual igual). O h1 renderizado é "Réveillon 2027 na Beira-Mar de Fortaleza / Vire o ano de frente para o mar" (`hero_kicker` trocado no banco e no seed em 30/09/2026).
+- "Pé na areia" saiu: o salão fica à beira da praia e uma escada desce direto para a areia (confirmado pelo Rogério). A vista dos fogos (oficial do Aterro + toda a orla) também foi confirmada por ele.
 - Texto de abertura (`#intro`), montado do banco (data, horário, endereço).
 - O HTML traz **fallback estático** de tudo que o JS preenche (hero, incluso, data/local, cartões de mesa com preços, FAQ). Serve para quem não roda JS e para a primeira leitura do Google; o JS reescreve com o banco.
 - FAQ ganhou "O valor é por pessoa ou por mesa?" (montada de `rv_table_types`) e "Onde fica?".

@@ -13,7 +13,7 @@ Atualizado em 29/09/2026. Estado: v2 publicada e migrations aplicadas em 30/09/2
 - PDF refeito: capa com foto, cardápio com fotos, investimento com datas, PIX, acréscimo do cartão e todas as regras do contrato-modelo.
 - Painel: análise interna explicada, comparação com o cardápio e campo de acréscimo do cartão.
 - A função só usa regras do banco quando a versão ativa for `eventos-2026-09-v2`; até lá, usa as constantes de `pricing.ts`.
-- **Pendente:** apagar as 7 solicitações de teste (proprietário e sócios) em `event_requests` e `event_request_audit`.
+- Solicitações de teste apagadas em 30/09/2026: a base de eventos começou zerada.
 
 ## Acessos
 

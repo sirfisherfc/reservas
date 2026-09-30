@@ -396,7 +396,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
     },
     completa: {
       profileNote:
-        "7 petiscos, cerca de 11 unidades por pessoa, com camarão NewCastle (1 porção a cada 4 convidados).",
+        "7 petiscos com camarão NewCastle, cerca de 11 unidades por pessoa.",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.2,
@@ -436,7 +436,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
     },
     completa: {
       profileNote:
-        "5 petiscos com camarão NewCastle (1 porção a cada 4 convidados) + 1 clássico da casa + brownie com sorvete.",
+        "5 petiscos com camarão NewCastle + 1 clássico da casa + brownie com sorvete.",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.18,
@@ -474,7 +474,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
     },
     completa: {
       profileNote:
-        "4 petiscos com camarão NewCastle (1 porção a cada 5 convidados) + prato principal premium + sobremesa.",
+        "4 petiscos com camarão NewCastle + prato principal premium + sobremesa.",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.15,

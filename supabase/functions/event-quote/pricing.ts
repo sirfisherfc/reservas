@@ -44,6 +44,9 @@ export interface LiveSignals {
   demandIndex?: number | null;
   /** Faturamento médio do mês do evento ÷ média dos meses. */
   monthFactor?: number | null;
+  /** Menor e maior fator do ano, para escalonar a temporada. */
+  monthFactorMin?: number | null;
+  monthFactorMax?: number | null;
   /** Capacidade de pessoas do salão. */
   capacity?: number | null;
   /** CMV real médio dos últimos meses (0 a 1). */
@@ -167,7 +170,8 @@ export type DiscountKey =
   | "volume"
   | "horario"
   | "cardapio"
-  | "nivel";
+  | "nivel"
+  | "temporada";
 /** Descontos sobre o valor de cardápio. Provisórios: recalibrar com eventos reais. */
 export const DISCOUNT = {
   /** Pagamento antecipado e quantidade fechada, com risco de sobra do cliente. */
@@ -190,7 +194,32 @@ export const DISCOUNT = {
     string,
     number
   >,
+  /**
+   * Temporada, também depois do teto: do mês mais fraco (+5%) ao mais forte
+   * (−5%), em escala contínua pelo fator do mês. A redução dos meses fortes só
+   * vale inteira com a casa movimentada; em horário tranquilo cai na mesma
+   * proporção do movimento.
+   */
+  temporadaMax: 0.05,
+  temporadaMovimentoCheio: 0.6,
+  temporadaFatores: { min: 0.78, max: 1.2 },
 };
+
+/** Desconto de temporada (positivo = mais desconto) para o mês e o movimento. */
+export function seasonDiscount(
+  monthFactor: number,
+  demandIndex: number,
+  min = DISCOUNT.temporadaFatores.min,
+  max = DISCOUNT.temporadaFatores.max,
+): number {
+  const span = max - min;
+  const position = span > 0
+    ? Math.min(1, Math.max(0, (monthFactor - min) / span))
+    : 0.5;
+  const raw = DISCOUNT.temporadaMax * (1 - 2 * position);
+  if (raw >= 0) return raw;
+  return raw * Math.min(1, demandIndex / DISCOUNT.temporadaMovimentoCheio);
+}
 
 /**
  * Movimento esperado (0 a 1) quando ainda não há histórico: sexta e sábado à
@@ -670,7 +699,10 @@ export function buildQuote(
     (value, [min, rate]) => input.guests >= min ? rate : value,
     0,
   );
-  const baseBreakdown: Record<Exclude<DiscountKey, "nivel">, number> = {
+  const baseBreakdown: Record<
+    Exclude<DiscountKey, "nivel" | "temporada">,
+    number
+  > = {
     antecipado: DISCOUNT.antecipado,
     volume: volumeDiscount,
     horario: input.exclusive
@@ -682,6 +714,14 @@ export function buildQuote(
     DISCOUNT.teto,
     Object.values(baseBreakdown).reduce((a, b) => a + b, 0),
   );
+  const seasonalDiscount = Math.round(
+    seasonDiscount(
+      monthFactor,
+      demandIndex,
+      signals.monthFactorMin ?? undefined,
+      signals.monthFactorMax ?? undefined,
+    ) * 1000,
+  ) / 1000;
   const capacity = signals.capacity && signals.capacity > 0
     ? signals.capacity
     : 100;
@@ -736,10 +776,14 @@ export function buildQuote(
       : signals.opportunityCostTotal * displacedShare;
     const listPriceTotal = menuEquivalentTotal + durationSurchargeTotal;
     const levelDiscount = DISCOUNT.nivel[profile] ?? 0;
-    const discountTarget = Math.max(0, baseDiscount + levelDiscount);
+    const discountTarget = Math.max(
+      0,
+      baseDiscount + levelDiscount + seasonalDiscount,
+    );
     const discountBreakdown: Record<DiscountKey, number> = {
       ...baseBreakdown,
       nivel: levelDiscount,
+      temporada: seasonalDiscount,
     };
     const discountedTotal = listPriceTotal * (1 - discountTarget);
     const commercialMinimum = Math.max(

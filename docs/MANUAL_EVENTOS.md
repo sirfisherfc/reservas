@@ -82,6 +82,9 @@ O evento sai **abaixo do cardápio**: o cliente paga antes, fecha a quantidade e
    - **horário:** até 10%. É 10% × (1 − movimento do horário). Com o salão vazio, 10%; no pico, perto de 0%. Evento exclusivo não recebe essa parte;
    - **formato:** petiscos 3%, petiscos + clássico da casa 2%, almoço/jantar 0% (itens em lote custam menos para a cozinha).
    - **nível** (aplicado depois do teto): Essencial −3 pontos, Equilibrada 0, Completa +3 pontos, para o cliente ver vantagem em subir de nível. Ex.: 10% / 13% / 16%.
+   - **temporada** (também depois do teto): escala contínua pelo fator do mês, de **+5%** no mês mais fraco (hoje março) a **−5%** no mais forte (hoje dezembro). Nos meses fortes, a redução só vale inteira com a casa movimentada (movimento de 60% do pico ou mais); em horário tranquilo cai na mesma proporção. Nos meses fracos o bônus vale sempre.
+
+   Exemplo (60 pessoas, clássico da casa + chope, Essencial): quarta 15h vai de R$ 82 em março a R$ 92 em dezembro; sábado 19h, de R$ 86 a R$ 99.
 3. **Pisos**, que o preço nunca fura:
    - **custo:** (CMV + freelancers de salão + cozinheiros extras + horas extras + sobra de bebida) ÷ (1 − 35%) × 1,10. Garante margem mínima de 35%. A equipe fixa da cozinha não entra, porque é paga com ou sem evento;
    - **oportunidade:** faturamento esperado do salão na janela do evento × parte do salão ocupada (convidados ÷ capacidade, ou 100% se exclusivo). O evento nunca sai por menos do que o salão faria normalmente naquele horário.

@@ -176,6 +176,12 @@ async function demandSignals(input: QuoteInput): Promise<Partial<LiveSignals>> {
         monthFactor,
       ),
       realCmvRate: cache.cmv_rate == null ? null : Number(cache.cmv_rate),
+      monthFactorMin: Object.values(factors).length
+        ? Math.min(...Object.values(factors).map(Number))
+        : null,
+      monthFactorMax: Object.values(factors).length
+        ? Math.max(...Object.values(factors).map(Number))
+        : null,
     };
   }
 

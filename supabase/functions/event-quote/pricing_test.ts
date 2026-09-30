@@ -272,3 +272,11 @@ Deno.test("feriado conta como domingo e véspera como sábado", async () => {
     holiday.discountBreakdown.horario,
   );
 });
+
+Deno.test("temporada: mês fraco +5%, mês forte −5% só com casa cheia", async () => {
+  const { seasonDiscount } = await import("./pricing.ts");
+  assertEquals(seasonDiscount(0.78, 0.3), 0.05);
+  assertEquals(Math.round(seasonDiscount(1.2, 0.9) * 1000) / 1000, -0.05);
+  assertEquals(Math.round(seasonDiscount(1.2, 0.3) * 1000) / 1000, -0.025);
+  assertEquals(Math.round(seasonDiscount(0.99, 0.5) * 1000) / 1000, 0);
+});

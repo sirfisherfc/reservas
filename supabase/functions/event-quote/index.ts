@@ -384,6 +384,17 @@ function checkPublicLimits(input: QuoteInput): QuoteInput {
   return input;
 }
 
+const VERIFY_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+/** Código aleatório impresso na proposta oficial (SF-XXXX-XXXX). */
+function newVerificationCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  const chars = [...bytes].map((b) =>
+    VERIFY_ALPHABET[b % VERIFY_ALPHABET.length]
+  );
+  return `SF-${chars.slice(0, 4).join("")}-${chars.slice(4).join("")}`;
+}
+
 async function staffFrom(req: Request) {
   const authorization = req.headers.get("authorization") ?? "";
   const token = authorization.replace(/^Bearer\s+/i, "");
@@ -593,6 +604,43 @@ async function adminAction(
 ) {
   const staff = await staffFrom(req);
   if (!staff) return json({ error: "Não autorizado." }, 401);
+  if (action === "admin-verify") {
+    const code = cleanText(body.code, 20).toUpperCase().replace(/\s+/g, "");
+    if (!/^SF-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) {
+      return json({
+        valid: false,
+        reason: "Formato inválido. Use SF-XXXX-XXXX.",
+      });
+    }
+    const { data: found, error: verifyError } = await admin.from(
+      "event_request_audit",
+    ).select("request_id,created_at,after_data").eq(
+      "action",
+      "proposal_generated",
+    )
+      .eq("after_data->>verification_code", code).limit(1).maybeSingle();
+    if (verifyError) throw verifyError;
+    if (!found) {
+      return json({
+        valid: false,
+        reason:
+          "Código não encontrado: esta proposta não foi emitida pelo Sir Fisher.",
+      });
+    }
+    const { data: request } = await admin.from("event_requests").select(
+      "proposal_version,status",
+    ).eq("id", found.request_id).maybeSingle();
+    const proposal = found.after_data as Record<string, unknown>;
+    return json({
+      valid: true,
+      requestId: found.request_id,
+      proposal,
+      latestVersion: request?.proposal_version ?? null,
+      isLatest: Number(request?.proposal_version) ===
+        Number(proposal.proposal_version),
+      status: request?.status ?? null,
+    });
+  }
   if (action === "admin-list") {
     const { data, error } = await admin.from("event_requests").select(
       "id,public_code,customer_name,event_date,start_time,guests,risk_level,status,public_snapshot,notification_sent_at,notification_error,created_at",
@@ -762,11 +810,41 @@ async function adminAction(
   if (action === "admin-proposal-pdf") {
     const generatedAt = new Date().toISOString();
     const nextVersion = Number(current.proposal_version ?? 0) + 1;
+    const verificationCode = newVerificationCode();
     const pdfBytes = await buildProposalPdf({
       ...current,
       proposal_version: nextVersion,
       proposal_generated_at: generatedAt,
+      verification_code: verificationCode,
     });
+    const snapshot = (current.public_snapshot ?? {}) as Record<string, unknown>;
+    const { error: auditError } = await admin.from("event_request_audit")
+      .insert({
+        request_id: id,
+        action: "proposal_generated",
+        actor_type: staff.role,
+        actor_user_id: staff.id,
+        before_data: {
+          status: current.status,
+          proposal_version: current.proposal_version,
+        },
+        after_data: {
+          status: "final_proposal_ready",
+          proposal_version: nextVersion,
+          verification_code: verificationCode,
+          generated_at: generatedAt,
+          public_code: current.public_code,
+          customer_name: current.customer_name,
+          event_date: current.event_date,
+          start_time: current.start_time,
+          duration_hours: current.duration_hours,
+          guests: current.guests,
+          option_name: snapshot.name,
+          price_per_person: snapshot.pricePerPerson,
+          total: snapshot.total,
+        },
+      });
+    if (auditError) throw auditError;
     const { data: proposal, error: proposalError } = await admin.from(
       "event_requests",
     ).update({
@@ -777,20 +855,6 @@ async function adminAction(
       reviewed_by_user_id: staff.id,
     }).eq("id", id).select("*").single();
     if (proposalError) throw proposalError;
-    await admin.from("event_request_audit").insert({
-      request_id: id,
-      action: "proposal_generated",
-      actor_type: staff.role,
-      actor_user_id: staff.id,
-      before_data: {
-        status: current.status,
-        proposal_version: current.proposal_version,
-      },
-      after_data: {
-        status: "final_proposal_ready",
-        proposal_version: nextVersion,
-      },
-    });
     const pdfBuffer = pdfBytes.buffer.slice(
       pdfBytes.byteOffset,
       pdfBytes.byteOffset + pdfBytes.byteLength,

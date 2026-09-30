@@ -6,6 +6,7 @@ Deno.test("gera proposta PDF paginada com conteúdo comercial", async () => {
   const bytes = await buildProposalPdf({
     public_code: "EV-TESTE",
     proposal_version: 1,
+    verification_code: "SF-TEST-2345",
     customer_name: "Cliente Teste",
     customer_phone: "85999999999",
     event_date: "2026-11-14",

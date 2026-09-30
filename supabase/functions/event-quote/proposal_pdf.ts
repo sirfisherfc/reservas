@@ -241,6 +241,7 @@ export async function buildProposalPdf(
 
   const code = safe(request.public_code);
   const version = Number(request.proposal_version) || 1;
+  const verification = safe(request.verification_code);
   const guests = Number(request.guests) || 0;
   const children = Number(request.children) || 0;
   const duration = Number(request.duration_hours) || BASE_HOURS;
@@ -505,7 +506,9 @@ export async function buildProposalPdf(
     cover,
     `Emitida em ${dateShort(issued)} · válida até ${
       dateShort(validUntil)
-    } · versão ${version}`,
+    } · versão ${version}${
+      verification ? ` · verificação ${verification}` : ""
+    }`,
     56,
     7.5,
     sans,
@@ -1330,7 +1333,7 @@ export async function buildProposalPdf(
   });
   y = stepsBottom - 26;
 
-  ensure(150);
+  ensure(180);
   page.drawRectangle({
     x: M,
     y: y - 140,
@@ -1353,7 +1356,9 @@ export async function buildProposalPdf(
   const acceptTop = y;
   y -= 34;
   text(
-    `Declaro que li e aceito esta proposta (${code}, versão ${version}) e as condições acima. A data só é garantida após a assinatura do contrato e o pagamento do sinal.`,
+    `Declaro que li e aceito esta proposta (${code}, versão ${version}${
+      verification ? `, código de verificação ${verification}` : ""
+    }) e as condições acima. A data só é garantida após a assinatura do contrato e o pagamento do sinal.`,
     { x: M + 20, width: CW - 40, size: 8.8, color: C.ink },
   );
   y = acceptTop;
@@ -1386,7 +1391,11 @@ export async function buildProposalPdf(
   });
   y -= 140 + 20;
   text(
-    "Esta proposta resume as condições comerciais e não substitui o contrato de prestação de serviços, que será enviado para assinatura.",
+    `Esta proposta resume as condições comerciais e não substitui o contrato de prestação de serviços, que será enviado para assinatura.${
+      verification
+        ? ` Autenticidade: confirme o código ${verification} com o Sir Fisher.`
+        : ""
+    }`,
     { size: 7.5, color: C.muted },
   );
 
@@ -1407,7 +1416,9 @@ export async function buildProposalPdf(
       font: sans,
       color: C.muted,
     });
-    const label = `${code} · v${version} · ${index + 1}/${pages.length}`;
+    const label = `${code} · v${version}${
+      verification ? ` · verificação ${verification}` : ""
+    } · ${index + 1}/${pages.length}`;
     p.drawText(label, {
       x: W - M - sans.widthOfTextAtSize(label, 7),
       y: 32,

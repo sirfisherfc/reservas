@@ -128,6 +128,16 @@ Todos os percentuais são provisórios: calibrar depois dos primeiros eventos re
 - Equipe extra (diária de R$ 100): salão +1 acima de 50 convidados, +1 com coquetel acima de 50 adultos ou chope acima de 70, +1 acima de 4 horas; cozinha +1 a partir de 61 convidados e +2 a partir de 91.
 - Os percentuais de desconto e a margem mínima de 35% precisam de calibração com eventos reais.
 
-## 5. Regras que vão no PDF
+## 5. Código de verificação da proposta
+
+Cada PDF oficial recebe um código aleatório (ex.: `SF-7K2Q-9XWD`), impresso na capa, no aceite, na nota final e no rodapé de todas as páginas. O código fica gravado no histórico do pedido com versão, data de emissão, cliente, data do evento, convidados, pacote, valor por pessoa e total.
+
+Se um cliente apresentar uma proposta, digite o código em **Verificar proposta**, no topo de `eventos.html`. O painel mostra:
+
+- **✓ autêntica**, com os valores registrados: compare com o PDF apresentado; qualquer diferença indica alteração;
+- se aquela versão foi **substituída** por uma mais nova;
+- **✗ código não encontrado**: a proposta não foi emitida pelo Sir Fisher.
+
+## 6. Regras que vão no PDF
 
 O PDF traz capa, cardápio com fotos e quantidades, bebidas, investimento (sinal, saldo com data, acréscimo de 10% no cartão, dados do PIX) e as regras do contrato-modelo: horário e hora extra, bebidas e maiores de 18, convidados extras e comparecimento menor, pagamento e atraso, serviço volante, alergias, alterações com 7 dias, fornecedores externos e normas municipais, fogos, espaço ao ar livre e chuva, cancelamento (sinal não devolvido e multa de 50% nos 30 dias), força maior e responsabilidades. Termina com os próximos passos e o campo de aceite. Ele não substitui o contrato.

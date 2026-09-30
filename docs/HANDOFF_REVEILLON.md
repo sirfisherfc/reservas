@@ -110,6 +110,11 @@ Peças-chave do banco:
 - Ao trocar uma imagem mantendo o nome, suba o `?v=` das URLs dela em `reveillon.html` e o `?v=` do CSS/JS.
 - Export completo do Instagram (29/09/2026): `OneDrive/Sir Fisher/Marketing/Fotos/Instagram` (`media/` + HTMLs com data e legenda em `your_instagram_activity/media/`).
 
+## Busca do Google (Search Console)
+
+- Propriedade `sc-domain:sirfisher.com.br` (cobre o subdomínio `reservas`). A conta de serviço `ai-analytics@capable-avatar-480514-g0.iam.gserviceaccount.com` (`site/tools/analytics/service_account.json`) tem acesso total, com escopo `webmasters`: dá para inspecionar URLs e enviar sitemaps pela API.
+- Em 30/09/2026 a página do réveillon era desconhecida do Google. Criados `robots.txt` (bloqueia `/admin/` e `cancelar.html`), `sitemap.xml` (réveillon + reservas) e o canonical de `reveillon.html`; sitemap enviado sem erros. "Solicitar indexação" só existe na interface do Search Console (a API não faz).
+
 ## Edição de imagem com IA (Gemini)
 
 - Script: `site/tools/ia-imagem/editar.py FOTO "instrução" [--saida arq] [--modelo nome]`; `--modelos` lista os modelos da chave. Padrão: `gemini-3-pro-image`. Saída padrão em `site/_materiais/midia/output/ia/`, para aprovação antes de publicar.

@@ -87,6 +87,11 @@
   font-weight: 600;
   line-height: 1.02;
 }
+/* O kicker fica dentro do h1 (o título da busca leva "Réveillon 2027"), com o visual de antes. */
+.rv-hero__title .rv-hero__kicker { display: block; font-family: var(--font-base); line-height: 1.4; }
+.rv-hero__title #hero-title { display: block; }
+.rv-lead { margin: -6px 0 26px; max-width: 62ch; font-size: 1.02rem; color: var(--color-text-soft); }
+.rv-moment__credit { font-size: .75rem; color: var(--color-text-soft); opacity: .8; }
 .rv-hero__sub { margin: 0 0 16px; max-width: 34ch; font-size: 1.05rem; opacity: .94; }
 .rv-hero__when {
   display: inline-block;

@@ -59,12 +59,17 @@ function fillList(sel, items) {
 function renderStatic() {
   const e = data.event;
   const t = e.texts || {};
-  document.title = `${e.name} — ${e.venue_name || 'Sir Fisher Praia'}`;
+  const venue = e.venue_name || 'Sir Fisher Praia';
+  // Título da busca: edição + lugar + casa (ver o <title> do HTML).
+  document.title = `${e.name} na Beira-Mar de Fortaleza | ${venue}`;
   setText('#hero-kicker', t.hero_kicker);
   setText('#hero-title', t.hero_title || e.name);
   setText('#hero-subtitle', fillTemplate(t.hero_subtitle, vars));
-  const day = new Date(e.starts_at).toLocaleDateString('pt-BR', { timeZone: e.timezone, day: 'numeric', month: 'long' });
-  setText('#hero-when', `${day} · das ${hourBR(e.starts_at, e.timezone)} às ${hourBR(e.ends_at, e.timezone)} · ${e.venue_name || 'Sir Fisher Praia'}`);
+  const day = new Date(e.starts_at).toLocaleDateString('pt-BR', { timeZone: e.timezone, day: 'numeric', month: 'long', year: 'numeric' });
+  const hours = `das ${hourBR(e.starts_at, e.timezone)} às ${hourBR(e.ends_at, e.timezone)}`;
+  setText('#hero-when', `${day} · ${hours} · ${venue}, Beira-Mar de Fortaleza`);
+  const street = String(e.address || '').replace(/\s+[—–-]\s+/, ', no ').replace(/,?\s*Fortaleza\/CE$/, '');
+  setText('#intro', `O ${e.name} do ${venue} é na ${longDateBR(e.starts_at, e.timezone)}, ${hours}, no nosso salão de frente para o mar${street ? ` na ${street}` : ''}, em Fortaleza. O valor é por mesa, com consumação inclusa para usar no cardápio da casa, e você escolhe o seu lugar no mapa.`);
 
   if (t.experience_title) setText('#experience-title', t.experience_title);
   // "Título | texto", um por momento, na ordem das fotos da página.
@@ -134,6 +139,8 @@ function renderFaq(e, t) {
   });
   const items = [
     ['Que horas começa e termina?', para(`Das ${hourBR(e.starts_at, e.timezone)} às ${hourBR(e.ends_at, e.timezone)}.`)],
+    ['O valor é por pessoa ou por mesa?', priceFaq()],
+    ['Onde fica?', e.address ? para(`No ${e.venue_name || 'Sir Fisher Praia'}: ${e.address}, em frente ao Jardim Japonês.`) : ''],
     ...custom,
     ['Como funciona a consumação?', para(t.menu_note)],
     ['Como faço o pagamento?', [t.pix_note, t.card_note, t.guarantee_note, t.balance_note].map(para).join('')],
@@ -143,6 +150,47 @@ function renderFaq(e, t) {
   ].filter(([q, a]) => q && a);
   qs('#faq-list').innerHTML = items.map(([q, a]) => `
     <details class="rv-faq__item"><summary>${esc(q)}</summary><div class="rv-faq__a">${a}</div></details>`).join('');
+}
+
+// Resposta montada dos tipos de mesa do banco, para nunca divergir do preço real.
+function priceFaq() {
+  const types = data.types.filter((ty) => ty.table_price != null);
+  if (!types.length) return '';
+  const lines = types.map((ty) => {
+    const who = ty.included_people > 2 ? `até ${ty.included_people} pessoas` : `${ty.included_people} pessoas`;
+    return `${ty.name}: ${money(ty.table_price)} para ${who}, com ${money(ty.table_consumption)} de consumação.`;
+  });
+  const extra = types.find((ty) => ty.allows_extra_chairs);
+  if (extra) {
+    const names = types.filter((ty) => ty.allows_extra_chairs).map((ty) => ty.name.toLowerCase()).join(' ou ');
+    lines.push(`Cadeira extra (${names}): ${money(extra.extra_chair_price)}, com ${money(extra.extra_chair_consumption)} de consumação.`);
+  }
+  return `<p>Por mesa. Cada tipo tem um valor fixo, que cobre um número de pessoas e já inclui um crédito de consumação:</p>
+    <ul>${lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>`;
+}
+
+// Dados estruturados do evento: o HTML traz a versão estática (para quem não
+// roda JS); aqui preço e disponibilidade passam a ser os do banco, por tipo.
+function syncEventJsonLd(open) {
+  const node = qs('#event-jsonld');
+  if (!node) return;
+  try {
+    const ld = JSON.parse(node.textContent);
+    const url = 'https://reservas.sirfisher.com.br/reveillon.html';
+    ld.offers = data.types.filter((ty) => ty.table_price != null).map((ty) => {
+      const ofType = open.filter((tb) => tb.type_id === ty.id);
+      const free = ofType.some((tb) => tb.state === 'livre');
+      return {
+        '@type': 'Offer',
+        name: `${ty.name} (valor da mesa, ${ty.included_people > 2 ? 'cobre ' : ''}${ty.included_people} pessoas)`,
+        price: Number(ty.table_price).toFixed(2),
+        priceCurrency: 'BRL',
+        availability: `https://schema.org/${data.event.sales_open && free ? 'InStock' : 'SoldOut'}`,
+        url,
+      };
+    });
+    node.textContent = JSON.stringify(ld);
+  } catch { /* JSON estático fica como está */ }
 }
 
 // Cartões por tipo de mesa + linha de disponibilidade no topo. Recalcula a cada
@@ -156,6 +204,7 @@ function renderAvailability() {
   else if (open.length && free / open.length <= 0.6) msg = `Restam ${free} das ${open.length} mesas.`;
   avail.textContent = msg;
   avail.classList.toggle('hidden', !msg);
+  syncEventJsonLd(open);
 
   qs('#types-cards').innerHTML = data.types.map((ty) => {
     const ofType = open.filter((tb) => tb.type_id === ty.id);

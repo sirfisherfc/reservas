@@ -460,7 +460,7 @@ async function notifyStaff(request: Record<string, unknown>) {
       body: JSON.stringify({
         from: RESEND_FROM,
         to: [...recipients],
-        subject: `Novo orçamento de evento ${request.public_code}`,
+        subject: `Nova estimativa de evento ${request.public_code}`,
         html:
           `<div style="font-family:Arial,sans-serif;color:#12293d;line-height:1.55;max-width:620px">
           <h1 style="font-size:22px">Novo orçamento de evento</h1>
@@ -576,7 +576,7 @@ async function submit(body: Record<string, unknown>) {
   });
   await notifyStaff(data);
   const whatsappText = encodeURIComponent(
-    `Olá! Acabei de gerar a proposta ${data.public_code} para meu evento e gostaria de falar com a equipe.`,
+    `Olá! Acabei de enviar a estimativa ${data.public_code} do meu evento e gostaria de receber a proposta oficial.`,
   );
   return json({
     publicCode: data.public_code,

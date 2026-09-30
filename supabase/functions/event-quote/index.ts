@@ -362,6 +362,24 @@ async function pricingOverrides(
   } as PricingOverrides;
 }
 
+/** Limites do configurador público. O painel pode ajustar fora deles. */
+const PUBLIC_MIN_GUESTS = 30;
+const PUBLIC_MAX_GUESTS = 100;
+
+function checkPublicLimits(input: QuoteInput): QuoteInput {
+  if (input.guests < PUBLIC_MIN_GUESTS) {
+    throw new Error(
+      `Quantidade de convidados abaixo de ${PUBLIC_MIN_GUESTS}: para grupos menores, faça uma reserva de mesas em reservas.sirfisher.com.br.`,
+    );
+  }
+  if (input.guests > PUBLIC_MAX_GUESTS) {
+    throw new Error(
+      `Quantidade de convidados acima de ${PUBLIC_MAX_GUESTS}: fale com a equipe pelo WhatsApp.`,
+    );
+  }
+  return input;
+}
+
 async function staffFrom(req: Request) {
   const authorization = req.headers.get("authorization") ?? "";
   const token = authorization.replace(/^Bearer\s+/i, "");
@@ -483,7 +501,7 @@ async function submit(body: Record<string, unknown>) {
   if (body.acceptedPrivacy !== true) {
     throw new Error("Confirme o aviso de privacidade.");
   }
-  const input = parseInput(body.configuration);
+  const input = checkPublicLimits(parseInput(body.configuration));
   const name = cleanText(body.name, 120);
   const phone = normalizePhone(body.phone);
   const selectedOptionId = cleanText(body.selectedOptionId, 120);
@@ -838,7 +856,9 @@ Deno.serve(async (req) => {
     const body = await req.json() as Record<string, unknown>;
     const action = cleanText(body.action, 40);
     if (action === "quote") {
-      return json(await quote(parseInput(body.configuration)));
+      return json(
+        await quote(checkPublicLimits(parseInput(body.configuration))),
+      );
     }
     if (action === "submit") return await submit(body);
     if (action.startsWith("admin-")) {

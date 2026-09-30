@@ -4,7 +4,7 @@ Atualizado em 29/09/2026 (regras `eventos-2026-09-v2`). Fonte das regras: `supab
 
 ## 1. O que o cliente escolhe
 
-O configurador tem 4 etapas: data e horário, convidados, comida e bebidas. Aceita de **30 a 100 convidados** (96 cadeiras autorizadas + 4 extras). Abaixo de 30, o site encaminha para a reserva de mesas: o trabalho fixo de um evento (proposta, contrato, sinal, lista, briefing) e o desconto não compensam, e o grupo cabe numa reserva comum. Acima de 100, encaminha para o WhatsApp. No painel, a equipe pode ajustar uma proposta fora dessa faixa. No fim, o cliente sempre vê **três níveis lado a lado** (Essencial, Equilibrada e Completa) do formato escolhido e escolhe um.
+O configurador tem 4 etapas: data e horário, convidados, comida e bebidas. Aceita de **30 a 100 convidados sentados** (96 cadeiras autorizadas + 4 extras). Abaixo de 30, o trabalho fixo de um evento (proposta, contrato, sinal, lista, briefing) e o desconto não compensam, e o site tira o cliente do orçamento: até 10 pessoas, reserva de mesa no site de reservas; de 11 a 29, reserva de mesas pelo WhatsApp (o site de reservas vai até 10), sempre com link para o cardápio. Acima de 100 sentados, ou evento em pé, WhatsApp para a equipe avaliar. No painel, a equipe pode ajustar uma proposta fora dessa faixa. No fim, o cliente sempre vê **três níveis lado a lado** (Essencial, Equilibrada e Completa) do formato escolhido e escolhe um.
 
 ### Comida — 3 formatos
 

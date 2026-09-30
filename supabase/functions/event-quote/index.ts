@@ -369,12 +369,16 @@ const PUBLIC_MAX_GUESTS = 100;
 function checkPublicLimits(input: QuoteInput): QuoteInput {
   if (input.guests < PUBLIC_MIN_GUESTS) {
     throw new Error(
-      `Quantidade de convidados abaixo de ${PUBLIC_MIN_GUESTS}: para grupos menores, faça uma reserva de mesas em reservas.sirfisher.com.br.`,
+      input.guests <= 10
+        ? "Quantidade de convidados: para até 10 pessoas, reserve uma mesa em reservas.sirfisher.com.br e peça pelo cardápio."
+        : `Quantidade de convidados: para grupos de 11 a ${
+          PUBLIC_MIN_GUESTS - 1
+        } pessoas, reserve mesas pelo WhatsApp e peça pelo cardápio, sem pagamento antecipado.`,
     );
   }
   if (input.guests > PUBLIC_MAX_GUESTS) {
     throw new Error(
-      `Quantidade de convidados acima de ${PUBLIC_MAX_GUESTS}: fale com a equipe pelo WhatsApp.`,
+      `Quantidade de convidados: montamos eventos de até ${PUBLIC_MAX_GUESTS} pessoas sentadas. Para grupos maiores ou eventos em pé, fale com a equipe pelo WhatsApp.`,
     );
   }
   return input;

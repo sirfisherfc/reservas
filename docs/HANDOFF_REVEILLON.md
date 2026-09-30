@@ -1,6 +1,6 @@
 # Handoff — módulo de Réveillon 2027
 
-Atualizado em 28/09/2026. Este documento permite que outra IA retome o módulo de Réveillon sem depender do histórico da conversa. Manual de uso: [`reveillon.md`](reveillon.md).
+Atualizado em 30/09/2026. Este documento permite que outra IA retome o módulo de Réveillon sem depender do histórico da conversa. Manual de uso: [`reveillon.md`](reveillon.md).
 
 ## Estado atual (em produção)
 
@@ -101,6 +101,22 @@ Peças-chave do banco:
 - Reserva comum: 31/12 mostra o aviso com link; os outros dias seguem iguais.
 - Página pública e painel testados no Edge headless a 390 px, sem erro no console.
 
+## Fotos da página pública (seção "A noite")
+
+- "De frente para o mar" e "O cardápio do Sir Fisher": fotos do site principal (`www.sirfisher.com.br/assets/img`).
+- "DJ e cantor ao vivo": `assets/img/festa-reveillon-sir-fisher-*`. Quadro sem legenda (≈5,3 s) do reel do Réveillon 2025 publicado no Instagram em 27/12/2025 (`media/reels/202512/18090950935968978.mp4` no export). Letreiro "Blue Tree Towers" apagado (OpenCV) e imagem restaurada com Gemini Pro (nitidez, borrão de movimento), mantendo cena e pessoas. O Rogério **reprovou** um quadro do DJ tocando (cena poluída, 720p): não voltar a ele.
+- "Os fogos de toda a orla": `assets/img/fogos-orla-reveillon-sir-fisher-*`. Montagem: `pordosol-1200.jpg` do site levada para a noite (sem o toldo, a pedido do Rogério), fogos e janelas desenhados por script e finalizada com Gemini Pro para parecer foto real. O export do Instagram não tem foto utilizável da queima (só ~1 s no mesmo reel, com legenda).
+- Originais em alta e o script da montagem (`virada.py`): `site/_materiais/midia/output/reveillon/` (ignorado pelo Git).
+- Ao trocar uma imagem mantendo o nome, suba o `?v=` das URLs dela em `reveillon.html` e o `?v=` do CSS/JS.
+- Export completo do Instagram (29/09/2026): `OneDrive/Sir Fisher/Marketing/Fotos/Instagram` (`media/` + HTMLs com data e legenda em `your_instagram_activity/media/`).
+
+## Edição de imagem com IA (Gemini)
+
+- Script: `site/tools/ia-imagem/editar.py FOTO "instrução" [--saida arq] [--modelo nome]`; `--modelos` lista os modelos da chave. Padrão: `gemini-3-pro-image`. Saída padrão em `site/_materiais/midia/output/ia/`, para aprovação antes de publicar.
+- Chave: variável de ambiente do usuário `GEMINI_API_KEY` (definir com `site/tools/ia-imagem/configurar-chave.ps1`). Conta Google pessoal rogeriof86@gmail.com, projeto `gen-lang-client-0894233383` ("Default Gemini Project"), conta de faturamento `01AD9E-A05044-67AC47`.
+- Faturamento em **crédito pré-pago do AI Studio** (R$ 30 em 30/09/2026). Sem saldo pré-pago a API responde 402 "prepayment credits are depleted"; no plano gratuito os modelos de imagem têm cota 0 (429). Os R$ 40 pagos antes entraram como crédito geral da conta de faturamento (pós-pago), que não vale para a API; dá para pedir reembolso na tela de faturamento.
+- O console do Google Cloud falha no Chrome deste PC (`ERR_HTTP2_FRAME_SIZE_ERROR`, até em janela anônima). Usar o Edge ou o celular.
+
 ## Pendências e riscos
 
 1. **Abrir as vendas** quando o Rogério decidir (um toque no painel).
@@ -109,3 +125,5 @@ Peças-chave do banco:
 4. **Conversões server-side (CAPI/GA4 MP) não ligadas:** `ad_conversion_events.reservation_id` é `NOT NULL` e está em produção. Só o navegador está preparado, e desligado.
 5. **Mapa:** o Rogério ajustou visualmente até o estado atual. Qualquer pedido novo de posição: editar banco + seed, tirar print e conferir sobreposição com a mureta, a grade e a cerca.
 6. **Depois do evento:** desativar o job `rv-reveillon-tick` (`cron.unschedule`) e decidir se `special_date_notices` continua.
+7. **Trocar a chave do Gemini:** a atual foi colada no chat em 30/09/2026. Criar outra no AI Studio, apagar a antiga e rodar `configurar-chave.ps1`.
+8. **Foto real da virada:** a dos fogos é montagem. Fotografar a queima do salão na virada 2026→2027 (ou pedir o bruto do reel à agência) e trocar.

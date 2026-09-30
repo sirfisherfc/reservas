@@ -30,5 +30,5 @@ que e-mails antigos percam a imagem do cabeçalho.
 
 ## Exceção: fotos exclusivas do réveillon
 
-`fogos-orla-reveillon-sir-fisher-*` e `dj-reveillon-sir-fisher-*` só são
-usadas em `reveillon.html` e por isso ficam aqui. Detalhes em `docs/reveillon.md`.
+`fogos-orla-reveillon-sir-fisher-*` só é usada em `reveillon.html` e por isso
+fica aqui. Detalhes em `docs/reveillon.md`.

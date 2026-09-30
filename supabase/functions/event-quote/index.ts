@@ -146,8 +146,8 @@ const monthFallback = (input: QuoteInput) =>
 
 /**
  * Movimento esperado, fator do mês e CMV real. Lê o cache diário
- * (event_demand_cache, recalculado pelo pg_cron); só consulta as views ao
- * vivo se o cache estiver ausente ou com mais de 3 dias.
+ * (event_demand_cache, recalculado todo dia 1º pelo pg_cron); só consulta as views ao
+ * vivo se o cache estiver ausente ou com mais de 45 dias.
  */
 async function demandSignals(input: QuoteInput): Promise<Partial<LiveSignals>> {
   const month = String(Number(input.date.slice(5, 7)));
@@ -155,7 +155,7 @@ async function demandSignals(input: QuoteInput): Promise<Partial<LiveSignals>> {
     "hourly,peak_hour_revenue,month_factors,cmv_rate,refreshed_at",
   ).eq("id", 1).maybeSingle();
   const fresh = cache &&
-    Date.now() - new Date(cache.refreshed_at).getTime() < 3 * 86400000 &&
+    Date.now() - new Date(cache.refreshed_at).getTime() < 45 * 86400000 &&
     Array.isArray(cache.hourly) && cache.hourly.length >= 24;
   if (fresh) {
     const byHour = new Map<string, number>();

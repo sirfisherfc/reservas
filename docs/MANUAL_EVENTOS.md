@@ -98,11 +98,11 @@ O evento sai **abaixo do cardápio**: o cliente paga antes, fecha a quantidade e
 | Dado | Fonte |
 |---|---|
 | Movimento por dia da semana e hora | `escala_demanda_base` (faturamento médio por hora, últimos 12 meses, no horário do pedido) |
-| Fator do mês | `painel_diario`: venda média por **dia aberto** do mês ÷ média geral, nos últimos 12 meses fechados. Ficam fora 24/12 e 25/12 (fechado) e 31/12 (Réveillon entra em 01/01 ou por fora) |
+| Fator do mês | **Metas** (`meta_mensal`): meta por dia aberto ÷ média dos 12 meses mais recentes com meta. Dezembro conta 28 dias (sem 24, 25 e 31/12). Para mudar a força de um mês, ajuste a meta dele |
 | CMV | `painel_resumo_mensal`: média do CMV % dos últimos 6 meses fechados; sem dado, 35% |
 | Capacidade | `restaurant_settings.total_capacity` |
 
-Esses dados ficam prontos na tabela `event_demand_cache`, recalculada todo dia às 4h20 (`public.refresh_event_demand_cache()`, pelo pg_cron). O orçamento só lê essa linha: fica rápido (~2 s) e o mesmo pedido sempre sai com o mesmo preço. Se o cache sumir ou tiver mais de 3 dias, a função lê o histórico por hora ao vivo e usa a estimativa de mês.
+Esses dados ficam prontos na tabela `event_demand_cache`, recalculada todo dia 1º do mês às 4h20 (`public.refresh_event_demand_cache()`, pelo pg_cron). O orçamento só lê essa linha: fica rápido (~2 s) e o mesmo pedido sempre sai com o mesmo preço. Se o cache sumir ou tiver mais de 45 dias, a função lê o histórico por hora ao vivo e usa a estimativa de mês.
 
 Sem o histórico por hora, a função usa uma estimativa fixa: sexta e sábado à noite = 90% do pico; domingo de dia = 80%; sábado no almoço = 65%; quinta à noite = 55%; outras noites = 40%; almoço em dia de semana = 35%; demais horários = 20%. Jan, jul e dez valem 20% a mais quando também não há histórico mensal. O painel mostra se o pedido usou "histórico" ou "estimativa".
 

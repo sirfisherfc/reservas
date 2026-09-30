@@ -92,6 +92,15 @@ O evento sai **abaixo do cardápio**: o cliente paga antes, fecha a quantidade e
 
 Sem o histórico por hora, a função usa uma estimativa fixa: sexta e sábado à noite = 90% do pico; domingo de dia = 80%; sábado no almoço = 65%; quinta à noite = 55%; outras noites = 40%; almoço em dia de semana = 35%; demais horários = 20%. Jan, jul e dez valem 20% a mais quando também não há histórico mensal. O painel mostra se o pedido usou "histórico" ou "estimativa".
 
+### Feriados
+
+O movimento usa um calendário próprio (`supabase/functions/event-quote/holidays.ts`):
+
+- **feriado conta como domingo:** nacionais (1/1, Tiradentes, 1/5, 7/9, 12/10, Finados, 15/11, Consciência Negra, Natal), móveis (Carnaval segunda e terça, Sexta-feira Santa, Corpus Christi), Ceará (19/3 São José, 25/3 Data Magna), Fortaleza (15/8 Assunção), mais 24/12 e 31/12;
+- **véspera de feriado conta como sábado**, inclusive domingo antes de feriado de segunda.
+
+O painel mostra o alerta "Feriado (…)" ou "Véspera de feriado (…)" no pedido.
+
 Todos os percentuais são provisórios: calibrar depois dos primeiros eventos reais.
 
 ## 3. Como ler a "Análise interna" do painel

@@ -240,3 +240,22 @@ Deno.test("níveis têm diferença real de preço", () => {
     assertGreater(c.pricePerPerson - q.pricePerPerson, 7);
   }
 });
+
+Deno.test("feriado conta como domingo e véspera como sábado", async () => {
+  const { demandWeekday, holidayName } = await import("./holidays.ts");
+  assertEquals(holidayName("2026-10-12"), "Nossa Senhora Aparecida");
+  assertEquals(holidayName("2027-03-26"), "Sexta-feira Santa");
+  assertEquals(holidayName("2027-02-09"), "Carnaval");
+  assertEquals(demandWeekday("2026-10-12").weekday, 7);
+  assertEquals(demandWeekday("2026-11-19").weekday, 6);
+  assertEquals(demandWeekday("2026-10-13").weekday, 2);
+  assertEquals(demandWeekday("2026-10-11").weekday, 6);
+  const holiday =
+    buildQuote({ ...base, date: "2026-10-12", startTime: "15:00" }).internal[1];
+  const tuesday =
+    buildQuote({ ...base, date: "2026-10-13", startTime: "15:00" }).internal[1];
+  assertGreater(
+    tuesday.discountBreakdown.horario,
+    holiday.discountBreakdown.horario,
+  );
+});

@@ -1,3 +1,5 @@
+import { demandWeekday } from "./holidays.ts";
+
 export type FoodStyle =
   | "petiscos"
   | "petiscos_principal"
@@ -640,7 +642,8 @@ export function buildQuote(
   const beverageMode = input.beverageMode;
   const adults = Math.max(0, input.guests - (input.children ?? 0));
   const date = new Date(`${input.date}T12:00:00Z`);
-  const weekend = date.getUTCDay() === 0 || date.getUTCDay() === 6;
+  const calendar = demandWeekday(input.date);
+  const weekend = calendar.weekday >= 6;
   const strongMonth = [0, 6, 11].includes(date.getUTCMonth());
   const demandReview = weekend || strongMonth;
   const cmvRate = overrides?.cmvRate ?? CMV_RATE;
@@ -651,7 +654,7 @@ export function buildQuote(
   const cmvUsed = realCmv != null && realCmv >= 0.15 && realCmv <= 0.6
     ? realCmv
     : cmvRate;
-  const isoWeekday = date.getUTCDay() === 0 ? 7 : date.getUTCDay();
+  const isoWeekday = calendar.weekday;
   const startHour = Number(input.startTime.slice(0, 2));
   const demandSource: InternalOption["demandSource"] =
     signals.demandIndex != null ? "historico" : "estimativa";
@@ -794,6 +797,7 @@ export function buildQuote(
     else if (signals.nearCapacity) {
       alerts.push("Operação próxima da capacidade.");
     }
+    if (calendar.note) alerts.push(calendar.note);
     if (demandIndex >= 0.75) {
       alerts.push("Horário forte da casa; conferir impacto no salão.");
     }

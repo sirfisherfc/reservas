@@ -8,6 +8,7 @@ import {
   validateInput,
 } from "./pricing.ts";
 import { buildProposalPdf } from "./proposal_pdf.ts";
+import { demandWeekday } from "./holidays.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -179,8 +180,7 @@ async function demandSignals(input: QuoteInput): Promise<Partial<LiveSignals>> {
       `Histórico por hora insuficiente (${rows.length} linhas).`;
   }
   if (rows.length >= 24) {
-    const date = new Date(`${input.date}T12:00:00Z`);
-    const isoWeekday = date.getUTCDay() === 0 ? 7 : date.getUTCDay();
+    const isoWeekday = demandWeekday(input.date).weekday;
     const byHour = new Map<string, number>();
     let peak = 0;
     for (const row of rows) {

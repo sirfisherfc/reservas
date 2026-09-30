@@ -502,6 +502,11 @@ async function notifyStaff(request: Record<string, unknown>) {
 
 async function submit(body: Record<string, unknown>) {
   if (body.website) throw new Error("Solicitação inválida.");
+  if (body.acceptedEstimate !== true) {
+    throw new Error(
+      "Confirme que entendeu que os valores são uma estimativa.",
+    );
+  }
   if (body.acceptedPrivacy !== true) {
     throw new Error("Confirme o aviso de privacidade.");
   }
@@ -565,6 +570,8 @@ async function submit(body: Record<string, unknown>) {
     after_data: {
       risk_level: selected.riskLevel,
       selected_option_id: selected.id,
+      accepted_estimate_terms:
+        "Valores estimados; só valem após confirmação da equipe e proposta oficial.",
     },
   });
   await notifyStaff(data);

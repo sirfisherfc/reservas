@@ -59,6 +59,10 @@ Crianças contam só nas bebidas sem álcool. Open bar, fichas, crédito e "paco
 
 Todos os pacotes incluem **3 horas**. Cada hora a mais acrescenta **10% do valor de cardápio** (a mesma regra de hora extra do contrato). A hora a mais não aumenta as bebidas incluídas.
 
+### Valores são estimativa
+
+O site deixa claro, em três pontos, que o valor é uma estimativa: o quadro "Estes valores são uma estimativa, não uma proposta fechada" acima dos cartões (você escolhe → a equipe confere e pode ajustar → proposta oficial); "valor estimado por pessoa" em cada cartão; e uma caixa obrigatória antes do envio ("Entendo que os valores são uma estimativa e só valem depois da confirmação da equipe e da proposta oficial"). A função recusa o envio sem esse aceite e o registra no histórico do pedido.
+
 ## 2. Como o preço é calculado
 
 O evento sai **abaixo do cardápio**: o cliente paga antes, fecha a quantidade e assume o risco de sobra, e a casa ganha no volume.

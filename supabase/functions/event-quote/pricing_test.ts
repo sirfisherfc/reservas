@@ -219,3 +219,24 @@ Deno.test("Completa tem desconto maior que Equilibrada, que tem maior que Essenc
   assertGreater(q.discountTarget, e.discountTarget);
   assertGreater(c.discountTarget, q.discountTarget);
 });
+
+Deno.test("nível que empata com o de cima some da comparação", () => {
+  const q = buildQuote({ ...base, guests: 90 }, {
+    demandIndex: 1,
+    expectedWindowRevenue: 30000,
+    capacity: 100,
+  });
+  assertEquals(q.internal.length, 3);
+  assertEquals(q.options.length, 1);
+  assertMatch(q.options[0].name, /Completa/);
+});
+
+Deno.test("níveis têm diferença real de preço", () => {
+  for (
+    const foodStyle of ["petiscos", "petiscos_principal", "refeicao"] as const
+  ) {
+    const [e, q, c] = buildQuote({ ...base, guests: 50, foodStyle }).options;
+    assertGreater(q.pricePerPerson - e.pricePerPerson, 7);
+    assertGreater(c.pricePerPerson - q.pricePerPerson, 7);
+  }
+});

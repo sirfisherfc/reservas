@@ -11,7 +11,7 @@ O configurador tem 4 etapas: data e horário, convidados, comida e bebidas. No f
 | Formato | O que é |
 |---|---|
 | **Só petiscos** | Petiscos servidos por garçons circulando (serviço volante) durante todo o evento. |
-| **Petiscos + lanche** | Petiscos na recepção e, depois, **1 lanche por convidado**, à escolha: Edimburger, Fisher Burger ou Fish & Chips. O cliente informa até 7 dias antes quantos de cada. |
+| **Petiscos + clássico da casa** | Petiscos na recepção e, depois, **1 clássico da casa por convidado**, à escolha: Edimburger, Fisher Burger ou Fish & Chips. O cliente informa até 7 dias antes quantos de cada. |
 | **Petiscos + almoço ou jantar** | Petiscos na recepção e **pratos para compartilhar em travessas** (1 travessa de 300 g de proteína a cada 2 convidados), com arroz, batata ou macaxeira, salada, farota e molho. O cliente escolhe 2 proteínas da lista do nível até 7 dias antes. |
 
 ### O que muda em cada nível
@@ -21,16 +21,16 @@ O configurador tem 4 etapas: data e horário, convidados, comida e bebidas. No f
 | Nível | Itens | Unidades por pessoa |
 |---|---|---|
 | Essencial | pasteizinhos, bolinha de peixe, crocante de carne de sol, dadinho | ~7 |
-| Equilibrada | pasteizinhos, bolinha, crocantes (carne de sol + calabresa), dadinho, Crispy Spicy Chicken | ~8 |
-| Completa | pasteizinhos, bolinha, crocantes, dadinho, NewCastle, isca de peixe | ~10 |
+| Equilibrada | pasteizinhos, bolinha, crocantes (carne de sol + calabresa), dadinho, Crispy Spicy Chicken, isca de peixe | ~9 |
+| Completa | tudo da Equilibrada + NewCastle (1 porção de camarão a cada 4 convidados) | ~11 |
 
-**Petiscos + lanche** (sempre 1 lanche por pessoa)
+**Petiscos + clássico da casa** (sempre 1 clássico da casa por pessoa)
 
 | Nível | Petiscos | Extra |
 |---|---|---|
 | Essencial | pasteizinhos, crocante de carne de sol, dadinho (~4 un.) | — |
-| Equilibrada | pasteizinhos, bolinha, crocantes, dadinho (~5 un.) | — |
-| Completa | pasteizinhos, bolinha, crocantes, dadinho, NewCastle (~7 un.) | brownie |
+| Equilibrada | pasteizinhos, bolinha, crocantes, dadinho (~5 un.) | brownie |
+| Completa | pasteizinhos, bolinha, crocantes, dadinho, NewCastle (1 porção a cada 4 convidados) | brownie com sorvete |
 
 **Petiscos + almoço ou jantar**
 
@@ -38,9 +38,11 @@ O configurador tem 4 etapas: data e horário, convidados, comida e bebidas. No f
 |---|---|---|---|
 | Essencial | pasteizinhos, dadinho (~3 un.) | peito de frango com ervas, picanha suína, filé de peixe grelhado | — |
 | Equilibrada | pasteizinhos, bolinha, dadinho (~4 un.) | as do Essencial + carne de sol acebolada | brownie |
-| Completa | pasteizinhos, bolinha, crocantes, NewCastle (~5 un.) | filé de peixe, carne de sol, filé mignon, picanha importada | brownie com sorvete |
+| Completa | pasteizinhos, bolinha, crocantes, NewCastle (1 porção a cada 5 convidados) | filé de peixe, carne de sol, filé mignon, picanha importada | brownie com sorvete |
 
 "Principal grelhado" e "principal premium", da versão 1, deixaram de existir: agora cada nível diz exatamente quais pratos entram.
+
+Cada nível custa pelo menos R$ 7 a mais por pessoa que o anterior (há teste automático). Na comparação, um nível que empate com o de cima ou não fique abaixo do cardápio (quando o piso do horário segura o preço) é escondido do cliente e aparece como alerta no painel.
 
 ### Bebidas — 4 modelos
 
@@ -66,7 +68,7 @@ O evento sai **abaixo do cardápio**: o cliente paga antes, fecha a quantidade e
    - **antecipado:** 5% sempre;
    - **volume:** 3% (30–40 convidados), 6% (41–60), 8% (61–80), 10% (81 ou mais);
    - **horário:** até 10%. É 10% × (1 − movimento do horário). Com o salão vazio, 10%; no pico, perto de 0%. Evento exclusivo não recebe essa parte;
-   - **formato:** petiscos 3%, petiscos + lanche 2%, almoço/jantar 0% (itens em lote custam menos para a cozinha).
+   - **formato:** petiscos 3%, petiscos + clássico da casa 2%, almoço/jantar 0% (itens em lote custam menos para a cozinha).
    - **nível** (aplicado depois do teto): Essencial −3 pontos, Equilibrada 0, Completa +3 pontos, para o cliente ver vantagem em subir de nível. Ex.: 10% / 13% / 16%.
 3. **Pisos**, que o preço nunca fura:
    - **custo:** (CMV + freelancers de salão + cozinheiros extras + horas extras + sobra de bebida) ÷ (1 − 35%) × 1,10. Garante margem mínima de 35%. A equipe fixa da cozinha não entra, porque é paga com ou sem evento;

@@ -772,7 +772,7 @@ export async function buildProposalPdf(
   );
   if (foodStyle === "petiscos_principal") {
     text(
-      `Lanches: informe até ${
+      `Clássicos da casa: informe até ${
         confirmDate ? dateShort(confirmDate) : "7 dias antes"
       } quantos convidados preferem Edimburger, Fisher Burger ou Fish & Chips.`,
       { size: 8.5, font: sansBold, color: C.navy, gap: 6 },

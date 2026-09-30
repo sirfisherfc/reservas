@@ -300,10 +300,10 @@ export const ITEMS: Record<
     unit: "porções de 250 g",
   },
   lanche: {
-    name: "Lanche individual",
+    name: "Clássico da casa",
     detail:
       "1 por convidado, à escolha: Edimburger (blend bovino de 120 g, bacon e cheddar), Fisher Burger (pescada amarela empanada) ou Fish & Chips (pescada no panko com batatas).",
-    unit: "lanches",
+    unit: "pratos individuais",
   },
   travessa_essencial: {
     name: "Prato principal para compartilhar",
@@ -343,9 +343,9 @@ const FOOD_STYLE_INFO: Record<FoodKey, { label: string; description: string }> =
         "Petiscos servidos por garçons circulando entre os convidados, durante todo o evento.",
     },
     petiscos_principal: {
-      label: "Petiscos + lanche",
+      label: "Petiscos + clássico da casa",
       description:
-        "Petiscos circulando na recepção e, depois, um lanche individual por convidado.",
+        "Petiscos circulando na recepção e, depois, um clássico da casa por convidado: burger ou fish & chips.",
     },
     refeicao: {
       label: "Petiscos + almoço ou jantar",
@@ -381,32 +381,36 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
       },
     },
     equilibrada: {
-      profileNote: "5 petiscos, cerca de 8 unidades por pessoa.",
+      profileNote: "6 petiscos, cerca de 9 unidades por pessoa.",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.2,
         bolinha_peixe: 1 / 6,
         crocantes: 1 / 3,
         dadinho_tapioca: 1 / 6,
-        crispy_chicken: 0.125,
+        crispy_chicken: 0.15,
+        isca_peixe: 0.1,
       },
     },
     completa: {
-      profileNote: "6 petiscos com camarão, cerca de 10 unidades por pessoa.",
+      profileNote:
+        "7 petiscos, cerca de 11 unidades por pessoa, com camarão NewCastle (1 porção a cada 4 convidados).",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.2,
         bolinha_peixe: 1 / 6,
         crocantes: 1 / 3,
         dadinho_tapioca: 1 / 6,
-        newcastle: 0.1,
+        crispy_chicken: 0.15,
+        newcastle: 0.25,
         isca_peixe: 0.1,
       },
     },
   },
   petiscos_principal: {
     essencial: {
-      profileNote: "3 petiscos (cerca de 4 unidades por pessoa) + 1 lanche.",
+      profileNote:
+        "3 petiscos (cerca de 4 unidades por pessoa) + 1 clássico da casa.",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.15,
@@ -416,7 +420,8 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
       },
     },
     equilibrada: {
-      profileNote: "4 petiscos (cerca de 5 unidades por pessoa) + 1 lanche.",
+      profileNote:
+        "4 petiscos (cerca de 5 unidades por pessoa) + 1 clássico da casa + sobremesa.",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.16,
@@ -424,20 +429,21 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
         crocantes: 1 / 6,
         dadinho_tapioca: 0.125,
         lanche: 1,
+        brownie: 1,
       },
     },
     completa: {
       profileNote:
-        "5 petiscos com camarão (cerca de 7 unidades por pessoa) + 1 lanche + sobremesa.",
+        "5 petiscos com camarão NewCastle (1 porção a cada 4 convidados) + 1 clássico da casa + brownie com sorvete.",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.18,
         bolinha_peixe: 1 / 6,
         crocantes: 1 / 6,
         dadinho_tapioca: 0.125,
-        newcastle: 0.1,
+        newcastle: 0.25,
         lanche: 1,
-        brownie: 1,
+        brownie_sorvete: 1,
       },
     },
   },
@@ -466,13 +472,13 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
     },
     completa: {
       profileNote:
-        "4 petiscos com camarão (cerca de 5 unidades por pessoa) + prato principal premium + sobremesa.",
+        "4 petiscos com camarão NewCastle (1 porção a cada 5 convidados) + prato principal premium + sobremesa.",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.15,
         bolinha_peixe: 1 / 6,
         crocantes: 1 / 6,
-        newcastle: 0.1,
+        newcastle: 0.2,
         travessa_completa: 0.5,
         brownie_sorvete: 1,
       },
@@ -929,7 +935,23 @@ export function buildQuote(
       rank[option.riskLevel] > rank[level] ? option.riskLevel : level,
     "verde",
   );
-  const publicOptions = options.map(({
+  // Na comparação, esconde o nível que empata ou passa o de cima, ou que não
+  // fica abaixo do cardápio (acontece quando um piso segura o preço).
+  const visible = options.filter((option, index) => {
+    if (input.profile !== "comparar") return true;
+    const next = options[index + 1];
+    const dominated = next != null &&
+      option.pricePerPerson >= next.pricePerPerson;
+    const noSaving = option.total >= option.menuValueTotal &&
+      options.some((other) => other.total < other.menuValueTotal);
+    if (dominated || noSaving) {
+      option.alerts.push(
+        "Nível escondido do cliente: sem vantagem de preço neste horário.",
+      );
+    }
+    return !dominated && !noSaving;
+  });
+  const publicOptions = (visible.length ? visible : options).map(({
     adults: _a,
     foodUnitsPerPerson: _b,
     drinkUnitsPerAdult: _c,

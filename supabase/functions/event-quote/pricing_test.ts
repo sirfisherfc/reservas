@@ -71,7 +71,8 @@ Deno.test("chope + coquetel conta álcool só para adultos e exige conferência"
   });
   assertEquals(q.internal[0].drinks.chope, 60);
   assertEquals(q.internal[0].drinks.coquetel, 30);
-  assertEquals(q.internal[0].drinks.agua, 20);
+  assertEquals(q.internal[0].drinks.agua, 16);
+  assertEquals(q.internal[0].drinks.suco, 12);
   assertEquals(q.requestRiskLevel, "amarelo");
 });
 

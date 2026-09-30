@@ -49,9 +49,9 @@ Cada nível custa pelo menos R$ 7 a mais por pessoa que o anterior (há teste au
 | Modelo | O que está incluído | Depois disso |
 |---|---|---|
 | **Sem bebidas incluídas** | nada | cada convidado paga o que pedir, na comanda |
-| **Bebidas sem álcool** | 2 por convidado (água, refrigerante ou suco) | comanda individual |
-| **Sem álcool + chope** | 3 chopes Brahma 300 ml por adulto + 1 água ou refrigerante por convidado | comanda individual |
-| **Sem álcool + chope + coquetel** | 2 chopes + 1 caipirinha ou caipiroska por adulto + 1 água ou refrigerante por convidado | comanda individual |
+| **Água, refrigerante e suco** | 2 por convidado (água, refrigerante ou suco) | comanda individual |
+| **Chope + água, refrigerante e suco** | 3 chopes Brahma 300 ml por adulto + 1 água, refrigerante ou suco por convidado | comanda individual |
+| **Chope e coquetel + água, refrigerante e suco** | 2 chopes + 1 caipirinha ou caipiroska por adulto + 1 água, refrigerante ou suco por convidado | comanda individual |
 
 Crianças contam só nas bebidas sem álcool. Open bar, fichas, crédito e "pacote selecionado" saíram do site; se um cliente pedir, a equipe ajusta a proposta manualmente no painel.
 

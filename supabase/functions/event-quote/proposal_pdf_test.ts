@@ -19,7 +19,7 @@ Deno.test("gera proposta PDF paginada com conteúdo comercial", async () => {
       beverageDetail: "2 bebidas por convidado.",
       description: "Seleção dimensionada para o grupo.",
       mainFoods: ["Pasteizinhos", "Bolinha de peixe"],
-      beverageLabel: "Bebidas sem álcool incluídas",
+      beverageLabel: "Água, refrigerante e suco",
       pricePerPerson: 89,
       total: 4450,
       additions: ["Hora adicional sob consulta"],

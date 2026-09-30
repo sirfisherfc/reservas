@@ -510,7 +510,7 @@ export const BEVERAGE: Record<BeverageKey, BeverageRule> = {
     needsValidation: false,
   },
   sem_alcool: {
-    label: "Bebidas sem álcool incluídas",
+    label: "Água, refrigerante e suco",
     detail:
       "2 bebidas por convidado entre água mineral, refrigerante lata e suco. O que passar disso vai para a comanda individual.",
     perGuest: { agua: 0.8, refrigerante: 0.8, suco: 0.4 },
@@ -519,19 +519,19 @@ export const BEVERAGE: Record<BeverageKey, BeverageRule> = {
     needsValidation: false,
   },
   chope: {
-    label: "Sem álcool + chope",
+    label: "Chope + água, refrigerante e suco",
     detail:
-      "3 chopes Brahma (300 ml) por adulto e 1 água ou refrigerante por convidado. O que passar disso vai para a comanda individual.",
-    perGuest: { agua: 0.5, refrigerante: 0.5 },
+      "3 chopes Brahma (300 ml) por adulto e 1 água, refrigerante ou suco por convidado. O que passar disso vai para a comanda individual.",
+    perGuest: { agua: 0.4, refrigerante: 0.3, suco: 0.3 },
     perAdult: { chope: 3 },
     wasteRisk: 0.05,
     needsValidation: true,
   },
   chope_coquetel: {
-    label: "Sem álcool + chope + coquetel",
+    label: "Chope e coquetel + água, refrigerante e suco",
     detail:
-      "2 chopes Brahma (300 ml) e 1 caipirinha ou caipiroska por adulto, mais 1 água ou refrigerante por convidado. O que passar disso vai para a comanda individual.",
-    perGuest: { agua: 0.5, refrigerante: 0.5 },
+      "2 chopes Brahma (300 ml) e 1 caipirinha ou caipiroska por adulto, mais 1 água, refrigerante ou suco por convidado. O que passar disso vai para a comanda individual.",
+    perGuest: { agua: 0.4, refrigerante: 0.3, suco: 0.3 },
     perAdult: { chope: 2, coquetel: 1 },
     wasteRisk: 0.05,
     needsValidation: true,

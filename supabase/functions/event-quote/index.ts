@@ -367,6 +367,8 @@ const PUBLIC_MIN_GUESTS = 30;
 const PUBLIC_MAX_GUESTS = 100;
 
 function checkPublicLimits(input: QuoteInput): QuoteInput {
+  // Exclusividade é negociada à parte; o site nunca cota espaço exclusivo.
+  input.exclusive = false;
   if (input.guests < PUBLIC_MIN_GUESTS) {
     throw new Error(
       input.guests <= 10

@@ -769,7 +769,7 @@ export function buildQuote(
       );
     }
     if (input.guests > 60) {
-      alerts.push("Avaliar exclusividade e impacto na operação.");
+      alerts.push("Mais de 60 convidados: avaliar impacto na operação.");
     }
     if (input.exclusive) alerts.push("Exclusividade solicitada.");
     if (beverage.needsValidation) {
@@ -869,7 +869,6 @@ export function buildQuote(
       additions: [
         "Hora adicional durante o evento: 10% do valor por hora",
         "Bebidas além das incluídas, na comanda individual",
-        "Exclusividade do espaço, sob avaliação",
       ],
       notIncluded: [
         "Decoração",

@@ -296,6 +296,10 @@ async function liveSignals(input: QuoteInput): Promise<LiveSignals> {
     rule.data?.max_people && projected > Number(rule.data.max_people),
   );
 
+  if (signals.availabilityUnverified) {
+    Object.assign(signals, await availabilityFromReservations(input));
+  }
+
   if (demand.data) {
     signals.demandDataAvailable = true;
     signals.comparableRevenueMedian = Number(demand.data.median_revenue);
@@ -304,6 +308,66 @@ async function liveSignals(input: QuoteInput): Promise<LiveSignals> {
     signals.opportunityCostTotal = Number(demand.data.opportunity_cost);
   }
   return signals;
+}
+
+/**
+ * Caminho alternativo quando a função não pode ler as tabelas de reservas:
+ * usa a mesma rotina pública do site de reservas (get_available_time_slots).
+ * Detecta dia sem agenda (bloqueado ou fechado) e pessoas já reservadas
+ * durante a janela do evento.
+ */
+async function availabilityFromReservations(
+  input: QuoteInput,
+): Promise<Partial<LiveSignals>> {
+  const publicClient = createClient(SUPABASE_URL, ANON_KEY, {
+    auth: { persistSession: false },
+  });
+  const { data, error } = await publicClient.rpc("get_available_time_slots", {
+    p_date: input.date,
+    p_party_size: 1,
+  });
+  if (error) {
+    const message = String(error.message ?? "");
+    return {
+      availabilityUnverified: true,
+      availabilityNote: message.startsWith("DATE_NOT_ALLOWED")
+        ? "Agenda de reservas ainda não aberta para esta data: conferir manualmente."
+        : "Agenda de reservas indisponível: conferir manualmente.",
+    };
+  }
+  const slots = (data ?? []) as Array<
+    { time_slot: string; max_people: number; people_booked: number }
+  >;
+  if (!slots.length) {
+    return {
+      availabilityUnverified: true,
+      availabilityNote:
+        "Sem horários de reserva nesta data (bloqueada ou dia fechado): conferir.",
+    };
+  }
+  const toMinutes = (value: string) =>
+    Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5));
+  const start = toMinutes(input.startTime);
+  const end = start + input.durationHours * 60;
+  const booked = slots
+    .filter((slot) => {
+      const minute = toMinutes(String(slot.time_slot));
+      return minute >= start && minute < end;
+    })
+    .reduce((max, slot) => Math.max(max, Number(slot.people_booked) || 0), 0);
+  const capacity = 100;
+  const projected = booked + input.guests;
+  return {
+    availabilityUnverified: false,
+    capacity,
+    capacityExceeded: projected > capacity,
+    nearCapacity: projected <= capacity && projected >= capacity * 0.85,
+    reservationConflict: false,
+    blocked: false,
+    availabilityNote: booked
+      ? `${booked} pessoa(s) já reservada(s) no horário do evento.`
+      : null,
+  };
 }
 
 async function pricingOverrides(

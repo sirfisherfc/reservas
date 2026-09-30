@@ -111,7 +111,17 @@ O painel mostra o alerta "Feriado (…)" ou "Véspera de feriado (…)" no pedid
 
 Todos os percentuais são provisórios: calibrar depois dos primeiros eventos reais.
 
-## 3. Como ler a "Análise interna" do painel
+## 3. Semáforo do painel
+
+- **Vermelho:** data bloqueada, conflito com reservas, capacidade estourada ou margem abaixo de 35%.
+- **Amarelo** (pede decisão): horário forte da casa, feriado ou véspera, desconto travado por um piso, mais de 80 convidados, mais de 4 horas, casa perto da lotação, agenda não conferida (por exemplo, data além da janela de 60 dias da agenda de reservas) ou convidados fora de 30–100.
+- **Verde:** todo o resto. Pode aprovar; os avisos informativos (freelancer, controle do álcool etc.) aparecem no detalhe sem mudar a cor.
+
+Os quadros do topo contam só pedidos **pendentes**.
+
+A agenda é conferida lendo as tabelas de reservas. Enquanto a migration `20260930000000_eventos_leitura_agenda.sql` não for aplicada, a função usa a rotina pública `get_available_time_slots`, que cobre datas até 60 dias à frente.
+
+## 4. Como ler a "Análise interna" do painel
 
 | Campo | Significado |
 |---|---|

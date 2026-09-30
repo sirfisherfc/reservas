@@ -23,15 +23,28 @@ Deno.test("30 pessoas em almoço de semana gera preço fechado com atendimento",
   assertGreater(q.options[0].total, 0);
 });
 
-Deno.test("50 pessoas sexta com chope exige conferência", () => {
+Deno.test("50 pessoas sexta à noite com chope pede conferência", () => {
   const q = buildQuote({
     ...base,
     date: "2026-10-16",
+    startTime: "19:00",
     guests: 50,
     foodStyle: "petiscos",
     beverageMode: "chope",
   });
   assertEquals(q.requestRiskLevel, "amarelo");
+});
+
+Deno.test("40 pessoas quarta à tarde com chope fica verde", () => {
+  const q = buildQuote({
+    ...base,
+    date: "2026-10-14",
+    startTime: "15:00",
+    guests: 40,
+    foodStyle: "petiscos_principal",
+    beverageMode: "chope",
+  });
+  assertEquals(q.requestRiskLevel, "verde");
 });
 
 Deno.test("60 pessoas sábado sem exclusividade nunca vira confirmação", () => {
@@ -62,7 +75,7 @@ Deno.test("100 pessoas com duração maior recomenda equipe adicional", () => {
   assertGreater(q.internal[0].freelancerCount, 1);
 });
 
-Deno.test("chope + coquetel conta álcool só para adultos e exige conferência", () => {
+Deno.test("chope + coquetel conta álcool só para adultos", () => {
   const q = buildQuote({
     ...base,
     guests: 40,
@@ -73,7 +86,6 @@ Deno.test("chope + coquetel conta álcool só para adultos e exige conferência"
   assertEquals(q.internal[0].drinks.coquetel, 30);
   assertEquals(q.internal[0].drinks.agua, 16);
   assertEquals(q.internal[0].drinks.suco, 12);
-  assertEquals(q.requestRiskLevel, "amarelo");
 });
 
 Deno.test("cada hora além de 3 acrescenta 10% ao valor do cardápio", () => {

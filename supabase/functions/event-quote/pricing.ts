@@ -48,6 +48,8 @@ export interface LiveSignals {
   capacity?: number | null;
   /** CMV real médio dos últimos meses (0 a 1). */
   realCmvRate?: number | null;
+  /** Detalhe da conferência da agenda de reservas. */
+  availabilityNote?: string | null;
   /** Por que o histórico por hora não foi usado, quando não foi. */
   demandNote?: string | null;
 }
@@ -763,8 +765,8 @@ export function buildQuote(
         "Quantidade fora da faixa automática de 30 a 100 convidados.",
       );
     }
-    if (input.guests > 60) {
-      alerts.push("Mais de 60 convidados: avaliar impacto na operação.");
+    if (input.guests > 80) {
+      alerts.push("Mais de 80 convidados: avaliar impacto na operação.");
     }
     if (input.exclusive) alerts.push("Exclusividade solicitada.");
     if (beverage.needsValidation) {
@@ -806,7 +808,8 @@ export function buildQuote(
           : "Desconto limitado pelo faturamento esperado do horário.",
       );
     }
-    if (signals.availabilityUnverified) {
+    if (signals.availabilityNote) alerts.push(signals.availabilityNote);
+    else if (signals.availabilityUnverified) {
       alerts.push(
         "Disponibilidade e capacidade precisam de conferência interna.",
       );
@@ -831,10 +834,17 @@ export function buildQuote(
         estimatedContributionMargin < minMargin - 0.005 ||
         (opportunityFloor != null && total < opportunityFloor),
     );
+    // Amarelo só para o que pede decisão; os demais alertas são informativos.
     const yellow = !red &&
       Boolean(
-        alerts.length || input.guests > 60 || beverage.needsValidation ||
-          input.durationHours > 4 || input.dietaryRestriction,
+        input.guests < 30 || input.guests > 80 ||
+          input.durationHours > 4 ||
+          demandIndex >= 0.75 ||
+          calendar.note ||
+          priceDriver !== "desconto" ||
+          signals.availabilityUnverified ||
+          signals.nearCapacity ||
+          input.exclusive,
       );
     const riskLevel: RiskLevel = red
       ? "vermelho"

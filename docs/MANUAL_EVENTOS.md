@@ -67,6 +67,10 @@ O site não oferece nem cota exclusividade: a função ignora esse pedido vindo 
 
 O site deixa claro, em três pontos, que o valor é uma estimativa: o quadro "Estes valores são uma estimativa, não uma proposta fechada" acima dos cartões (você escolhe → a equipe confere e pode ajustar → proposta oficial); "valor estimado por pessoa" em cada cartão; e uma caixa obrigatória antes do envio ("Entendo que os valores são uma estimativa e só valem depois da confirmação da equipe e da proposta oficial"). A função recusa o envio sem esse aceite e o registra no histórico do pedido.
 
+### Datas fechadas
+
+O site recusa **24/12 e 25/12** (casa fechada) e encaminha **31/12** para a página do Réveillon.
+
 ## 2. Como o preço é calculado
 
 O evento sai **abaixo do cardápio**: o cliente paga antes, fecha a quantidade e assume o risco de sobra, e a casa ganha no volume.
@@ -94,9 +98,11 @@ O evento sai **abaixo do cardápio**: o cliente paga antes, fecha a quantidade e
 | Dado | Fonte |
 |---|---|
 | Movimento por dia da semana e hora | `escala_demanda_base` (faturamento médio por hora, últimos 12 meses, no horário do pedido) |
-| Fator do mês | `painel_resumo_mensal`: faturamento médio do mesmo mês ÷ média dos meses |
-| CMV | `painel_resumo_mensal`: média do CMV % dos últimos 6 meses; sem dado, 35% |
+| Fator do mês | `painel_diario`: venda média por **dia aberto** do mês ÷ média geral, nos últimos 12 meses fechados. Ficam fora 24/12 e 25/12 (fechado) e 31/12 (Réveillon entra em 01/01 ou por fora) |
+| CMV | `painel_resumo_mensal`: média do CMV % dos últimos 6 meses fechados; sem dado, 35% |
 | Capacidade | `restaurant_settings.total_capacity` |
+
+Esses dados ficam prontos na tabela `event_demand_cache`, recalculada todo dia às 4h20 (`public.refresh_event_demand_cache()`, pelo pg_cron). O orçamento só lê essa linha: fica rápido (~2 s) e o mesmo pedido sempre sai com o mesmo preço. Se o cache sumir ou tiver mais de 3 dias, a função lê o histórico por hora ao vivo e usa a estimativa de mês.
 
 Sem o histórico por hora, a função usa uma estimativa fixa: sexta e sábado à noite = 90% do pico; domingo de dia = 80%; sábado no almoço = 65%; quinta à noite = 55%; outras noites = 40%; almoço em dia de semana = 35%; demais horários = 20%. Jan, jul e dez valem 20% a mais quando também não há histórico mensal. O painel mostra se o pedido usou "histórico" ou "estimativa".
 

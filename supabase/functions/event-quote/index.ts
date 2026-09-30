@@ -112,103 +112,96 @@ function parseInput(value: unknown): QuoteInput {
   };
 }
 
-/** Mês (1-12) de uma linha do resumo mensal, aceitando "2026-08", data ou número. */
-function monthOf(
-  row: Record<string, unknown>,
-): { key: string; month: number } | null {
-  const text = String(row.ano_mes ?? row.mes ?? "");
-  const match = /(\d{4})-(\d{1,2})/.exec(text);
-  if (match) {
-    return {
-      key: `${match[1]}-${match[2].padStart(2, "0")}`,
-      month: Number(match[2]),
-    };
+/** Faturamento esperado nas horas do evento, a partir da média por dia × hora. */
+function windowDemand(
+  input: QuoteInput,
+  byHour: Map<string, number>,
+  peak: number,
+  monthFactor: number,
+): Partial<LiveSignals> {
+  const isoWeekday = demandWeekday(input.date).weekday;
+  const start = Number(input.startTime.slice(0, 2)) +
+    Number(input.startTime.slice(3, 5)) / 60;
+  const end = start + input.durationHours;
+  let expected = 0;
+  for (let hour = Math.floor(start); hour < end; hour++) {
+    const covered = Math.min(end, hour + 1) - Math.max(start, hour);
+    const day = hour >= 24 ? (isoWeekday % 7) + 1 : isoWeekday;
+    expected += (byHour.get(`${day}-${hour % 24}`) ?? 0) * covered;
   }
-  const month = Number(row.mes);
-  const year = Number(row.ano);
-  return month >= 1 && month <= 12 && year
-    ? { key: `${year}-${month}`, month }
-    : null;
+  if (peak <= 0) return { monthFactor };
+  return {
+    monthFactor,
+    expectedWindowRevenue: expected * monthFactor,
+    demandIndex: Math.min(
+      1,
+      (expected / input.durationHours) * monthFactor / peak,
+    ),
+    demandDataAvailable: true,
+  };
 }
 
+const monthFallback = (input: QuoteInput) =>
+  [1, 7, 12].includes(Number(input.date.slice(5, 7))) ? 1.2 : 1;
+
 /**
- * Faturamento esperado na janela do evento, índice de movimento (0-1),
- * fator do mês e CMV real, a partir das views do painel de gestão.
+ * Movimento esperado, fator do mês e CMV real. Lê o cache diário
+ * (event_demand_cache, recalculado pelo pg_cron); só consulta as views ao
+ * vivo se o cache estiver ausente ou com mais de 3 dias.
  */
 async function demandSignals(input: QuoteInput): Promise<Partial<LiveSignals>> {
-  const [hourly, monthly] = await Promise.all([
-    admin.from("escala_demanda_base").select("dia_semana,hora,valor_hora"),
-    admin.from("painel_resumo_mensal").select("*").limit(48),
-  ]);
-  const result: Partial<LiveSignals> = {};
-
-  // Mês: média do mesmo mês do calendário ÷ média de todos os meses fechados.
-  const currentKey = new Date().toISOString().slice(0, 7);
-  const months = (monthly.data ?? [])
-    .map((row) => ({
-      row: row as Record<string, unknown>,
-      when: monthOf(row as Record<string, unknown>),
-    }))
-    .filter(({ row, when }) =>
-      when && when.key !== currentKey && Number(row.faturamento) > 0
-    );
-  if (!monthly.error && months.length >= 6) {
-    const eventMonth = Number(input.date.slice(5, 7));
-    const all = months.map(({ row }) => Number(row.faturamento));
-    const same = months.filter(({ when }) => when!.month === eventMonth).map((
-      { row },
-    ) => Number(row.faturamento));
-    const avg = (values: number[]) =>
-      values.reduce((a, b) => a + b, 0) / values.length;
-    if (same.length) {
-      result.monthFactor = Math.min(1.5, Math.max(0.6, avg(same) / avg(all)));
-    }
-    const cmv = months
-      .sort((a, b) => a.when!.key < b.when!.key ? 1 : -1)
-      .slice(0, 6)
-      .map(({ row }) => Number(row.cmv_perc))
-      .filter((value) => Number.isFinite(value) && value > 0)
-      .map((value) => value > 1 ? value / 100 : value);
-    if (cmv.length >= 3) result.realCmvRate = avg(cmv);
-  }
-
-  // Hora: soma do faturamento médio de cada hora coberta pelo evento.
-  const rows = hourly.error ? [] : (hourly.data ?? []);
-  if (hourly.error) {
-    result.demandNote = cleanText(hourly.error.message, 200);
-  } else if (rows.length < 24) {
-    result.demandNote =
-      `Histórico por hora insuficiente (${rows.length} linhas).`;
-  }
-  if (rows.length >= 24) {
-    const isoWeekday = demandWeekday(input.date).weekday;
+  const month = String(Number(input.date.slice(5, 7)));
+  const { data: cache } = await admin.from("event_demand_cache").select(
+    "hourly,peak_hour_revenue,month_factors,cmv_rate,refreshed_at",
+  ).eq("id", 1).maybeSingle();
+  const fresh = cache &&
+    Date.now() - new Date(cache.refreshed_at).getTime() < 3 * 86400000 &&
+    Array.isArray(cache.hourly) && cache.hourly.length >= 24;
+  if (fresh) {
     const byHour = new Map<string, number>();
-    let peak = 0;
-    for (const row of rows) {
-      const value = Number(row.valor_hora) || 0;
-      byHour.set(`${row.dia_semana}-${row.hora}`, value);
-      peak = Math.max(peak, value);
+    for (
+      const row of cache.hourly as Array<{ d: number; h: number; v: number }>
+    ) {
+      byHour.set(`${row.d}-${row.h}`, Number(row.v) || 0);
     }
-    const start = Number(input.startTime.slice(0, 2)) +
-      Number(input.startTime.slice(3, 5)) / 60;
-    const end = start + input.durationHours;
-    let expected = 0;
-    for (let hour = Math.floor(start); hour < end; hour++) {
-      const covered = Math.min(end, hour + 1) - Math.max(start, hour);
-      const day = hour >= 24 ? (isoWeekday % 7) + 1 : isoWeekday;
-      expected += (byHour.get(`${day}-${hour % 24}`) ?? 0) * covered;
-    }
-    const monthFactor = result.monthFactor ?? 1;
-    if (peak > 0) {
-      result.expectedWindowRevenue = expected * monthFactor;
-      result.demandIndex = Math.min(
-        1,
-        (expected / input.durationHours) * monthFactor / peak,
-      );
-      result.demandDataAvailable = true;
-    }
+    const factors = (cache.month_factors ?? {}) as Record<string, number>;
+    const monthFactor = factors[month] != null
+      ? Number(factors[month])
+      : monthFallback(input);
+    return {
+      ...windowDemand(
+        input,
+        byHour,
+        Number(cache.peak_hour_revenue),
+        monthFactor,
+      ),
+      realCmvRate: cache.cmv_rate == null ? null : Number(cache.cmv_rate),
+    };
   }
-  return result;
+
+  // Alternativa ao vivo (lenta): só a curva por hora; mês pela estimativa.
+  const { data: hourly, error } = await admin.from("escala_demanda_base")
+    .select("dia_semana,hora,valor_hora");
+  const rows = error ? [] : (hourly ?? []);
+  if (rows.length < 24) {
+    return {
+      monthFactor: monthFallback(input),
+      demandNote: error
+        ? cleanText(error.message, 200)
+        : `Histórico por hora insuficiente (${rows.length} linhas).`,
+    };
+  }
+  const byHour = new Map<string, number>();
+  let peak = 0;
+  for (const row of rows) {
+    const value = Number(row.valor_hora) || 0;
+    byHour.set(`${row.dia_semana}-${row.hora}`, value);
+    peak = Math.max(peak, value);
+  }
+  return {
+    ...windowDemand(input, byHour, peak, monthFallback(input)),
+    demandNote: "Cache de demanda ausente ou antigo: histórico lido ao vivo.",
+  };
 }
 
 async function liveSignals(input: QuoteInput): Promise<LiveSignals> {
@@ -437,6 +430,17 @@ const PUBLIC_MAX_GUESTS = 100;
 function checkPublicLimits(input: QuoteInput): QuoteInput {
   // Exclusividade é negociada à parte; o site nunca cota espaço exclusivo.
   input.exclusive = false;
+  const monthDay = input.date.slice(5, 10);
+  if (monthDay === "12-24" || monthDay === "12-25") {
+    throw new Error(
+      "Data indisponível: o Sir Fisher fecha em 24 e 25 de dezembro.",
+    );
+  }
+  if (monthDay === "12-31") {
+    throw new Error(
+      "Data indisponível: em 31/12 acontece o Réveillon do Sir Fisher. Veja em reservas.sirfisher.com.br/reveillon.html.",
+    );
+  }
   if (input.guests < PUBLIC_MIN_GUESTS) {
     throw new Error(
       input.guests <= 10
@@ -1141,7 +1145,7 @@ Deno.serve(async (req) => {
     console.error(error);
     const rawMessage = error instanceof Error ? error.message : "";
     const safeClientError =
-      /^(Data inválida|Horário inválido|Quantidade|Duração|Opção|Informe|Não foi possível ler a agenda|Não foi possível bloquear|Não foi possível liberar|Confirme|Configuração|Solicitação inválida|Muitas tentativas|Ação inválida|Não autorizado|Caso vermelho|Desconto exige)/
+      /^(Data inválida|Data indisponível|Horário inválido|Quantidade|Duração|Opção|Informe|Não foi possível ler a agenda|Não foi possível bloquear|Não foi possível liberar|Confirme|Configuração|Solicitação inválida|Muitas tentativas|Ação inválida|Não autorizado|Caso vermelho|Desconto exige)/
         .test(rawMessage);
     const message = safeClientError
       ? rawMessage

@@ -127,6 +127,9 @@ Peças-chave do banco:
 - JSON-LD `Event` no `<head>` (`#event-jsonld`); `syncEventJsonLd` reescreve `offers` com preço e `InStock`/`SoldOut` do banco a cada atualização do mapa.
 - Fotos: a da pista leva "Foto do Réveillon 2025 no Sir Fisher"; a dos fogos, "Imagem ilustrativa (montagem sobre foto do local)". Tirar a legenda da montagem quando houver foto real.
 
+- Links internos: home (2), `/eventos/` e `/como-chegar/` do site principal apontam para `reveillon.html` (`data-evt="click_reveillon"`).
+- Perfil da Empresa: post padrão com botão "Reservar" publicado em 30/09/2026 (texto sem preço, foto da pista 2025, link com `utm_campaign=gbp_post&utm_content=reveillon_2027`). As visitas dele aparecem no GA4 com essa UTM.
+
 **Manutenção (a cada troca de lote, esgotamento ou edição):**
 1. Troca de lote: atualizar no `reveillon.html` os preços do JSON-LD e dos fallbacks (cartões e FAQ) e subir o `?v=`.
 2. Esgotou: nada a fazer no código (o JS marca `SoldOut`); conferir o texto do topo.

@@ -134,7 +134,7 @@
 }
 .rv-moments::-webkit-scrollbar { display: none; }
 .rv-moment { margin: 0; scroll-snap-align: start; }
-.rv-moment img, .rv-moment__night {
+.rv-moment img {
   display: block;
   width: 100%;
   height: auto; /* o height do <img> viraria altura fixa e ignoraria a proporção */
@@ -142,17 +142,6 @@
   object-fit: cover;
   border-radius: 14px;
 }
-.rv-moment__night {
-  display: flex;
-  align-items: flex-end;
-  padding: 18px;
-  background:
-    radial-gradient(circle at 72% 22%, rgba(243, 217, 164, .38), transparent 38%),
-    radial-gradient(circle at 28% 38%, rgba(255, 255, 255, .16), transparent 28%),
-    radial-gradient(circle at 55% 12%, rgba(228, 87, 46, .25), transparent 30%),
-    linear-gradient(180deg, #0f1b24, #1d3340);
-}
-.rv-moment__night span { font-family: var(--rv-serif); font-size: 3rem; line-height: 1; color: var(--rv-gold-light); }
 .rv-moment figcaption { display: flex; flex-direction: column; gap: 4px; padding: 12px 2px 0; }
 .rv-moment figcaption strong { font-size: 1rem; }
 .rv-moment figcaption span { font-size: .9rem; color: var(--color-text-soft); }

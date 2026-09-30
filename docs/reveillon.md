@@ -40,7 +40,7 @@ Topo com foto → **A noite** (4 fotos com legenda) → **Incluso** → **As mes
 
 - Em **Textos da página**: título de "A noite", legendas das fotos (`Título | texto`, uma por linha, na ordem das fotos), linha de prova (vazia = não aparece), perguntas extras (`Pergunta | Resposta`) e a chamada final. As demais perguntas frequentes (horário, pagamento, crianças, grupo, regras) são montadas dos textos que já existem, para a regra não ficar escrita em dois lugares.
 - A frase "Restam N das M mesas" no topo só aparece quando 40% ou mais das mesas já saíram. Antes disso, número baixo de vendas não é mostrado.
-- As fotos são as do site principal (`www.sirfisher.com.br/assets/img`). O cartão "Os fogos de toda a orla" ainda não tem foto: trocar pela da virada quando houver (em `reveillon.html`).
+- As fotos são as do site principal (`www.sirfisher.com.br/assets/img`), exceto a do cartão "Os fogos de toda a orla" (`assets/img/fogos-orla-reveillon-sir-fisher-*`). Ela é uma montagem: a foto do pôr do sol do site levada para a noite, com janelas, lâmpadas e fogos desenhados, porque o Instagram não tem foto boa da queima. O original e o script estão em `site/_materiais/midia/output/reveillon/`. Trocar por foto real da virada quando houver.
 
 ## Uso no dia a dia (celular)
 

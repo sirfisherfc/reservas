@@ -27,3 +27,8 @@ Apagá-lo quebraria a imagem nesses e-mails já entregues.
 A edge function `send-notifications` já foi atualizada e os e-mails novos usam
 a URL canônica. Este arquivo pode ser removido quando não fizer mais diferença
 que e-mails antigos percam a imagem do cabeçalho.
+
+## Exceção: fotos exclusivas do réveillon
+
+`fogos-orla-reveillon-sir-fisher-*` só é usada em `reveillon.html` e por isso
+fica aqui. Detalhes em `docs/reveillon.md`.

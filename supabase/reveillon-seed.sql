@@ -28,7 +28,7 @@ insert into public.rv_events (
   'https://www.sirfisher.com.br',
   '["1 Chandon por mesa", "Welcome kit", "Brindes do patrocinador"]'::jsonb,
   jsonb_build_object(
-    'hero_kicker', 'Réveillon 2027 · 31 de dezembro',
+    'hero_kicker', 'Réveillon 2027 na Beira-Mar de Fortaleza',
     'hero_title', 'Vire o ano de frente para o mar',
     'hero_subtitle', 'Das 20h às 2h, no Sir Fisher Praia. Escolha sua mesa no mapa e veja o valor na hora.',
     'included_title', 'Incluso em todas as mesas',

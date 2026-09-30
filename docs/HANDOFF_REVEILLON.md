@@ -4,7 +4,7 @@ Atualizado em 30/09/2026. Este documento permite que outra IA retome o módulo d
 
 ## Estado atual (em produção)
 
-- O módulo está publicado e testado, mas **as vendas estão fechadas** (`rv_events.sales_open = false`). Quem abre é o Rogério, pelo painel (Configurar → Vendas e integrações), quando decidir lançar.
+- O módulo está publicado e **as vendas estão abertas** (`rv_events.sales_open = true` em 30/09/2026, Lote 1; 2 mesas reservadas e 2 em negociação nessa data).
 - E-mails automáticos do réveillon **ligados** (`emails_enabled = true`). Conversões de Ads **desligadas** (`tracking` todo `false`).
 - Chave Pix: CNPJ `37889047000168` (tipo `cnpj`). WhatsApp `5585988544274`.
 - Evento: Réveillon 2027, 31/12/2026 20h → 01/01/2027 2h, slug `reveillon-2027`.
@@ -30,7 +30,7 @@ Atualizado em 30/09/2026. Este documento permite que outra IA retome o módulo d
   Cadeira extra: R$ 350 com R$ 100 de consumação.
 - **Limite do evento: 96 pessoas somando laterais e centrais** (`rv_events.seat_limit`). A base é de 92 cadeiras (7×8 + 9×4) e a folga serve para extras. Bistrôs ficam fora dessa conta (`rv_table_types.counts_toward_limit = false`).
 - **Sinal de 30%** em até 48h. Sem sinal, a pré-reserva expira. Com pagamento parcial, **não expira**: o painel mostra "prazo vencido".
-- **Pix com 5% de desconto:** cada Pix de R$ X abate X ÷ 0,95 do valor cheio. Cartão só presencial. Não há gateway nem link de pagamento.
+- **Pix com desconto** (`rv_events.pix_discount_pct`: 8% em 30/09/2026; era 5% no lançamento): cada Pix de R$ X abate X ÷ (1 − desconto) do valor cheio. Cartão só presencial. Não há gateway nem link de pagamento.
 - **Crianças:** de colo não pagam e não contam para o mínimo. Até 11 anos têm R$ 100 de desconto cada.
 - **Datas:** saldo até 20/12/2026. Termos: reembolso em até 7 dias, nada após 25/12/2026.
 - **Operador** vê só o mapa (status, nome, pessoas, observações) e a portaria, **sem valores**. Isso é garantido no banco, não só na tela.
@@ -114,6 +114,24 @@ Peças-chave do banco:
 
 - Propriedade `sc-domain:sirfisher.com.br` (cobre o subdomínio `reservas`). A conta de serviço `ai-analytics@capable-avatar-480514-g0.iam.gserviceaccount.com` (`site/tools/analytics/service_account.json`) tem acesso total, com escopo `webmasters`: dá para inspecionar URLs e enviar sitemaps pela API.
 - Em 30/09/2026 a página do réveillon era desconhecida do Google. Criados `robots.txt` (bloqueia `/admin/` e `cancelar.html`), `sitemap.xml` (réveillon + reservas) e o canonical de `reveillon.html`; sitemap enviado sem erros. "Solicitar indexação" só existe na interface do Search Console (a API não faz).
+- Inspeção de 30/09/2026: rastreada às 03:37 UTC, **"Rastreada, mas não indexada no momento"**. Linha de base: 0 impressões para consultas com "réveillon" no domínio inteiro (jun/2025 a set/2026).
+
+### SEO da página (branch `seo-reveillon`)
+
+- `<title>` "Réveillon 2027 na Beira-Mar de Fortaleza | Sir Fisher Praia"; o JS monta o mesmo formato com `rv_events.name`.
+- O kicker do topo entrou no `<h1>` (visual igual). O h1 renderizado é "Réveillon 2027 na Beira-Mar de Fortaleza / Vire o ano de frente para o mar" (`hero_kicker` trocado no banco e no seed em 30/09/2026).
+- "Pé na areia" saiu: o salão fica à beira da praia e uma escada desce direto para a areia (confirmado pelo Rogério). A vista dos fogos (oficial do Aterro + toda a orla) também foi confirmada por ele.
+- Texto de abertura (`#intro`), montado do banco (data, horário, endereço).
+- O HTML traz **fallback estático** de tudo que o JS preenche (hero, incluso, data/local, cartões de mesa com preços, FAQ). Serve para quem não roda JS e para a primeira leitura do Google; o JS reescreve com o banco.
+- FAQ ganhou "O valor é por pessoa ou por mesa?" (montada de `rv_table_types`) e "Onde fica?".
+- JSON-LD `Event` no `<head>` (`#event-jsonld`); `syncEventJsonLd` reescreve `offers` com preço e `InStock`/`SoldOut` do banco a cada atualização do mapa.
+- Fotos: a da pista leva "Foto do Réveillon 2025 no Sir Fisher"; a dos fogos, "Imagem ilustrativa (montagem sobre foto do local)". Tirar a legenda da montagem quando houver foto real.
+
+**Manutenção (a cada troca de lote, esgotamento ou edição):**
+1. Troca de lote: atualizar no `reveillon.html` os preços do JSON-LD e dos fallbacks (cartões e FAQ) e subir o `?v=`.
+2. Esgotou: nada a fazer no código (o JS marca `SoldOut`); conferir o texto do topo.
+3. Depois de 01/01/2027: trocar o texto para "Réveillon 2027 encerrado · lista de interesse para 2028" e manter a URL (não apagar a página); tirar o JSON-LD `Event` ou atualizar para a edição seguinte assim que as datas estiverem definidas.
+4. Nova edição: mesma URL `reveillon.html`, novo `rv_events` e revisão de title, description, JSON-LD e fallbacks.
 
 ## Edição de imagem com IA (Gemini)
 

@@ -3,20 +3,68 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Réveillon — Sir Fisher Praia</title>
-  <meta name="description" content="Vire o ano de frente para o mar no Sir Fisher Praia, na Beira-Mar de Fortaleza. DJ e cantor ao vivo, fogos de toda a orla à vista e consumação inclusa. Escolha sua mesa." />
+  <!-- SEO: o title e o JSON-LD abaixo são da edição atual. Na troca de edição
+       ou de lote, confira title, description, JSON-LD e os textos de reserva
+       (fallback) do corpo. O JS acerta título, preços e disponibilidade pelo banco. -->
+  <title>Réveillon 2027 na Beira-Mar de Fortaleza | Sir Fisher Praia</title>
+  <meta name="description" content="31/12/2026, das 20h às 2h, no Sir Fisher Praia (Av. Beira Mar, 3421, Meireles). DJ e cantor ao vivo e mesas de frente para o mar com consumação inclusa. Escolha a sua no mapa." />
   <link rel="canonical" href="https://reservas.sirfisher.com.br/reveillon.html" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Réveillon no Sir Fisher Praia" />
-  <meta property="og:description" content="Vire o ano de frente para o mar, na Beira-Mar de Fortaleza. Escolha sua mesa." />
+  <meta property="og:locale" content="pt_BR" />
+  <meta property="og:url" content="https://reservas.sirfisher.com.br/reveillon.html" />
+  <meta property="og:title" content="Réveillon 2027 na Beira-Mar de Fortaleza | Sir Fisher Praia" />
+  <meta property="og:description" content="31/12/2026, das 20h às 2h, de frente para o mar. DJ e cantor ao vivo e consumação inclusa. Escolha sua mesa no mapa." />
   <meta property="og:image" content="https://www.sirfisher.com.br/assets/img/pordosol-1200.jpg" />
+  <!-- Evento (Google Search Central: structured-data/event). Preços = rv_table_types
+       do Lote 1; o reveillon.js reescreve offers (preço e SoldOut) com o banco. -->
+  <script type="application/ld+json" id="event-jsonld">
+  {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": "Réveillon 2027 no Sir Fisher Praia",
+    "description": "Virada de 2026 para 2027 no Sir Fisher Praia, na Beira-Mar de Fortaleza, com DJ e cantor ao vivo e o cardápio da casa. Venda por mesa, com consumação inclusa.",
+    "startDate": "2026-12-31T20:00:00-03:00",
+    "endDate": "2027-01-01T02:00:00-03:00",
+    "eventStatus": "https://schema.org/EventScheduled",
+    "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+    "inLanguage": "pt-BR",
+    "url": "https://reservas.sirfisher.com.br/reveillon.html",
+    "image": [
+      "https://www.sirfisher.com.br/assets/img/pordosol-1200.jpg",
+      "https://reservas.sirfisher.com.br/assets/img/festa-reveillon-sir-fisher-660.jpg"
+    ],
+    "location": {
+      "@type": "Place",
+      "name": "Sir Fisher Praia",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Av. Beira Mar, 3421",
+        "addressLocality": "Fortaleza",
+        "addressRegion": "CE",
+        "postalCode": "60165-121",
+        "addressCountry": "BR"
+      }
+    },
+    "organizer": {
+      "@type": "Restaurant",
+      "@id": "https://www.sirfisher.com.br/#restaurante",
+      "name": "Sir Fisher",
+      "url": "https://www.sirfisher.com.br/"
+    },
+    "offers": [
+      { "@type": "Offer", "name": "Mesa lateral (valor da mesa, cobre 8 pessoas)", "price": "2800.00", "priceCurrency": "BRL", "availability": "https://schema.org/InStock", "url": "https://reservas.sirfisher.com.br/reveillon.html" },
+      { "@type": "Offer", "name": "Mesa central (valor da mesa, cobre 4 pessoas)", "price": "1500.00", "priceCurrency": "BRL", "availability": "https://schema.org/InStock", "url": "https://reservas.sirfisher.com.br/reveillon.html" },
+      { "@type": "Offer", "name": "Bistrô (valor da mesa, 2 pessoas)", "price": "800.00", "priceCurrency": "BRL", "availability": "https://schema.org/InStock", "url": "https://reservas.sirfisher.com.br/reveillon.html" }
+    ]
+  }
+  </script>
   <link rel="icon" type="image/png" href="https://www.sirfisher.com.br/assets/img/favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap" />
   <!-- ?v= força o celular a baixar CSS/JS novos junto com o HTML novo. Mude a cada alteração. -->
-  <link rel="stylesheet" href="./assets/css/style.css?v=2026093006" />
-  <link rel="stylesheet" href="./assets/css/reveillon.css?v=2026093006" />
+  <link rel="stylesheet" href="./assets/css/style.css?v=2026093008" />
+  <link rel="stylesheet" href="./assets/css/reveillon.css?v=2026093008" />
   <!-- Mesmas tags base do index.html (medição de visita). As CONVERSÕES do
        réveillon só disparam se ligadas em rv_events.tracking (padrão: tudo off). -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-F40Z5Y9QT6"></script>
@@ -54,10 +102,13 @@
       <img src="https://www.sirfisher.com.br/assets/img/pordosol-1200.jpg" srcset="https://www.sirfisher.com.br/assets/img/pordosol-800.jpg 800w, https://www.sirfisher.com.br/assets/img/pordosol-1200.jpg 1200w" sizes="100vw" width="1200" height="800" alt="Pôr do sol na Beira-Mar de Fortaleza, visto do Sir Fisher Praia" fetchpriority="high" />
     </picture>
     <div class="container rv-hero__content">
-      <p class="rv-hero__kicker" id="hero-kicker">&nbsp;</p>
-      <h1 class="rv-hero__title" id="hero-title">Réveillon no Sir Fisher Praia</h1>
-      <p class="rv-hero__sub" id="hero-subtitle">&nbsp;</p>
-      <p class="rv-hero__when" id="hero-when">&nbsp;</p>
+      <!-- Textos abaixo = fallback igual ao banco (rv_events.texts); o JS reescreve. -->
+      <h1 class="rv-hero__title">
+        <span class="rv-hero__kicker" id="hero-kicker">Réveillon 2027 na Beira-Mar de Fortaleza</span>
+        <span id="hero-title">Vire o ano de frente para o mar</span>
+      </h1>
+      <p class="rv-hero__sub" id="hero-subtitle">DJ e cantor ao vivo, o cardápio do Sir Fisher e os fogos de toda a orla à sua frente.</p>
+      <p class="rv-hero__when" id="hero-when">31 de dezembro de 2026 · das 20h às 2h · Sir Fisher Praia, Beira-Mar de Fortaleza</p>
       <a href="#mapa" class="btn rv-cta" id="hero-cta">Escolher minha mesa</a>
       <p class="rv-hero__avail hidden" id="hero-availability"></p>
     </div>
@@ -73,6 +124,7 @@
       <div class="container rv-wide">
         <p class="rv-eyebrow">A noite</p>
         <h2 class="rv-h2" id="experience-title">Uma virada para lembrar</h2>
+        <p class="rv-lead" id="intro">O Réveillon 2027 do Sir Fisher Praia é na quinta-feira, 31 de dezembro de 2026, das 20h às 2h, no nosso salão de frente para o mar na Av. Beira Mar, 3421, no Meireles, em Fortaleza. O valor é por mesa, com consumação inclusa para usar no cardápio da casa, e você escolhe o seu lugar no mapa.</p>
         <div class="rv-moments">
           <figure class="rv-moment">
             <picture>
@@ -80,7 +132,7 @@
               <source type="image/webp" srcset="https://www.sirfisher.com.br/assets/img/mesa-cheia-vista-mar-sir-fisher-440.webp 440w, https://www.sirfisher.com.br/assets/img/mesa-cheia-vista-mar-sir-fisher-660.webp 660w" sizes="(min-width: 900px) 260px, 78vw" />
               <img src="https://www.sirfisher.com.br/assets/img/mesa-cheia-vista-mar-sir-fisher-660.jpg" width="660" height="825" loading="lazy" alt="Mesa com vista para o mar no Sir Fisher Praia" />
             </picture>
-            <figcaption><strong class="js-moment-title">De frente para o mar</strong><span class="js-moment-text">Mesas pé na areia, com a Beira-Mar inteira à sua frente.</span></figcaption>
+            <figcaption><strong class="js-moment-title">De frente para o mar</strong><span class="js-moment-text">Mesas à beira da praia: é só descer a escada e você está na areia.</span></figcaption>
           </figure>
           <figure class="rv-moment">
             <picture>
@@ -97,16 +149,16 @@
               <source type="image/webp" srcset="./assets/img/festa-reveillon-sir-fisher-440.webp?v=2 440w, ./assets/img/festa-reveillon-sir-fisher-660.webp?v=2 660w" sizes="(min-width: 900px) 260px, 78vw" />
               <img src="./assets/img/festa-reveillon-sir-fisher-660.jpg?v=2" width="660" height="825" loading="lazy" alt="Clientes dançando no Réveillon do Sir Fisher Praia" />
             </picture>
-            <figcaption><strong class="js-moment-title">DJ e cantor ao vivo</strong><span class="js-moment-text">Música do começo da noite até as 2h, para brindar com quem você gosta.</span></figcaption>
+            <figcaption><strong class="js-moment-title">DJ e cantor ao vivo</strong><span class="js-moment-text">Música do começo da noite até as 2h, para brindar com quem você gosta.</span><small class="rv-moment__credit">Foto do Réveillon 2025 no Sir Fisher</small></figcaption>
           </figure>
           <!-- Montagem: a foto do pôr do sol do site levada para a noite, com fogos desenhados e finalizada com IA (Gemini). Trocar por foto real da virada quando houver. -->
           <figure class="rv-moment">
             <picture>
               <source type="image/avif" srcset="./assets/img/fogos-orla-reveillon-sir-fisher-440.avif?v=4 440w, ./assets/img/fogos-orla-reveillon-sir-fisher-660.avif?v=4 660w" sizes="(min-width: 900px) 260px, 78vw" />
               <source type="image/webp" srcset="./assets/img/fogos-orla-reveillon-sir-fisher-440.webp?v=4 440w, ./assets/img/fogos-orla-reveillon-sir-fisher-660.webp?v=4 660w" sizes="(min-width: 900px) 260px, 78vw" />
-              <img src="./assets/img/fogos-orla-reveillon-sir-fisher-660.jpg?v=4" width="660" height="825" loading="lazy" alt="Fogos sobre os prédios da Beira-Mar, vistos do Sir Fisher Praia" />
+              <img src="./assets/img/fogos-orla-reveillon-sir-fisher-660.jpg?v=4" width="660" height="825" loading="lazy" alt="Ilustração dos fogos sobre os prédios da Beira-Mar, a partir de uma foto do Sir Fisher Praia" />
             </picture>
-            <figcaption><strong class="js-moment-title">Os fogos de toda a orla</strong><span class="js-moment-text">À meia-noite, a queima oficial do Aterro e as de vários clubes e hotéis da Beira-Mar, todas à vista.</span></figcaption>
+            <figcaption><strong class="js-moment-title">Os fogos de toda a orla</strong><span class="js-moment-text">À meia-noite, a queima oficial do Aterro e as de vários clubes e hotéis da Beira-Mar, todas à vista.</span><small class="rv-moment__credit">Imagem ilustrativa (montagem sobre foto do local)</small></figcaption>
           </figure>
         </div>
         <p class="rv-proof hidden" id="proof-line"></p>
@@ -117,12 +169,12 @@
       <div class="container">
         <p class="rv-eyebrow">O que está incluso</p>
         <h2 class="rv-h2" id="included-title">Incluso em todas as mesas</h2>
-        <ul class="rv-included" id="included-list"></ul>
-        <p class="rv-small text-soft" id="menu-note"></p>
+        <ul class="rv-included" id="included-list"><li>1 Chandon por mesa</li><li>Welcome kit</li><li>Brindes do patrocinador</li></ul>
+        <p class="rv-small text-soft" id="menu-note">Durante a noite servimos os pratos e bebidas do nosso cardápio, abatidos da consumação da mesa.</p>
         <a class="rv-link" id="menu-link" target="_blank" rel="noopener" href="#">Ver o cardápio →</a>
         <ul class="rv-facts">
-          <li><span class="rv-facts__label">Quando</span><div><strong id="fact-date">&nbsp;</strong><span id="fact-time" class="text-soft"></span></div></li>
-          <li><span class="rv-facts__label">Onde</span><div><strong id="fact-venue">&nbsp;</strong><a id="fact-address" class="text-soft" target="_blank" rel="noopener" href="#"></a></div></li>
+          <li><span class="rv-facts__label">Quando</span><div><strong id="fact-date">Quinta-feira, 31 de dezembro de 2026</strong><span id="fact-time" class="text-soft">Das 20h às 2h</span></div></li>
+          <li><span class="rv-facts__label">Onde</span><div><strong id="fact-venue">Sir Fisher Praia</strong><a id="fact-address" class="text-soft" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&amp;query=Av.%20Beira%20Mar%2C%203421%20%E2%80%94%20Meireles%2C%20Fortaleza%2FCE">Av. Beira Mar, 3421 — Meireles, Fortaleza/CE</a></div></li>
         </ul>
       </div>
     </section>
@@ -131,7 +183,33 @@
       <div class="container rv-wide">
         <p class="rv-eyebrow">As mesas</p>
         <h2 class="rv-h2">Escolha o seu lugar</h2>
-        <div class="rv-types" id="types-cards"></div>
+        <div class="rv-types" id="types-cards">
+          <!-- Fallback do Lote 1 (rv_table_types); o JS troca pelos valores e pela disponibilidade do banco. -->
+          <article class="rv-type" style="--rv-type:#2f6fb3">
+            <h3><i aria-hidden="true"></i>Mesa lateral</h3>
+            <p class="rv-type__desc">Junto à mureta, de frente para a praia. Duas mesas unidas, 8 cadeiras.</p>
+            <p class="rv-type__people">Valor da mesa para até 8 pessoas · até 16 com cadeiras extras</p>
+            <p class="rv-type__price">R$&nbsp;2.800,00</p>
+            <p class="rv-type__cons">R$&nbsp;800,00 de consumação inclusa</p>
+            <a href="#mapa" class="rv-link">Ver no mapa →</a>
+          </article>
+          <article class="rv-type" style="--rv-type:#2e8b57">
+            <h3><i aria-hidden="true"></i>Mesa central</h3>
+            <p class="rv-type__desc">No centro do salão. O valor cobre até 4 pessoas.</p>
+            <p class="rv-type__people">Valor da mesa para até 4 pessoas · até 8 com cadeiras extras</p>
+            <p class="rv-type__price">R$&nbsp;1.500,00</p>
+            <p class="rv-type__cons">R$&nbsp;400,00 de consumação inclusa</p>
+            <a href="#mapa" class="rv-link">Ver no mapa →</a>
+          </article>
+          <article class="rv-type" style="--rv-type:#7b4bb3">
+            <h3><i aria-hidden="true"></i>Bistrô</h3>
+            <p class="rv-type__desc">Mesa alta para 2 pessoas.</p>
+            <p class="rv-type__people">Valor da mesa para até 2 pessoas</p>
+            <p class="rv-type__price">R$&nbsp;800,00</p>
+            <p class="rv-type__cons">R$&nbsp;200,00 de consumação inclusa</p>
+            <a href="#mapa" class="rv-link">Ver no mapa →</a>
+          </article>
+        </div>
       </div>
     </section>
 
@@ -156,7 +234,7 @@
         </div>
         <p class="hint text-center" id="map-hint">Toque numa mesa livre para ver o valor.</p>
         <p class="text-center hidden" id="my-booking"><a href="#sucesso" id="my-booking-link">Ver minha pré-reserva</a></p>
-        <div class="alert alert--info rv-small" id="group-note"></div>
+        <div class="alert alert--info rv-small" id="group-note">Grupo maior que o máximo da mesa? Faça mais de uma reserva e escolha mesas vizinhas no mapa.</div>
         <div id="closed-notice" class="alert alert--info hidden">
           <span id="closed-text"></span>
           <a class="btn btn--whatsapp" id="closed-whatsapp" href="#" target="_blank" rel="noopener" style="margin-top:10px;">Falar no WhatsApp</a>
@@ -285,7 +363,19 @@
       <div class="container">
         <p class="rv-eyebrow">Dúvidas</p>
         <h2 class="rv-h2">Perguntas frequentes</h2>
-        <div class="rv-faq" id="faq-list"></div>
+        <div class="rv-faq" id="faq-list">
+          <!-- Fallback igual ao que o JS monta a partir do banco. -->
+          <details class="rv-faq__item"><summary>Que horas começa e termina?</summary><div class="rv-faq__a"><p>Das 20h às 2h.</p></div></details>
+          <details class="rv-faq__item"><summary>O valor é por pessoa ou por mesa?</summary><div class="rv-faq__a"><p>Por mesa. Cada tipo tem um valor fixo, que cobre um número de pessoas e já inclui um crédito de consumação:</p><ul><li>Mesa lateral: R$&nbsp;2.800,00 para até 8 pessoas, com R$&nbsp;800,00 de consumação.</li><li>Mesa central: R$&nbsp;1.500,00 para até 4 pessoas, com R$&nbsp;400,00 de consumação.</li><li>Bistrô: R$&nbsp;800,00 para 2 pessoas, com R$&nbsp;200,00 de consumação.</li><li>Cadeira extra (mesa lateral ou central): R$&nbsp;350,00, com R$&nbsp;100,00 de consumação.</li></ul></div></details>
+          <details class="rv-faq__item"><summary>Onde fica?</summary><div class="rv-faq__a"><p>No Sir Fisher Praia: Av. Beira Mar, 3421 — Meireles, Fortaleza/CE, em frente ao Jardim Japonês.</p></div></details>
+          <details class="rv-faq__item"><summary>Dá para ver a queima de fogos?</summary><div class="rv-faq__a"><p>Sim. Da nossa orla dá para ver a queima oficial do Aterro e também as de vários clubes e hotéis da Beira-Mar.</p></div></details>
+          <details class="rv-faq__item"><summary>Tem música?</summary><div class="rv-faq__a"><p>DJ e cantor ao vivo durante toda a noite.</p></div></details>
+          <details class="rv-faq__item"><summary>Como funciona a consumação?</summary><div class="rv-faq__a"><p>Durante a noite servimos os pratos e bebidas do nosso cardápio, abatidos da consumação da mesa.</p></div></details>
+          <details class="rv-faq__item"><summary>Como faço o pagamento?</summary><div class="rv-faq__a"><p>Pix: 8% de desconto sobre o valor final.</p><p>Cartão de débito ou crédito: pagamento presencial, no restaurante ou na própria noite. Você paga na maquininha, com toda a segurança, sem links e sem risco de golpe.</p><p>A mesa fica garantida com o pagamento do sinal de 30% em até 48 horas. Sem o sinal, a pré-reserva expira e a mesa volta a ficar livre.</p><p>O saldo pode ser pago até 20/12/2026.</p></div></details>
+          <details class="rv-faq__item"><summary>Posso levar crianças?</summary><div class="rv-faq__a"><ul><li>Crianças de colo não pagam e não contam para o mínimo da mesa.</li><li>Crianças até 11 anos têm R$&nbsp;100,00 de desconto cada.</li></ul></div></details>
+          <details class="rv-faq__item"><summary>Somos um grupo grande. Como fazemos?</summary><div class="rv-faq__a"><p>Grupo maior que o máximo da mesa? Faça mais de uma reserva e escolha mesas vizinhas no mapa.</p></div></details>
+          <details class="rv-faq__item"><summary>Quais são as regras e o cancelamento?</summary><div class="rv-faq__a"><ul><li>Reembolso integral se a desistência for comunicada por escrito em até 7 dias da contratação. Depois disso, não há reembolso, mas você pode indicar outras pessoas para usar a mesa. Nenhum reembolso após 25/12/2026.</li><li>A consumação vale só na noite do evento, sem devolução em dinheiro nem uso posterior.</li><li>Proibidos fogos e pirotecnia. Não é permitido trazer alimentos e bebidas, exceto champanhe e espumante. Rolha de destilado: R$ 50 por garrafa.</li><li>Pessoas além do contratado estão sujeitas a aceite e cobrança proporcional.</li></ul></div></details>
+        </div>
         <button type="button" class="rv-link js-open-terms">Ler os termos completos →</button>
       </div>
     </section>
@@ -321,6 +411,6 @@
     <p><a href="https://www.sirfisher.com.br/privacidade/" target="_blank" rel="noopener">Aviso de Privacidade</a></p>
   </footer>
 
-  <script type="module" src="./assets/js/reveillon.js?v=2026093006"></script>
+  <script type="module" src="./assets/js/reveillon.js?v=2026093008"></script>
 </body>
 </html>

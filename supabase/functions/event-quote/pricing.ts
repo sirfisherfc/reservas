@@ -373,7 +373,7 @@ interface FoodRule {
 export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
   petiscos: {
     essencial: {
-      profileNote: "4 petiscos clássicos, cerca de 7 unidades por pessoa.",
+      profileNote: "4 petiscos clássicos.",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.2,
@@ -383,7 +383,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
       },
     },
     equilibrada: {
-      profileNote: "6 petiscos, cerca de 9 unidades por pessoa.",
+      profileNote: "6 petiscos.",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.2,
@@ -395,8 +395,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
       },
     },
     completa: {
-      profileNote:
-        "7 petiscos com camarão NewCastle, cerca de 11 unidades por pessoa.",
+      profileNote: "7 petiscos com camarão NewCastle.",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.2,
@@ -411,8 +410,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
   },
   petiscos_principal: {
     essencial: {
-      profileNote:
-        "3 petiscos (cerca de 4 unidades por pessoa) + 1 clássico da casa.",
+      profileNote: "3 petiscos + 1 clássico da casa.",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.15,
@@ -422,8 +420,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
       },
     },
     equilibrada: {
-      profileNote:
-        "4 petiscos (cerca de 5 unidades por pessoa) + 1 clássico da casa + sobremesa.",
+      profileNote: "4 petiscos + 1 clássico da casa + sobremesa.",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.16,
@@ -451,8 +448,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
   },
   refeicao: {
     essencial: {
-      profileNote:
-        "2 petiscos na recepção (cerca de 3 unidades por pessoa) + prato principal.",
+      profileNote: "2 petiscos na recepção + prato principal.",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.1,
@@ -461,8 +457,7 @@ export const FOOD: Record<FoodKey, Record<ProfileKey, FoodRule>> = {
       },
     },
     equilibrada: {
-      profileNote:
-        "3 petiscos na recepção (cerca de 4 unidades por pessoa) + prato principal + sobremesa.",
+      profileNote: "3 petiscos na recepção + prato principal + sobremesa.",
       kitchenLaborPerPerson: 0,
       portionsPerPerson: {
         pasteizinhos: 0.15,

@@ -177,6 +177,8 @@ function syncEventJsonLd(open) {
   try {
     const ld = JSON.parse(node.textContent);
     const url = 'https://reservas.sirfisher.com.br/reveillon.html';
+    // A data de abertura vem do JSON-LD da edição; preservar ao atualizar ofertas.
+    const validFrom = ld.offers?.[0]?.validFrom;
     ld.offers = data.types.filter((ty) => ty.table_price != null).map((ty) => {
       const ofType = open.filter((tb) => tb.type_id === ty.id);
       const free = ofType.some((tb) => tb.state === 'livre');
@@ -186,6 +188,7 @@ function syncEventJsonLd(open) {
         price: Number(ty.table_price).toFixed(2),
         priceCurrency: 'BRL',
         availability: `https://schema.org/${data.event.sales_open && free ? 'InStock' : 'SoldOut'}`,
+        validFrom,
         url,
       };
     });

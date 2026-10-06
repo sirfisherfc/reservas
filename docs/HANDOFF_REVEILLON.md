@@ -4,7 +4,7 @@ Atualizado em 30/09/2026 (página indexável movida para o www). Este documento 
 
 ## Estado atual (em produção)
 
-- O módulo está publicado e **as vendas estão abertas** (`rv_events.sales_open = true` em 30/09/2026, Lote 1; 2 mesas reservadas e 2 em negociação nessa data).
+- O módulo está publicado e **as vendas estão abertas desde 01/10/2026** (data confirmada pelo Rogério em 06/10/2026; `rv_events.sales_open = true`, Lote 1).
 - E-mails automáticos do réveillon **ligados** (`emails_enabled = true`). Conversões de Ads **desligadas** (`tracking` todo `false`).
 - Chave Pix: CNPJ `37889047000168` (tipo `cnpj`). WhatsApp `5585988544274`.
 - Evento: Réveillon 2027, 31/12/2026 20h → 01/01/2027 2h, slug `reveillon-2027`.

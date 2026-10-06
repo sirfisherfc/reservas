@@ -3,7 +3,7 @@
 // e rv_simulate; o cálculo é sempre do banco (rv_calc_price), nunca daqui.
 import { supabase } from './supabaseClient.js';
 import { qs, qsa, maskPhoneBR, setLoading, showToast, debounce } from './utils.js';
-import { captureAttribution, reservationAttribution, initOpenAIAdsPixel } from './attribution.js';
+import { captureAttribution, reservationAttribution, initOpenAIAdsPixel } from './attribution.js?v=20261006b';
 import {
   esc, money, pct, dateBR, dateTimeBR, timeBR, longDateBR, fillTemplate, eventTextVars,
   bookingMessageVars, waHref, formatPixKey, parseDbError, renderMap, stateLabel, centerMapScroll,
@@ -502,7 +502,7 @@ qs('#rv-form').addEventListener('submit', async (evt) => {
     p_marketing_opt_in: qs('#marketing_opt_in').checked,
     p_notes: qs('#notes').value.trim() || null,
     p_honeypot: qs('#website').value || null,
-    p_attribution: reservationAttribution(),
+    p_attribution: await reservationAttribution(),
   });
   setLoading(btn, false);
 

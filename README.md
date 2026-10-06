@@ -15,6 +15,7 @@ Site de reservas para o restaurante Sir Fisher Praia. HTML/CSS/JS puro (sem buil
 - [`docs/admin-guide.md`](docs/admin-guide.md) — manual do painel.
 - [`docs/email.md`](docs/email.md) — e-mail de confirmação automático (Resend + Edge Function).
 - [`docs/openai-ads.md`](docs/openai-ads.md) — medição de reservas e comparecimentos do ChatGPT Ads.
+- [`docs/medicao-google.md`](docs/medicao-google.md) — origem, reservas e comparecimentos no Google Analytics.
 - [`docs/privacidade-dados.md`](docs/privacidade-dados.md) — quais dados são salvos e por quê.
 - [`docs/security-checklist.md`](docs/security-checklist.md) — checklist de testes manuais.
 - [`docs/reveillon.md`](docs/reveillon.md) — módulo de Réveillon (mesas numeradas, pré-reserva, sinal, portaria).

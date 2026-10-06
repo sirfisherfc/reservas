@@ -19,7 +19,13 @@ function readCookie(name) {
 }
 
 function loadStoredAttribution() {
-  for (const raw of [window.localStorage.getItem(STORAGE_KEY), readCookie(COOKIE_KEY)]) {
+  let local = null;
+  try {
+    local = window.localStorage.getItem(STORAGE_KEY);
+  } catch {
+    // Bloqueio de storage não pode impedir uma reserva; tenta o cookie.
+  }
+  for (const raw of [local, readCookie(COOKIE_KEY)]) {
     if (!raw) continue;
     try {
       const parsed = JSON.parse(raw);
@@ -67,8 +73,43 @@ function gaClientId() {
 function gaSessionId() {
   const raw = readCookie(`_ga_${GA_MEASUREMENT_ID.replace(/^G-/, '')}`);
   if (!raw) return null;
-  const match = /(?:^|\.)s(\d+)/.exec(raw);
-  return match ? match[1] : null;
+  const match = /(?:^|[.$])s(\d+)/.exec(raw);
+  if (match) return match[1];
+  const legacy = /^GS1\.\d+\.(\d+)\./.exec(raw);
+  return legacy ? legacy[1] : null;
+}
+
+// Usa a API da tag primeiro, sem depender do formato dos cookies. Se a tag
+// estiver bloqueada, segue com os identificadores disponíveis após 800 ms.
+function analyticsIdentifiers() {
+  const fallback = { client_id: gaClientId(), session_id: gaSessionId() };
+  if (typeof window.gtag !== 'function') return Promise.resolve(fallback);
+  return new Promise((resolve) => {
+    const result = { ...fallback };
+    let remaining = 2;
+    let finished = false;
+    let timeout;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timeout);
+      resolve(result);
+    };
+    timeout = setTimeout(finish, 800);
+    for (const field of ['client_id', 'session_id']) {
+      try {
+        window.gtag('get', GA_MEASUREMENT_ID, field, (value) => {
+          if (finished) return;
+          const text = value == null ? '' : String(value);
+          const valid = field === 'client_id' ? /^\d+\.\d+$/.test(text) : /^\d+$/.test(text);
+          if (valid && text.length <= 64) result[field] = text;
+          if (--remaining === 0) finish();
+        });
+      } catch {
+        if (--remaining === 0) finish();
+      }
+    }
+  });
 }
 
 // O Meta grava _fbp (identifica o navegador) e _fbc (registra o clique no
@@ -89,6 +130,11 @@ export function captureAttribution() {
   });
 
   const stored = loadStoredAttribution();
+  if (stored.utm_source === 'site' && stored.utm_medium === 'organic') {
+    // Remove apenas a campanha interna sintética; não inventa a origem perdida.
+    for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) delete stored[key];
+    persistAttribution(stored);
+  }
 
   // Chegada com campanha: sobrescreve, porque e a origem mais recente e mais
   // especifica que temos.
@@ -120,8 +166,9 @@ export function captureAttribution() {
   return stored;
 }
 
-export function reservationAttribution() {
+export async function reservationAttribution() {
   const a = captureAttribution();
+  const identifiers = await analyticsIdentifiers();
   return {
     oppref: limitedValue(a.oppref, 1024),
     utm_source: limitedValue(a.utm_source),
@@ -137,8 +184,8 @@ export function reservationAttribution() {
     captured_at: limitedValue(a.captured_at),
     // Lidos na hora do envio, nao do storage: a essa altura o GA4 ja gravou os
     // cookies, e o que vale e a sessao em que a reserva realmente aconteceu.
-    ga_client_id: limitedValue(gaClientId(), 64),
-    ga_session_id: limitedValue(gaSessionId(), 64),
+    ga_client_id: limitedValue(identifiers.client_id, 64),
+    ga_session_id: limitedValue(identifiers.session_id, 64),
     meta_fbp: limitedValue(metaFbp(), 255),
     meta_fbc: limitedValue(metaFbc(), 512),
   };

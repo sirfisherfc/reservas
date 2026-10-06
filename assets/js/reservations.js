@@ -8,7 +8,7 @@ import { WHATSAPP_NUMBER, RESTAURANT_NAME } from './config.js';
 import {
   initOpenAIAdsPixel, measureReservationPageViewed, measureReservationConfirmed,
   measureReservationConfirmedGA4, measureReservationConfirmedMeta, reservationAttribution,
-} from './attribution.js';
+} from './attribution.js?v=20261006b';
 
 const form = qs('#reservation-form');
 const alertArea = qs('#form-alert-area');
@@ -266,7 +266,7 @@ async function handleSubmit(evt) {
     p_marketing_opt_in: marketingOptIn,
     p_accepted_policy: acceptPolicy,
     p_honeypot: honeypot || null,
-    p_attribution: reservationAttribution(),
+    p_attribution: await reservationAttribution(),
   });
 
   setLoading(submitBtn, false);

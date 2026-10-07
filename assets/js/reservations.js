@@ -260,7 +260,8 @@ async function handleSubmit(evt) {
     p_marketing_opt_in: marketingOptIn,
     p_accepted_policy: acceptPolicy,
     p_honeypot: honeypot || null,
-    p_attribution: await reservationAttribution(),
+    // lang define o idioma dos e-mails de confirmação e de lembrete.
+    p_attribution: { ...(await reservationAttribution()), lang: LANG },
   });
 
   setLoading(submitBtn, false);

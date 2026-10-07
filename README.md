@@ -46,5 +46,8 @@ abrem o portal com `?lang=en`. Os textos em inglês ficam em
 - Datas aparecem por extenso ("sábado, 10 de outubro de 2026" ou "Saturday,
   October 10, 2026"); em inglês, horários em 12h com o aviso de fuso de
   Fortaleza. "Hoje" é sempre a data de Fortaleza, não a do aparelho.
-- O e-mail de confirmação (Edge Function `send-notifications`) e o módulo de
-  Réveillon continuam só em português.
+- O idioma vai na atribuição (`lang`) e fica em `reservations.customer_language`
+  (migration `20261007000000` no repositório gestao). A Edge Function
+  `send-notifications` envia confirmação e lembrete em inglês quando o payload
+  traz `lang = 'en'`; sem o campo, em português.
+- O módulo de Réveillon continua só em português.

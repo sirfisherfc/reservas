@@ -62,6 +62,27 @@ function formatTimeBR(t: string): string {
   return `${h}h${min ?? "00"}`;
 }
 
+const WEEKDAYS_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS_EN = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function formatDateEN(iso: string): string {
+  // "2026-07-15" -> "Wednesday, July 15, 2026"
+  const [y, m, d] = String(iso).split("-").map(Number);
+  if (!y || !m || !d) return String(iso);
+  const wd = WEEKDAYS_EN[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${wd}, ${MONTHS_EN[m - 1]} ${d}, ${y}`;
+}
+
+function formatTimeEN(t: string): string {
+  // "19:00:00" -> "7:00 pm"
+  const [h, min] = String(t).split(":").map(Number);
+  if (Number.isNaN(h)) return String(t);
+  return `${((h + 11) % 12) + 1}:${String(min || 0).padStart(2, "0")} ${h >= 12 ? "pm" : "am"}`;
+}
+
 function escapeHtml(s: string): string {
   return String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -81,28 +102,99 @@ interface Payload {
   cancel_token?: string;
   whatsapp?: string;
   tolerance?: number;
+  // Idioma em que o cliente reservou (reservations.customer_language). Sem o
+  // campo, ou com qualquer valor que nao seja "en", o e-mail sai em portugues.
+  lang?: string;
+}
+
+// Textos do e-mail de reserva comum. O portugues e o texto de sempre; o ingles
+// vale para quem reservou pelo portal em ingles (?lang=en).
+const EMAIL_TEXT = {
+  pt: {
+    htmlLang: "pt-BR",
+    brand: "Sir Fisher Praia",
+    subtitle: "Confirmação de reserva",
+    reminderTitle: "<strong>Sua reserva é amanhã.</strong> Pode confirmar que vem?",
+    hello: (name: string) => `Olá${name ? ", " + name : ""}! 👋`,
+    reminderIntro: "Estamos guardando sua mesa. Uma confirmação rápida ajuda a gente a organizar o salão.",
+    confirmedIntro: `Sua reserva está <strong style="color:#0f3d3e;">confirmada</strong>. Estamos ansiosos para receber você!`,
+    code: "Código:", date: "Data:", time: "Horário:", people: "Pessoas:",
+    timeNote: "",
+    keepCode: "Guarde o código da reserva. Em caso de imprevisto, avise-nos com antecedência.",
+    cancel: "Cancelar reserva",
+    cancelHint: "Se precisar cancelar, use o botão acima. A vaga é liberada na hora para outros clientes.",
+    confirmPresence: "Confirmar presença",
+    cantGo: "Não vou poder ir",
+    reminderHint: (tol: number) => `Se não puder vir, avisar libera a mesa para outra pessoa — leva 10 segundos e ajuda muito.
+          Guardamos a mesa por ${tol} minutos após o horário.`,
+    footerReminder: "Sir Fisher Praia — Av. Beira Mar 3421, Meireles. Responder pelo WhatsApp é o caminho mais rápido.",
+    footerConfirmation: "Sir Fisher Praia — este é um e-mail automático de confirmação, não é necessário respondê-lo.",
+    waConfirm: (code: string, date: string, time: string) => `Ola! Confirmo a reserva ${code} de ${date} as ${time}.`,
+    waChange: (code: string, date: string) => `Ola! Preciso alterar ou cancelar a reserva ${code} de ${date}.`,
+    subjectReminder: "Sua reserva é amanhã — pode confirmar?",
+    subjectConfirmation: "Reserva confirmada",
+    formatDate: formatDateBR,
+    formatTime: formatTimeBR,
+  },
+  en: {
+    htmlLang: "en",
+    brand: "Sir Fisher",
+    subtitle: "Booking confirmation",
+    reminderTitle: "<strong>Your booking is tomorrow.</strong> Can you confirm you are coming?",
+    hello: (name: string) => `Hello${name ? ", " + name : ""}! 👋`,
+    reminderIntro: "We are holding your table. A quick confirmation helps us plan the room.",
+    confirmedIntro: `Your booking is <strong style="color:#0f3d3e;">confirmed</strong>. We look forward to welcoming you!`,
+    code: "Booking code:", date: "Date:", time: "Time:", people: "Guests:",
+    timeNote: " (Fortaleza time)",
+    keepCode: "Please keep your booking code. If your plans change, let us know in advance.",
+    cancel: "Cancel booking",
+    cancelHint: "If you need to cancel, use the button above. The table is released straight away for other guests.",
+    confirmPresence: "Confirm I'm coming",
+    cantGo: "I can't make it",
+    reminderHint: (tol: number) => `If you can't come, letting us know frees the table for someone else. It takes ten seconds and helps a lot.
+          We hold the table for ${tol} minutes after the booked time.`,
+    footerReminder: "Sir Fisher — Av. Beira Mar 3421, Meireles, Fortaleza, Brazil. Replying on WhatsApp is the quickest way to reach us.",
+    footerConfirmation: "Sir Fisher — Av. Beira Mar 3421, Meireles, Fortaleza, Brazil. This is an automatic confirmation email; no need to reply.",
+    waConfirm: (code: string, date: string, time: string) => `Hello! I confirm booking ${code} on ${date} at ${time}.`,
+    waChange: (code: string, date: string) => `Hello! I need to change or cancel booking ${code} on ${date}.`,
+    subjectReminder: "Your booking is tomorrow — can you confirm?",
+    subjectConfirmation: "Booking confirmed",
+    formatDate: formatDateEN,
+    formatTime: formatTimeEN,
+  },
+};
+
+function emailText(p: Payload) {
+  return p.lang === "en" ? EMAIL_TEXT.en : EMAIL_TEXT.pt;
+}
+
+function buildEmailSubject(p: Payload): string {
+  const t = emailText(p);
+  const brand = p.lang === "en" ? "Sir Fisher" : "Sir Fisher Praia";
+  return `${p.type === "reservation_reminder" ? t.subjectReminder : t.subjectConfirmation} — ${p.public_code ?? brand}`;
 }
 
 function buildEmailHtml(p: Payload): string {
+  const t = emailText(p);
   const isReminder = p.type === "reservation_reminder";
   const name = escapeHtml(p.name ?? "");
   const code = escapeHtml(p.public_code ?? "");
-  const dateStr = escapeHtml(formatDateBR(p.date ?? ""));
-  const timeStr = escapeHtml(formatTimeBR(p.time ?? ""));
+  const dateStr = escapeHtml(t.formatDate(p.date ?? ""));
+  const timeStr = escapeHtml(t.formatTime(p.time ?? "") + t.timeNote);
   const people = Number(p.party_size ?? 0);
 
   const cancelUrl = SITE_URL && p.cancel_token
-    ? `${SITE_URL}/cancelar.html?t=${encodeURIComponent(p.cancel_token)}`
+    ? `${SITE_URL}/cancelar.html?t=${encodeURIComponent(p.cancel_token)}${p.lang === "en" ? "&lang=en" : ""}`
     : "";
 
   const cancelBlock = cancelUrl
     ? `
       <tr><td style="padding:8px 32px 24px;">
         <a href="${cancelUrl}" style="display:inline-block;padding:12px 22px;border:1px solid #c0392b;border-radius:6px;color:#c0392b;text-decoration:none;font-size:14px;font-weight:600;">
-          Cancelar reserva
+          ${t.cancel}
         </a>
         <p style="margin:14px 0 0;color:#888;font-size:12px;line-height:1.5;">
-          Se precisar cancelar, use o botão acima. A vaga é liberada na hora para outros clientes.
+          ${t.cancelHint}
         </p>
       </td></tr>`
     : "";
@@ -116,74 +208,69 @@ function buildEmailHtml(p: Payload): string {
     wa ? `https://wa.me/${wa}?text=${encodeURIComponent(msg)}` : "";
 
   const confirmUrl = waLink(
-    `Ola! Confirmo a reserva ${p.public_code ?? ""} de ${formatDateBR(p.date ?? "")} as ${formatTimeBR(p.time ?? "")}.`,
+    t.waConfirm(p.public_code ?? "", t.formatDate(p.date ?? ""), t.formatTime(p.time ?? "")),
   );
   const changeUrl = waLink(
-    `Ola! Preciso alterar ou cancelar a reserva ${p.public_code ?? ""} de ${formatDateBR(p.date ?? "")}.`,
+    t.waChange(p.public_code ?? "", t.formatDate(p.date ?? "")),
   );
 
   const reminderNotice = isReminder
     ? `<tr><td style="padding:28px 32px 0;">
-        <p style="margin:0 0 14px;font-size:16px;line-height:1.6;"><strong>Sua reserva é amanhã.</strong> Pode confirmar que vem?</p>
+        <p style="margin:0 0 14px;font-size:16px;line-height:1.6;">${t.reminderTitle}</p>
       </td></tr>`
     : "";
 
   const reminderActions = isReminder && wa
     ? `<tr><td style="padding:8px 32px 4px;">
         <a href="${confirmUrl}" style="display:inline-block;padding:12px 22px;background:#0f3d3e;border-radius:6px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;">
-          Confirmar presença
+          ${t.confirmPresence}
         </a>
         <a href="${changeUrl}" style="display:inline-block;margin-left:10px;padding:12px 20px;border:1px solid #c0392b;border-radius:6px;color:#c0392b;text-decoration:none;font-size:14px;font-weight:600;">
-          Não vou poder ir
+          ${t.cantGo}
         </a>
         <p style="margin:14px 0 0;color:#888;font-size:12px;line-height:1.5;">
-          Se não puder vir, avisar libera a mesa para outra pessoa — leva 10 segundos e ajuda muito.
-          Guardamos a mesa por ${Number(p.tolerance ?? 15)} minutos após o horário.
+          ${t.reminderHint(Number(p.tolerance ?? 15))}
         </p>
       </td></tr>`
     : "";
 
   return `<!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<html lang="${t.htmlLang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f4f2ee;font-family:Arial,Helvetica,sans-serif;color:#2b2b2b;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f2ee;padding:24px 0;">
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);">
         <tr><td align="center" style="background:#ffffff;padding:22px 32px 18px;">
-          <img src="https://www.sirfisher.com.br/assets/img/logo-horizontal.png" alt="Sir Fisher Praia" width="210" style="display:block;width:210px;max-width:100%;height:auto;margin:0;border:0;outline:none;text-decoration:none;" />
+          <img src="https://www.sirfisher.com.br/assets/img/logo-horizontal.png" alt="${t.brand}" width="210" style="display:block;width:210px;max-width:100%;height:auto;margin:0;border:0;outline:none;text-decoration:none;" />
         </td></tr>
         <tr><td style="background:#0f3d3e;padding:20px 32px;">
-          <div style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:.5px;">Sir Fisher Praia</div>
-          <div style="color:#9fc6c2;font-size:13px;margin-top:2px;">Confirmação de reserva</div>
+          <div style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:.5px;">${t.brand}</div>
+          <div style="color:#9fc6c2;font-size:13px;margin-top:2px;">${t.subtitle}</div>
         </td></tr>
         ${reminderNotice}
         <tr><td style="padding:${isReminder ? "14px" : "28px"} 32px 8px;">
-          <p style="margin:0 0 14px;font-size:16px;">Olá${name ? ", " + name : ""}! 👋</p>
+          <p style="margin:0 0 14px;font-size:16px;">${t.hello(name)}</p>
           <p style="margin:0 0 18px;font-size:15px;line-height:1.6;">
-            ${isReminder
-              ? `Estamos guardando sua mesa. Uma confirmação rápida ajuda a gente a organizar o salão.`
-              : `Sua reserva está <strong style="color:#0f3d3e;">confirmada</strong>. Estamos ansiosos para receber você!`}
+            ${isReminder ? t.reminderIntro : t.confirmedIntro}
           </p>
         </td></tr>
         <tr><td style="padding:0 32px 8px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f6f3;border-radius:8px;">
             <tr><td style="padding:16px 20px;font-size:14px;line-height:1.9;">
-              <div><span style="color:#888;">Código:</span> <strong>${code}</strong></div>
-              <div><span style="color:#888;">Data:</span> <strong>${dateStr}</strong></div>
-              <div><span style="color:#888;">Horário:</span> <strong>${timeStr}</strong></div>
-              <div><span style="color:#888;">Pessoas:</span> <strong>${people}</strong></div>
+              <div><span style="color:#888;">${t.code}</span> <strong>${code}</strong></div>
+              <div><span style="color:#888;">${t.date}</span> <strong>${dateStr}</strong></div>
+              <div><span style="color:#888;">${t.time}</span> <strong>${timeStr}</strong></div>
+              <div><span style="color:#888;">${t.people}</span> <strong>${people}</strong></div>
             </td></tr>
           </table>
         </td></tr>
         ${reminderActions}
         <tr><td style="padding:20px 32px 4px;font-size:13px;color:#666;line-height:1.6;">
-          Guarde o código da reserva. Em caso de imprevisto, avise-nos com antecedência.
+          ${t.keepCode}
         </td></tr>
         ${cancelBlock}
         <tr><td style="padding:18px 32px 28px;border-top:1px solid #eee;color:#999;font-size:12px;line-height:1.6;">
-          ${isReminder
-            ? `Sir Fisher Praia — Av. Beira Mar 3421, Meireles. Responder pelo WhatsApp é o caminho mais rápido.`
-            : `Sir Fisher Praia — este é um e-mail automático de confirmação, não é necessário respondê-lo.`}
+          ${isReminder ? t.footerReminder : t.footerConfirmation}
         </td></tr>
       </table>
     </td></tr>
@@ -372,7 +459,7 @@ Deno.serve(async (req) => {
           to: [p.email],
           subject: row.type.startsWith("rv_")
             ? (RV_SUBJECTS[row.type]?.(p as RvPayload) ?? "Réveillon — Sir Fisher Praia")
-            : `${row.type === "reservation_reminder" ? "Sua reserva é amanhã — pode confirmar?" : "Reserva confirmada"} — ${p.public_code ?? "Sir Fisher Praia"}`,
+            : buildEmailSubject(p),
           html: row.type.startsWith("rv_") ? buildReveillonEmailHtml(row.type, p as RvPayload) : buildEmailHtml(p),
         }),
       });

@@ -1,14 +1,15 @@
 import { supabase } from './supabaseClient.js';
-import { fetchPublicSettings, fetchAvailableSlots, renderSlots } from './availability.js';
+import { fetchPublicSettings, fetchAvailableSlots, renderSlots } from './availability.js?v=20261007';
 import {
-  qs, qsa, todayISO, addDaysISO, maskPhoneBR, waLink,
-  setLoading, debounce, formatDateBR, formatTimeBR,
-} from './utils.js';
+  qs, qsa, todayISO, addDaysISO, maskPhone, waLink,
+  setLoading, debounce, formatDateLong, formatTimeLocal,
+} from './utils.js?v=20261007';
+import { LANG, t, friendlyError, applyTranslations } from './i18n.js?v=20261007';
 import { WHATSAPP_NUMBER, RESTAURANT_NAME } from './config.js';
 import {
   initOpenAIAdsPixel, measureReservationPageViewed, measureReservationConfirmed,
   measureReservationConfirmedGA4, measureReservationConfirmedMeta, reservationAttribution,
-} from './attribution.js?v=20261006b';
+} from './attribution.js?v=20261007';
 
 const form = qs('#reservation-form');
 const alertArea = qs('#form-alert-area');
@@ -25,27 +26,8 @@ let settings = null;
 let selectedTime = null;
 let currentSlots = [];
 
-const FRIENDLY_FALLBACK = {
-  HONEYPOT: 'Não foi possível concluir sua reserva. Tente novamente.',
-  INVALID_PARTY_SIZE: 'Quantidade de pessoas inválida.',
-  PARTY_TOO_LARGE: 'Para esse número de pessoas, fale com nossa equipe pelo WhatsApp.',
-  DATE_NOT_ALLOWED: 'Não é possível reservar para essa data.',
-  DATE_BLOCKED: 'Esse dia não está disponível para reservas.',
-  SLOT_BLOCKED: 'Esse horário não está disponível.',
-  SAME_DAY_CUTOFF: 'Para reservar no mesmo dia, escolha um horário antes do corte. Depois disso, atendemos por ordem de chegada.',
-  SLOT_FULL_PEOPLE: 'Esse horário já atingiu o limite de pessoas.',
-  SLOT_FULL_RESERVATIONS: 'Esse horário já atingiu o limite de reservas.',
-  DUPLICATE_REQUEST: 'Já identificamos uma solicitação recente com esses dados. Aguarde alguns minutos e tente novamente.',
-  UNKNOWN: 'Não foi possível concluir sua reserva. Tente novamente ou fale conosco pelo WhatsApp.',
-};
-
-function friendlyMessage(error) {
-  const raw = (error && error.message) || '';
-  const sepIndex = raw.indexOf(':');
-  const code = sepIndex > -1 ? raw.slice(0, sepIndex).trim() : raw.trim();
-  const rest = sepIndex > -1 ? raw.slice(sepIndex + 1).trim() : '';
-  return rest || FRIENDLY_FALLBACK[code] || FRIENDLY_FALLBACK.UNKNOWN;
-}
+// Mensagens de erro por código: ver STRINGS em i18n.js.
+const friendlyMessage = (error) => friendlyError(error);
 
 function showAlert(message, type = 'danger') {
   alertArea.innerHTML = `<div class="alert alert--${type}">${message}</div>`;
@@ -68,7 +50,7 @@ function applyToleranceLabels(minutes) {
 }
 
 function applyHoldReleaseLabels(minutes) {
-  const text = minutes % 60 === 0 ? `${minutes / 60} hora${minutes > 60 ? 's' : ''}` : `${minutes} minutos`;
+  const text = minutes % 60 === 0 ? t('hours', minutes / 60) : t('minutes', minutes);
   qsa('.hold-release-label').forEach((el) => {
     el.textContent = text;
   });
@@ -80,6 +62,11 @@ function buildWaLink(message) {
 }
 
 async function init() {
+  applyTranslations('reserva');
+  if (t('tzNote')) {
+    qs('#tz-note').textContent = t('tzNote');
+    qs('#tz-note').classList.remove('hidden');
+  }
   initOpenAIAdsPixel();
   measureReservationPageViewed();
   settings = await fetchPublicSettings();
@@ -91,8 +78,8 @@ async function init() {
   partySizeInput.min = min;
   partySizeInput.max = max;
   qs('#party-size-hint').textContent = min > 1
-    ? `Mínimo ${min} pessoas.`
-    : 'A partir de 1 pessoa.';
+    ? t('partyMin', min)
+    : t('partyFrom1');
   applyMaxPartyLabels(max);
   applyToleranceLabels(Number(settings.tolerance_minutes) || 15);
   applyHoldReleaseLabels(Number(settings.hold_release_minutes) || 60);
@@ -100,7 +87,7 @@ async function init() {
   dateInput.min = todayISO();
   dateInput.max = addDaysISO(advanceDays);
 
-  const waDefaultMsg = settings.whatsapp_message_template || `Olá! Gostaria de falar sobre uma reserva no ${RESTAURANT_NAME}.`;
+  const waDefaultMsg = (LANG === 'pt' && settings.whatsapp_message_template) || t('waDefault', RESTAURANT_NAME);
   const waHref = buildWaLink(waDefaultMsg) || '#';
   whatsappCtaLink.href = waHref;
   qs('#footer-whatsapp').href = waHref;
@@ -109,7 +96,7 @@ async function init() {
   }
 
   phoneInput.addEventListener('input', () => {
-    phoneInput.value = maskPhoneBR(phoneInput.value);
+    phoneInput.value = maskPhone(phoneInput.value);
   });
 
   const refreshAvailability = debounce(handleAvailabilityInputs, 250);
@@ -117,6 +104,13 @@ async function init() {
   dateInput.addEventListener('input', refreshAvailability);
   // O seletor nativo de data do Safari/iOS confirma a escolha via `change`.
   dateInput.addEventListener('change', refreshAvailability);
+  // O campo nativo mostra dd/mm ou mm/dd conforme o navegador: a data por
+  // extenso logo abaixo tira a dúvida de quem reserva do exterior.
+  const showReadableDate = () => {
+    qs('#date-readable').textContent = dateInput.value ? formatDateLong(dateInput.value, LANG) : '';
+  };
+  dateInput.addEventListener('input', showReadableDate);
+  dateInput.addEventListener('change', showReadableDate);
 
   form.addEventListener('submit', handleSubmit);
 }
@@ -154,11 +148,11 @@ async function handleAvailabilityInputs() {
   const min = Number(partySizeInput.min);
 
   if (!date || !size || size < min) {
-    slotsContainer.innerHTML = '<p class="hint">Selecione data e quantidade de pessoas para ver os horários disponíveis.</p>';
+    slotsContainer.innerHTML = `<p class="hint">${t('slotsHint')}</p>`;
     return;
   }
 
-  slotsContainer.innerHTML = '<p class="hint">Buscando horários…</p>';
+  slotsContainer.innerHTML = `<p class="hint">${t('searching')}</p>`;
 
   const { slots, error } = await fetchAvailableSlots(date, size);
 
@@ -174,7 +168,7 @@ async function handleAvailabilityInputs() {
     return;
   }
 
-  renderSlots(slotsContainer, currentSlots, selectedTime, selectSlot);
+  renderSlots(slotsContainer, currentSlots, selectedTime, selectSlot, LANG);
 }
 
 function specialDateNotice(date) {
@@ -194,7 +188,7 @@ function renderSpecialDateNotice(notice) {
     const link = document.createElement('a');
     link.className = 'btn btn--primary';
     link.href = notice.url;
-    link.textContent = notice.cta || 'Saiba mais';
+    link.textContent = notice.cta || t('learnMore');
     box.appendChild(link);
   }
   slotsContainer.appendChild(box);
@@ -202,27 +196,27 @@ function renderSpecialDateNotice(notice) {
 }
 
 function renderNoAvailability(date, size, errorCode) {
-  const waHref = buildWaLink(`Olá! Gostaria de verificar disponibilidade no ${RESTAURANT_NAME} para ${size} pessoas no dia ${date}.`) || '#';
+  const waHref = buildWaLink(t('waAvailability', RESTAURANT_NAME, size, formatDateLong(date, LANG))) || '#';
 
   if (errorCode === 'SAME_DAY_CUTOFF' && date === todayISO()) {
     const cutoff = String(settings?.same_day_cutoff_time || '12:00').slice(0, 5);
     slotsContainer.innerHTML = `
-      <p class="hint">Para hoje, confirme a reserva online até ${cutoff}. Depois desse horário, atendemos por ordem de chegada.</p>
-      <a class="btn btn--whatsapp" style="margin-top:8px;" href="${waHref}" target="_blank" rel="noopener">Falar no WhatsApp</a>
+      <p class="hint">${t('sameDayCutoff', formatTimeLocal(cutoff, LANG))}</p>
+      <a class="btn btn--whatsapp" style="margin-top:8px;" href="${waHref}" target="_blank" rel="noopener">${t('waButton')}</a>
     `;
     return;
   }
 
-  const message = errorCode ? friendlyMessage({ message: `${errorCode}:` }) : 'Nenhum horário disponível para essa data e quantidade de pessoas.';
+  const message = errorCode ? friendlyMessage({ message: `${errorCode}:` }) : t('noSlots');
   slotsContainer.innerHTML = `
     <p class="hint">${message}</p>
-    <a class="btn btn--whatsapp" style="margin-top:8px;" href="${waHref}" target="_blank" rel="noopener">Falar no WhatsApp</a>
+    <a class="btn btn--whatsapp" style="margin-top:8px;" href="${waHref}" target="_blank" rel="noopener">${t('waButton')}</a>
   `;
 }
 
 function selectSlot(time) {
   selectedTime = time;
-  renderSlots(slotsContainer, currentSlots, selectedTime, selectSlot);
+  renderSlots(slotsContainer, currentSlots, selectedTime, selectSlot, LANG);
 }
 
 async function handleSubmit(evt) {
@@ -240,20 +234,20 @@ async function handleSubmit(evt) {
   const marketingOptIn = qs('#marketing_opt_in').checked;
 
   if (!name || !email || !phone || !date || !partySize) {
-    showAlert('Preencha todos os campos obrigatórios.');
+    showAlert(t('fillRequired'));
     return;
   }
   if (!selectedTime) {
-    showAlert('Selecione um horário disponível.');
+    showAlert(t('selectTime'));
     return;
   }
   if (!acceptPolicy) {
-    showAlert('É necessário aceitar as regras da reserva para continuar.');
+    showAlert(t('acceptRules'));
     return;
   }
   if (checkPartySizeOverflow()) return;
 
-  setLoading(submitBtn, true, 'Confirmando...');
+  setLoading(submitBtn, true, t('confirming'));
 
   const { data, error } = await supabase.rpc('fn_create_reservation', {
     p_name: name,
@@ -291,16 +285,18 @@ function showSuccess(result) {
   qs('#success-code').textContent = result.public_code;
 
   const list = qs('#success-summary');
+  const dateText = formatDateLong(result.reservation_date, LANG);
+  const timeText = formatTimeLocal(result.reservation_time, LANG);
   list.innerHTML = `
-    <li><span>Data</span><strong>${formatDateBR(result.reservation_date)}</strong></li>
-    <li><span>Horário</span><strong>${formatTimeBR(result.reservation_time)}</strong></li>
-    <li><span>Pessoas</span><strong>${result.party_size}</strong></li>
+    <li><span>${t('sumDate')}</span><strong>${dateText}</strong></li>
+    <li><span>${t('sumTime')}</span><strong>${timeText}</strong></li>
+    <li><span>${t('sumGuests')}</span><strong>${result.party_size}</strong></li>
   `;
 
-  const waMsg = `Olá! Minha reserva no ${RESTAURANT_NAME} é ${result.public_code}, dia ${formatDateBR(result.reservation_date)} às ${formatTimeBR(result.reservation_time)}.`;
+  const waMsg = t('waConfirm', RESTAURANT_NAME, result.public_code, dateText, timeText);
   qs('#success-whatsapp').href = buildWaLink(waMsg) || '#';
 
-  qs('#success-cancel-link').href = `./cancelar.html?t=${encodeURIComponent(result.cancellation_token)}`;
+  qs('#success-cancel-link').href = `./cancelar.html?t=${encodeURIComponent(result.cancellation_token)}&lang=${LANG}`;
 
   successPanel.scrollIntoView({ behavior: 'smooth' });
 }

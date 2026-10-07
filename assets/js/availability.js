@@ -2,6 +2,7 @@
 // Toda a validação "de verdade" acontece no banco (RPC get_available_time_slots / fn_create_reservation);
 // aqui só buscamos e exibimos o que o banco permite.
 import { supabase } from './supabaseClient.js';
+import { formatTimeLocal } from './utils.js?v=20261007';
 
 const DEFAULT_SETTINGS = {
   min_party_size: 2,
@@ -46,13 +47,15 @@ export async function fetchAvailableSlots(date, partySize) {
   return { slots: data || [], error: null };
 }
 
-export function renderSlots(container, slots, selectedTime, onSelect) {
+export function renderSlots(container, slots, selectedTime, onSelect, lang = 'pt') {
   container.innerHTML = '';
 
   if (!slots.length) {
     const p = document.createElement('p');
     p.className = 'hint';
-    p.textContent = 'Nenhum horário disponível para essa data e quantidade de pessoas.';
+    p.textContent = lang === 'en'
+      ? 'No times available for this date and number of guests.'
+      : 'Nenhum horário disponível para essa data e quantidade de pessoas.';
     container.appendChild(p);
     return;
   }
@@ -64,7 +67,7 @@ export function renderSlots(container, slots, selectedTime, onSelect) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'slot-btn';
-    btn.textContent = slot.time_slot.slice(0, 5);
+    btn.textContent = formatTimeLocal(slot.time_slot, lang);
     btn.disabled = !slot.is_available;
     if (slot.time_slot === selectedTime) {
       btn.classList.add('is-selected');

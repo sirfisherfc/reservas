@@ -32,3 +32,19 @@ supabase/                   — schema.sql, functions.sql, rls.sql, seed.sql; re
 supabase/functions/         — Edge Functions (send-notifications: e-mail de confirmação)
 docs/                       — documentação
 ```
+
+## Idioma (português e inglês)
+
+O site público (`index.html` e `cancelar.html`) funciona em português e em
+inglês. O idioma vem, nesta ordem, de `?lang=en|pt`, da última escolha salva no
+navegador e do idioma do navegador. As páginas em inglês do site institucional
+abrem o portal com `?lang=en`. Os textos em inglês ficam em
+`assets/js/i18n.js`: no HTML, cada elemento traduzido tem `data-i18n`.
+
+- Telefone: número com `+` é internacional e mantém o código do país (até 15
+  dígitos). Sem `+`, vale a máscara do Brasil.
+- Datas aparecem por extenso ("sábado, 10 de outubro de 2026" ou "Saturday,
+  October 10, 2026"); em inglês, horários em 12h com o aviso de fuso de
+  Fortaleza. "Hoje" é sempre a data de Fortaleza, não a do aparelho.
+- O e-mail de confirmação (Edge Function `send-notifications`) e o módulo de
+  Réveillon continuam só em português.

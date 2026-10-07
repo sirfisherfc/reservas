@@ -13,9 +13,20 @@ export function setText(el, value) {
   if (el) el.textContent = value ?? '';
 }
 
+// "Hoje" no fuso do restaurante, e não no do aparelho: quem reserva do
+// exterior (ou com o relógio em outro fuso) vê o mesmo calendário de Fortaleza.
+const RESTAURANT_TZ = 'America/Fortaleza';
+
 export function todayISO() {
-  const d = new Date();
-  return toISODate(d);
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: RESTAURANT_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date());
+    const get = (type) => parts.find((p) => p.type === type)?.value;
+    return `${get('year')}-${get('month')}-${get('day')}`;
+  } catch (e) {
+    return toISODate(new Date());
+  }
 }
 
 export function toISODate(date) {
@@ -25,8 +36,9 @@ export function toISODate(date) {
   return `${y}-${m}-${d}`;
 }
 
-export function addDaysISO(days, base = new Date()) {
-  const d = new Date(base);
+export function addDaysISO(days, base) {
+  const [ty, tm, td] = todayISO().split('-').map(Number);
+  const d = base ? new Date(base) : new Date(ty, tm - 1, td, 12);
   d.setDate(d.getDate() + days);
   return toISODate(d);
 }
@@ -48,6 +60,28 @@ export function formatTimeBR(time) {
   return time.slice(0, 5);
 }
 
+// Data por extenso ("sábado, 10 de outubro de 2026" / "Saturday, October 10,
+// 2026"). Evita a ambiguidade de 10/07 x 07/10 para quem lê no padrão dos EUA.
+export function formatDateLong(isoDate, lang = 'pt') {
+  if (!isoDate) return '';
+  const [y, m, d] = isoDate.split('-').map(Number);
+  try {
+    return new Intl.DateTimeFormat(lang === 'en' ? 'en-US' : 'pt-BR', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+    }).format(new Date(Date.UTC(y, m - 1, d)));
+  } catch (e) {
+    return formatDateBR(isoDate);
+  }
+}
+
+// Hora local de Fortaleza: 24h em português, 12h em inglês ("7:00 pm").
+export function formatTimeLocal(time, lang = 'pt') {
+  if (!time) return '';
+  if (lang !== 'en') return time.slice(0, 5);
+  const [h, mi] = time.split(':').map(Number);
+  return `${((h + 11) % 12) + 1}:${String(mi).padStart(2, '0')} ${h >= 12 ? 'pm' : 'am'}`;
+}
+
 export function formatDateTimeBR(isoDateTime) {
   if (!isoDateTime) return '';
   const d = new Date(isoDateTime);
@@ -66,7 +100,28 @@ export function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
 
-// Formatação leve de telefone BR enquanto o usuário digita (não valida, só melhora a UX).
+// Formatação leve de telefone enquanto o usuário digita (não valida, só melhora a UX).
+// Número que começa com "+" é internacional: mantém o código do país e a
+// pontuação digitada, até 15 dígitos (E.164). Sem "+", segue a máscara do Brasil.
+export function maskPhone(value) {
+  const raw = String(value || '').replace(/^\s+/, '');
+  if (!raw.startsWith('+')) return maskPhoneBR(raw);
+  let count = 0;
+  let rest = '';
+  for (const ch of raw.slice(1)) {
+    if (/\d/.test(ch)) {
+      if (count >= 15) continue;
+      count += 1;
+      rest += ch;
+    } else if (/[\s\-().]/.test(ch) && rest) {
+      rest += ch;
+    }
+  }
+  const digits = rest.replace(/\D/g, '');
+  if (digits.startsWith('55') && digits.length > 2) return `+55 ${maskPhoneBR(digits.slice(2))}`;
+  return `+${rest.replace(/\s{2,}/g, ' ')}`;
+}
+
 export function maskPhoneBR(value) {
   const digits = value.replace(/\D/g, '').slice(0, 11);
   if (digits.length <= 2) return digits;

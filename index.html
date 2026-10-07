@@ -3,10 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sir Fisher Praia — Reservas</title>
-  <meta name="description" content="Reserve sua mesa no Sir Fisher Praia. Confirmação automática e imediata." />
+  <title>Sir Fisher — Reservas</title>
+  <meta name="description" content="Reserve sua mesa no Sir Fisher, na Beira-Mar de Fortaleza. Confirmação automática e imediata." />
+  <link rel="alternate" hreflang="pt-BR" href="https://reservas.sirfisher.com.br/?lang=pt" />
+  <link rel="alternate" hreflang="en" href="https://reservas.sirfisher.com.br/?lang=en" />
+  <link rel="alternate" hreflang="x-default" href="https://reservas.sirfisher.com.br/" />
+  <!-- Idioma: ?lang=en|pt, depois a escolha salva, depois o navegador. Em
+       ingles a pagina fica oculta ate o i18n.js trocar os textos (no maximo
+       2,5 s), para o portugues nao piscar. Mesma regra de assets/js/i18n.js. -->
+  <style>.i18n-pending body { visibility: hidden; }</style>
+  <script>
+  (function () {
+    var raiz = document.documentElement;
+    var l = 'pt';
+    try {
+      var q = new URLSearchParams(location.search).get('lang');
+      var salvo = null;
+      try { salvo = localStorage.getItem('sf-lang'); } catch (e) {}
+      if (q === 'en' || q === 'pt') l = q;
+      else if (salvo === 'en' || salvo === 'pt') l = salvo;
+      else if (/^en\b/i.test(navigator.language || '')) l = 'en';
+    } catch (e) {}
+    raiz.setAttribute('data-lang', l);
+    if (l === 'en') {
+      raiz.setAttribute('lang', 'en');
+      raiz.classList.add('i18n-pending');
+      setTimeout(function () { raiz.classList.remove('i18n-pending'); }, 2500);
+    }
+  })();
+  </script>
   <link rel="icon" type="image/png" href="https://www.sirfisher.com.br/assets/img/favicon.png" />
-  <link rel="stylesheet" href="./assets/css/style.css" />
+  <link rel="stylesheet" href="./assets/css/style.css?v=20261007" />
   <!-- Google tag (gtag.js). Mesma propriedade do site institucional. O linker
        preserva a sessao quando o visitante salta de www.sirfisher.com.br para
        este subdominio, para que a reserva seja creditada ao canal de origem. -->
@@ -36,125 +63,130 @@
 
   <div class="masthead">
     <div class="container">
-      <img src="https://www.sirfisher.com.br/assets/img/logo-horizontal.png" alt="Sir Fisher Praia" class="masthead__logo" width="900" height="280" />
+      <a class="lang-switch" href="?lang=en" hreflang="en" lang="en" data-lang-switch>English</a>
+      <img src="https://www.sirfisher.com.br/assets/img/logo-horizontal.png" alt="Sir Fisher" class="masthead__logo" width="900" height="280" />
     </div>
   </div>
 
   <header class="hero">
     <div class="container">
-      <h1>Reserve sua experiência no Sir Fisher Praia</h1>
-      <p>Garanta sua reserva e aproveite nosso clima à beira-mar. A posição das mesas é organizada conforme disponibilidade no momento da chegada.</p>
+      <h1 data-i18n="heroTitle">Reserve sua experiência no Sir Fisher</h1>
+      <p data-i18n="heroText">Garanta sua reserva e aproveite nosso clima à beira-mar. A posição das mesas é organizada conforme disponibilidade no momento da chegada.</p>
     </div>
   </header>
 
   <main>
     <section class="section container" id="reserva">
-      <h2 class="section-title">Fazer reserva</h2>
+      <h2 class="section-title" data-i18n="formTitle">Fazer reserva</h2>
 
       <form id="reservation-form" class="card" novalidate>
 
         <div class="form-field hp-field" aria-hidden="true">
-          <label for="website">Não preencha este campo</label>
+          <label for="website" data-i18n="honeypot">Não preencha este campo</label>
           <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
         </div>
 
         <div class="form-row form-row--split">
           <div class="form-field">
-            <label for="name">Nome</label>
+            <label for="name" data-i18n="labelName">Nome</label>
             <input type="text" id="name" name="name" maxlength="120" required autocomplete="name" />
           </div>
           <div class="form-field">
-            <label for="phone">Telefone/WhatsApp</label>
-            <input type="tel" id="phone" name="phone" maxlength="20" required autocomplete="tel" inputmode="tel" placeholder="(21) 99999-9999" />
+            <label for="phone" data-i18n="labelPhone">Telefone/WhatsApp</label>
+            <input type="tel" id="phone" name="phone" maxlength="24" required autocomplete="tel" inputmode="tel" placeholder="(85) 99999-9999" data-i18n-placeholder="phone" aria-describedby="phone-hint" />
+            <p class="hint" id="phone-hint" data-i18n="phoneHint">Número de fora do Brasil? Comece com + e o código do país.</p>
           </div>
         </div>
 
         <div class="form-field">
-          <label for="email">E-mail</label>
+          <label for="email" data-i18n="labelEmail">E-mail</label>
           <input type="email" id="email" name="email" maxlength="160" required autocomplete="email" />
         </div>
 
         <div class="form-row form-row--split">
           <div class="form-field">
-            <label for="party_size">Quantidade de pessoas</label>
+            <label for="party_size" data-i18n="labelParty">Quantidade de pessoas</label>
             <input type="number" id="party_size" name="party_size" min="1" max="10" step="1" required />
             <p class="hint" id="party-size-hint">A partir de 1 pessoa.</p>
           </div>
           <div class="form-field">
-            <label for="date">Data</label>
-            <input type="date" id="date" name="date" required />
+            <label for="date" data-i18n="labelDate">Data</label>
+            <input type="date" id="date" name="date" required aria-describedby="date-readable" />
+            <p class="hint" id="date-readable" aria-live="polite"></p>
           </div>
         </div>
 
         <div class="form-field">
-          <label>Horário</label>
+          <label data-i18n="labelTime">Horário</label>
+          <p class="hint hidden" id="tz-note"></p>
           <div id="slots-container">
-            <p class="hint">Selecione data e quantidade de pessoas para ver os horários disponíveis.</p>
+            <p class="hint" data-i18n="slotsHint">Selecione data e quantidade de pessoas para ver os horários disponíveis.</p>
           </div>
         </div>
 
         <div id="whatsapp-cta" class="alert alert--info hidden">
-          Para reservas acima de <span class="max-party-label">10</span> pessoas, fale com nossa equipe pelo WhatsApp para verificarmos disponibilidade.
+          <span data-i18n="waCta">Para reservas acima de <span class="max-party-label">10</span> pessoas, fale com nossa equipe pelo WhatsApp para verificarmos disponibilidade.</span>
           <div style="margin-top:10px;">
-            <a id="whatsapp-cta-link" class="btn btn--whatsapp" href="#" target="_blank" rel="noopener">Falar no WhatsApp</a>
+            <a id="whatsapp-cta-link" class="btn btn--whatsapp" href="#" target="_blank" rel="noopener" data-i18n="waButton">Falar no WhatsApp</a>
           </div>
         </div>
 
         <div class="form-field">
-          <label for="notes">Observações (opcional)</label>
-          <textarea id="notes" name="notes" maxlength="500" placeholder="Alguma observação para sua visita?"></textarea>
-          <p class="hint">A equipe avalia as observações conforme a disponibilidade.</p>
+          <label for="notes" data-i18n="labelNotes">Observações (opcional)</label>
+          <textarea id="notes" name="notes" maxlength="500" placeholder="Alguma observação para sua visita?" data-i18n-placeholder="notes"></textarea>
+          <p class="hint" data-i18n="notesHint">A equipe avalia as observações conforme a disponibilidade.</p>
         </div>
 
         <details class="rules">
           <summary class="rules__summary">
-            <span>Regras da reserva</span>
-            <span class="rules__hint">toque para ler</span>
+            <span data-i18n="rulesTitle">Regras da reserva</span>
+            <span class="rules__hint" data-i18n="rulesHint">toque para ler</span>
           </summary>
           <ol class="rules__list">
-            <li>Temos <span class="tolerance-label">15</span> minutos de tolerância para chegada. Após esse prazo, a reserva poderá ser liberada.</li>
-            <li>A equipe define a posição da mesa conforme a disponibilidade no momento da chegada.</li>
-            <li>Reservamos apenas parte da nossa capacidade. O restante das mesas funciona por ordem de chegada.</li>
-            <li>Reservas acima de <span class="max-party-label">10</span> pessoas devem ser feitas pelo WhatsApp.</li>
-            <li>A equipe poderá liberar os lugares reservados para outros clientes após <span class="hold-release-label">1 hora</span> sem ocupação.</li>
+            <li data-i18n="rule1">Temos <span class="tolerance-label">15</span> minutos de tolerância para chegada. Após esse prazo, a reserva poderá ser liberada.</li>
+            <li data-i18n="rule2">A equipe define a posição da mesa conforme a disponibilidade no momento da chegada.</li>
+            <li data-i18n="rule3">Reservamos apenas parte da nossa capacidade. O restante das mesas funciona por ordem de chegada.</li>
+            <li data-i18n="rule4">Reservas acima de <span class="max-party-label">10</span> pessoas devem ser feitas pelo WhatsApp.</li>
+            <li data-i18n="rule5">A equipe poderá liberar os lugares reservados para outros clientes após <span class="hold-release-label">1 hora</span> sem ocupação.</li>
+            <li data-i18n="rule6" data-only-lang="en" class="hidden"></li>
           </ol>
         </details>
 
 
         <div class="form-field checkbox-field">
           <input type="checkbox" id="accept_policy" name="accept_policy" required />
-          <label for="accept_policy">Li e aceito as <strong>regras da reserva</strong> acima.</label>
+          <label for="accept_policy" data-i18n="acceptPolicy">Li e aceito as <strong>regras da reserva</strong> acima.</label>
         </div>
 
         <div class="form-field checkbox-field">
           <input type="checkbox" id="marketing_opt_in" name="marketing_opt_in" />
-          <label for="marketing_opt_in">Quero receber promoções e novidades do cardápio. Posso sair da lista quando quiser.</label>
+          <label for="marketing_opt_in" data-i18n="marketing">Quero receber promoções e novidades do cardápio. Posso sair da lista quando quiser.</label>
         </div>
 
         <div id="form-alert-area"></div>
 
-        <button type="submit" id="submit-btn" class="btn btn--primary">Confirmar reserva</button>
+        <button type="submit" id="submit-btn" class="btn btn--primary" data-i18n="submit">Confirmar reserva</button>
       </form>
 
       <div id="success-panel" class="card hidden text-center">
-        <h2 class="section-title">Reserva confirmada 🎉</h2>
-        <p>Confira abaixo os dados da reserva. Chegue dentro da tolerância de 15 minutos para manter a mesa.</p>
+        <h2 class="section-title" data-i18n="successTitle">Reserva confirmada 🎉</h2>
+        <p data-i18n="successText">Confira abaixo os dados da reserva. Chegue dentro da tolerância de 15 minutos para manter a mesa.</p>
         <div class="success-code" id="success-code">SF-XXXXXX</div>
         <ul class="summary-list" id="success-summary"></ul>
         <div class="stack">
-          <a id="success-whatsapp" class="btn btn--whatsapp" href="#" target="_blank" rel="noopener">Falar no WhatsApp</a>
-          <a id="success-cancel-link" class="btn btn--outline" href="#">Cancelar esta reserva</a>
+          <a id="success-whatsapp" class="btn btn--whatsapp" href="#" target="_blank" rel="noopener" data-i18n="waButton">Falar no WhatsApp</a>
+          <a id="success-cancel-link" class="btn btn--outline" href="#" data-i18n="cancelLink">Cancelar esta reserva</a>
         </div>
       </div>
     </section>
   </main>
 
   <footer class="site-footer container">
-    <p><strong>Sir Fisher Praia</strong> · reservas online</p>
-    <p>Precisa de ajuda? <a id="footer-whatsapp" href="#" target="_blank" rel="noopener">Fale conosco pelo WhatsApp</a></p>
-    <p><a href="https://www.sirfisher.com.br/privacidade/" target="_blank" rel="noopener">Aviso de Privacidade</a></p>
+    <p><strong>Sir Fisher</strong> · <span data-i18n="footerTagline">reservas online</span></p>
+    <p><span data-i18n="footerHelp">Precisa de ajuda?</span> <a id="footer-whatsapp" href="#" target="_blank" rel="noopener" data-i18n="footerWhatsapp">Fale conosco pelo WhatsApp</a></p>
+    <p><a href="https://www.sirfisher.com.br/privacidade/" target="_blank" rel="noopener" data-i18n="privacy">Aviso de Privacidade</a></p>
   </footer>
 
-  <script type="module" src="./assets/js/reservations.js?v=20261006b"></script>
+  <script type="module" src="./assets/js/reservations.js?v=20261007"></script>
 </body>
 </html>

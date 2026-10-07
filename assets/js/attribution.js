@@ -213,8 +213,10 @@ async function sha256Hex(value) {
 }
 
 function normalizeOpenAiPhone(raw) {
+  const international = String(raw || '').trim().startsWith('+');
   let digits = String(raw || '').replace(/\D/g, '');
-  if (digits.length === 10 || digits.length === 11) digits = `55${digits}`;
+  // Sem "+", o número foi digitado no formato do Brasil e ganha o 55.
+  if (!international && (digits.length === 10 || digits.length === 11)) digits = `55${digits}`;
   return digits.length >= 8 && digits.length <= 15 ? digits : null;
 }
 

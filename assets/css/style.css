@@ -89,6 +89,27 @@ p {
   margin: 0 auto;
 }
 
+/* Troca de idioma (portal público). Fica no canto, fora do caminho do logo. */
+.masthead .container { position: relative; }
+
+.lang-switch {
+  position: absolute;
+  top: -6px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lang-switch:hover,
+.lang-switch:focus-visible { color: var(--color-secondary-dark); }
+
 /* Hero */
 
 .hero {
@@ -349,12 +370,14 @@ textarea {
 }
 
 .btn--primary {
-  background: var(--color-primary);
+  /* Tom escuro do laranja: branco sobre --color-primary dava 3,7:1 (WCAG
+     pede 4,5:1 para texto deste tamanho). */
+  background: var(--color-primary-dark);
   color: #fff;
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: var(--color-primary-dark);
+  background: #a33a19;
 }
 
 .btn--whatsapp {
@@ -484,11 +507,14 @@ textarea {
   padding: 28px 0 48px;
   text-align: center;
   font-size: 0.82rem;
-  color: var(--color-text-soft);
+  /* O rodapé fica sobre o fim do degradê (laranja a verde-escuro): texto
+     claro com sombra mantém o contraste nos dois extremos. */
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
 }
 
 .site-footer a {
-  color: var(--color-text-soft);
+  color: #fff;
 }
 
 /* Utility */

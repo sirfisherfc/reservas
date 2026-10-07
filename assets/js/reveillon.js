@@ -2,8 +2,8 @@
 // Tudo o que é preço, prazo, regra ou texto de negócio vem de rv_public_event
 // e rv_simulate; o cálculo é sempre do banco (rv_calc_price), nunca daqui.
 import { supabase } from './supabaseClient.js';
-import { qs, qsa, maskPhoneBR, setLoading, showToast, debounce } from './utils.js';
-import { captureAttribution, reservationAttribution, initOpenAIAdsPixel } from './attribution.js?v=20261006b';
+import { qs, qsa, maskPhone, setLoading, showToast, debounce } from './utils.js?v=20261007';
+import { captureAttribution, reservationAttribution, initOpenAIAdsPixel } from './attribution.js?v=20261007';
 import {
   esc, money, pct, dateBR, dateTimeBR, timeBR, longDateBR, fillTemplate, eventTextVars,
   bookingMessageVars, waHref, formatPixKey, parseDbError, renderMap, stateLabel, centerMapScroll,
@@ -462,7 +462,7 @@ function closePanel() {
 // Envio
 // -------------------------------------------------------------------------
 const phoneInput = qs('#phone');
-phoneInput.addEventListener('input', () => { phoneInput.value = maskPhoneBR(phoneInput.value); });
+phoneInput.addEventListener('input', () => { phoneInput.value = maskPhone(phoneInput.value); });
 
 function formAlert(text) {
   qs('#form-alert-area').innerHTML = text ? `<div class="alert alert--danger">${esc(text)}</div>` : '';

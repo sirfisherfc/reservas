@@ -9,7 +9,7 @@ import { WHATSAPP_NUMBER, RESTAURANT_NAME } from './config.js';
 import {
   initOpenAIAdsPixel, measureReservationPageViewed, measureReservationConfirmed,
   measureReservationConfirmedGA4, measureReservationConfirmedMeta, reservationAttribution,
-} from './attribution.js?v=20261007';
+} from './attribution.js?v=20261013';
 
 const form = qs('#reservation-form');
 const alertArea = qs('#form-alert-area');

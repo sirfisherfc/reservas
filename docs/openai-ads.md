@@ -50,7 +50,7 @@ Inclua o header `x-openai-ads-secret` com o mesmo valor de `OPENAI_ADS_TRIGGER_S
 
 ## URL do anuncio
 
-Prefira apontar o anuncio diretamente para a pagina de reservas:
+Para anuncios de reserva, o destino pode ser a pagina de reservas:
 
 ```text
 https://reservas.sirfisher.com.br/?utm_source=chatgpt&utm_medium=paid&utm_campaign=<nome-da-campanha>
@@ -58,7 +58,40 @@ https://reservas.sirfisher.com.br/?utm_source=chatgpt&utm_medium=paid&utm_campai
 
 O ChatGPT Ads acrescenta `oppref` automaticamente. O sistema tambem armazena `campaign_id`, `ad_group_id` e `ad_id` se chegarem na URL, mas a documentacao atual informa que macros dinamicas de UTM nao sao suportadas. Use UTMs estaticas e exporte os IDs pelo Ads Manager quando precisar detalhar campanhas.
 
-Se o destino precisar ser `www.sirfisher.com.br` antes de abrir a reserva, instale o mesmo mecanismo de captura nesse site ou propague os parametros no link para `reservas.sirfisher.com.br`. O cookie do projeto foi preparado para compartilhar a atribuicao entre subdominios de `sirfisher.com.br`, mas a pagina institucional tambem precisa capturar o clique inicial.
+Para descoberta da casa, a campanha de outubro usa `/conheca/`, com acesso a
+cardapio, rotas e reservas. O site ja captura a origem, compartilha o cookie e
+decora os links para o portal. Nao trocar o destino apenas por nao haver reservas.
+
+## Recuperacao de 13 de outubro de 2026
+
+- Campanha de cliques pausada e associada a Reserva confirmada e Visita
+  realizada. Orcamento e lance preservados; retomada depende de aprovacao.
+- Nova origem substitui os parametros da anterior, sem herdar `oppref` ou IDs
+  de outro anuncio. Cookie compartilhado mais recente prevalece sobre storage
+  antigo do dominio. Links internos com a mesma origem preservam o toque.
+- Pixel e CAPI enviam apenas identificadores reais, normalizados e em hash.
+  A cidade do restaurante nao e enviada como localizacao presumida do cliente.
+  Telefones internacionais com `+` mantem o codigo original.
+- OpenAI e GA4 contam reservas e visitas sem valores monetarios presumidos.
+  O evento Meta legado ainda usa estimativa; nao representa consumo realizado.
+- A Edge Function foi publicada na versao 17. Os dois contratos de evento
+  foram aceitos em `validate_only`, sem salvar conversoes ou reivindicar filas.
+
+O diagnostico autenticado aceita `{"validate_only":true}` no mesmo endpoint e
+com a mesma autenticacao do worker. Usa identificador sintetico exclusivo do
+teste, nao le clientes e retorna apenas resultado agregado. Nao colocar o
+segredo do worker no navegador. O envio normal continua processando a fila.
+
+Testes locais, sem eventos em producao:
+
+```powershell
+deno test --allow-read reservas/tools/attribution_test.mjs reservas/tools/openai_event_test.ts reservas/tools/openai_validation_test.mjs
+```
+
+Esses testes conferem preservacao da origem, hashes, IDs de deduplicacao,
+ausencia de valores presumidos, limites de timestamp e isolamento do diagnostico.
+A deduplicacao efetiva de uma futura reserva paga depende da recepcao pelo
+provedor; IDs iguais no codigo nao comprovam sozinhos essa recepcao.
 
 ## Privacidade e limites
 

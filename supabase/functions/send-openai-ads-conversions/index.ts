@@ -11,6 +11,7 @@
 // -----------------------------------------------------------------------------
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildOpenAiEvent } from "./openai-event.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -22,9 +23,8 @@ const GA4_API_SECRET = Deno.env.get("GA4_API_SECRET") ?? "";
 const META_PIXEL_ID = Deno.env.get("META_PIXEL_ID") ?? "";
 const META_CAPI_TOKEN = Deno.env.get("META_CAPI_TOKEN") ?? "";
 
-// Mesma constante do front (assets/js/attribution.js): ticket de R$ 76,00
-// dividido por 1,3 pessoas por pagamento. Ordem de grandeza para comparar
-// canais por receita, nao faturamento apurado.
+// Estimativa legada exclusiva da integracao Meta, fora desta recuperacao.
+// OpenAI e GA4 contam reservas/visitas sem declarar faturamento.
 const REVENUE_PER_GUEST_BRL = 58;
 
 // A Measurement Protocol descarta eventos com mais de 72h. Quando o
@@ -80,6 +80,38 @@ type QueueResult = { configured: boolean; processed: number; sent: number; faile
 
 const IDLE: QueueResult = { configured: false, processed: 0, sent: 0, failed: 0 };
 
+async function postOpenAiEvents(events: unknown[], validateOnly = false) {
+  const response = await fetch(`https://bzr.openai.com/v1/events?pid=${encodeURIComponent(PIXEL_ID)}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${CONVERSIONS_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ validate_only: validateOnly, integration_source: "sir_fisher_reservas", events }),
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`OpenAI ${response.status}: ${body.slice(0, 1200)}`);
+  }
+}
+
+// Diagnostico autenticado: valida o contrato da API sem salvar conversoes,
+// ler clientes, reivindicar filas ou reenviar eventos existentes.
+async function validateOpenAiContract(): Promise<Response> {
+  if (!PIXEL_ID || !CONVERSIONS_API_KEY) return json({ error: "openai_not_configured" }, 503);
+  const reference = `sf-validation-${crypto.randomUUID()}`;
+  const base = { oppref: null, email: null, phone: null, external_id: reference,
+    landing_url: "https://reservas.sirfisher.com.br/", occurred_at: new Date(Date.now() - 1000).toISOString() };
+  try {
+    const events = await Promise.all([
+      buildOpenAiEvent({ ...base, event_id: `${reference}-schedule`, event_name: "schedule" }),
+      buildOpenAiEvent({ ...base, event_id: `${reference}-visit`, event_name: "visit_realized" }),
+    ]);
+    await postOpenAiEvents(events, true);
+    return json({ validate_only: true, valid: true, event_count: events.length });
+  } catch {
+    // Nao propaga corpo de erro de terceiros nem identificadores.
+    return json({ validate_only: true, valid: false, error: "openai_validation_failed" }, 502);
+  }
+}
+
 // Percorre uma fila reivindicada, aplicando `send` a cada linha e marcando o
 // resultado. Os dois provedores compartilham este laco; so muda o envio.
 async function drain<T extends { queue_id: string }>(
@@ -128,66 +160,9 @@ async function processOpenAiQueue(): Promise<QueueResult> {
   >;
 
   const { sent, failed } = await drain(rows, async (row) => {
-    const timestampMs = Date.parse(row.occurred_at);
-    if (!Number.isFinite(timestampMs) || timestampMs < Date.now() - 7 * 24 * 60 * 60 * 1000) {
-      throw new Error("event timestamp is older than the Conversions API 7-day limit");
-    }
+    const event = await buildOpenAiEvent(row);
 
-    const user: Record<string, unknown> = { countries: ["BR"], cities: ["Fortaleza"], regions: ["Ceara"] };
-    const email = normalizeEmail(row.email);
-    const phone = normalizePhone(row.phone);
-    if (email) user.emails_sha256 = [await sha256Hex(email)];
-    if (phone) user.phone_numbers_sha256 = [await sha256Hex(phone)];
-    if (row.external_id) user.external_ids_sha256 = [await sha256Hex(row.external_id.trim())];
-
-    const guests = Number(row.party_size) || 0;
-    const isSchedule = row.event_name === "schedule";
-    const event: Record<string, unknown> = isSchedule
-      ? {
-        id: row.event_id,
-        type: "appointment_scheduled",
-        timestamp_ms: timestampMs,
-        source_url: row.landing_url ?? "https://reservas.sirfisher.com.br/",
-        action_source: "web",
-        user,
-        data: {
-          type: "customer_action",
-          amount: guests * REVENUE_PER_GUEST_BRL * 100,
-          currency: "BRL",
-        },
-      }
-      : {
-        id: row.event_id,
-        type: "custom",
-        custom_event_name: "visit_realized",
-        timestamp_ms: timestampMs,
-        action_source: "physical_store",
-        user,
-        data: {
-          type: "custom",
-          amount: guests * REVENUE_PER_GUEST_BRL * 100,
-          currency: "BRL",
-        },
-      };
-    if (row.oppref) event.oppref = row.oppref;
-
-    const response = await fetch(`https://bzr.openai.com/v1/events?pid=${encodeURIComponent(PIXEL_ID)}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${CONVERSIONS_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        validate_only: false,
-        integration_source: "sir_fisher_reservas",
-        events: [event],
-      }),
-    });
-
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`OpenAI ${response.status}: ${body.slice(0, 1200)}`);
-    }
+    await postOpenAiEvents([event]);
   });
 
   return { configured: true, processed: rows.length, sent, failed };
@@ -220,8 +195,6 @@ async function processGa4Queue(): Promise<QueueResult> {
       // Sem engagement_time_msec o GA4 aceita o evento mas nao o conta como
       // interacao, e ele nao aparece nos relatorios de conversao.
       engagement_time_msec: 1,
-      value: guests * REVENUE_PER_GUEST_BRL,
-      currency: "BRL",
       party_size: guests,
     };
     // Amarra o comparecimento a mesma sessao que originou a reserva, para que a
@@ -352,6 +325,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   if (!(await isAuthorized(req))) return json({ error: "unauthorized" }, 401);
+
+  const body = await req.json().catch(() => ({}));
+  if (body?.validate_only === true) return await validateOpenAiContract();
 
   const openaiAds = await processOpenAiQueue();
   const ga4 = await processGa4Queue();

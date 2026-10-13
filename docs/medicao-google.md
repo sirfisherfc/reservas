@@ -49,8 +49,10 @@ conversão de coorte. “Primeiro comparecimento registrado” não significa
 primeira visita ao restaurante: clientes sem reserva não entram nesse histórico.
 
 O GA4 mede somente a parte rastreável. Não usar zero no GA4 como prova de zero
-reservas ou visitas. Valores estimados enviados pelos pixels não equivalem
-a faturamento e não devem ser usados para afirmar receita realizada.
+reservas ou visitas. Em 13/10/2026, reservas e comparecimentos deixaram de enviar
+o valor estimado de R$58 por pessoa no GA4 e na OpenAI. Os eventos continuam
+contando resultados, sem declarar faturamento. Valores históricos estimados
+e o evento Meta legado não equivalem a receita realizada.
 
 ## Validação
 

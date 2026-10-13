@@ -4,7 +4,7 @@ const STORAGE_KEY = 'sf_attribution_v1';
 const COOKIE_KEY = 'sf_attribution_v1';
 const TRACKED_KEYS = [
   'oppref', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
-  'campaign_id', 'ad_group_id', 'ad_id',
+  'campaign_id', 'ad_group_id', 'ad_id', 'fbclid', 'gclid',
 ];
 
 function readCookie(name) {
@@ -25,16 +25,22 @@ function loadStoredAttribution() {
   } catch {
     // Bloqueio de storage não pode impedir uma reserva; tenta o cookie.
   }
-  for (const raw of [local, readCookie(COOKIE_KEY)]) {
-    if (!raw) continue;
+  const parse = (raw) => {
+    if (!raw) return null;
     try {
       const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') return parsed;
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
     } catch {
       // Atributos corrompidos não impedem uma reserva.
+      return null;
     }
-  }
-  return {};
+  };
+  const localValue = parse(local);
+  const sharedValue = parse(readCookie(COOKIE_KEY));
+  if (!localValue) return sharedValue || {};
+  if (!sharedValue) return localValue;
+  return (Date.parse(sharedValue.captured_at) || 0) > (Date.parse(localValue.captured_at) || 0)
+    ? sharedValue : localValue;
 }
 
 function persistAttribution(attribution) {
@@ -139,8 +145,12 @@ export function captureAttribution() {
   // Chegada com campanha: sobrescreve, porque e a origem mais recente e mais
   // especifica que temos.
   if (Object.keys(incoming).length) {
+    if (Object.keys(incoming).every((key) => incoming[key] === stored[key])) {
+      // Navegacao entre dominios preserva o clique original e sua data.
+      persistAttribution(stored);
+      return stored;
+    }
     const attribution = {
-      ...stored,
       ...incoming,
       landing_url: window.location.href.slice(0, 2000),
       referrer: (document.referrer || '').slice(0, 2000) || null,
@@ -232,7 +242,8 @@ async function openAiPixelUser({ email, phone, name } = {}) {
   const nameParts = String(name || '').trim().split(/\s+/).filter(Boolean);
   const firstName = normalizeOpenAiName(nameParts[0]);
   const lastName = normalizeOpenAiName(nameParts.length > 1 ? nameParts[nameParts.length - 1] : '');
-  const user = { country: 'BR', city: 'Fortaleza', region: 'Ceara' };
+  // A localizacao do restaurante nao informa onde mora o visitante.
+  const user = {};
 
   if (normalizedEmail.includes('@')) user.email_sha256 = await sha256Hex(normalizedEmail);
   if (normalizedPhone) user.phone_number_sha256 = await sha256Hex(normalizedPhone);
@@ -281,21 +292,17 @@ export function measureReservationPageViewed() {
   });
 }
 
-// Receita media por pessoa: ticket de R$ 76,00 dividido por 1,3 pessoas por
-// pagamento, conforme 12 meses do painel financeiro. Serve para dar ordem de
-// grandeza ao valor da conversao no GA4; nao e faturamento apurado.
+// Estimativa legada usada apenas no evento Meta, fora desta recuperacao.
+// OpenAI e GA4 contam reservas; receita depende de consumo efetivamente pago.
 const REVENUE_PER_GUEST_BRL = 58;
 
 // Espelha a reserva no GA4. O pixel da OpenAI continua sendo tratado em
-// measureReservationConfirmed(); aqui a mesma conversao chega ao GA4 com valor,
-// que e o que permite comparar canais por receita e nao apenas por volume.
+// measureReservationConfirmed(); uma reserva ainda nao e receita realizada.
 export function measureReservationConfirmedGA4(result) {
   if (typeof window.gtag !== 'function' || !result) return;
 
   const partySize = Number(result.party_size) || 0;
   window.gtag('event', 'reservation_confirmed', {
-    currency: 'BRL',
-    value: partySize * REVENUE_PER_GUEST_BRL,
     party_size: partySize,
     reservation_code: result.public_code || null,
   });
@@ -304,7 +311,6 @@ export function measureReservationConfirmedGA4(result) {
 export async function measureReservationConfirmed(result, customer) {
   if (typeof window.oaiq !== 'function' || !result?.id) return;
 
-  const partySize = Number(result.party_size) || 0;
   const user = await openAiPixelUser(customer);
   window.oaiq('init', { pixelId: OPENAI_ADS_PIXEL_ID, user });
   window.oaiq(
@@ -312,8 +318,6 @@ export async function measureReservationConfirmed(result, customer) {
     'appointment_scheduled',
     {
       type: 'customer_action',
-      amount: partySize * REVENUE_PER_GUEST_BRL * 100,
-      currency: 'BRL',
     },
     { event_id: openAiScheduleEventId(result.id) },
   );

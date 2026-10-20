@@ -19,6 +19,19 @@ Esses arquivos já refletem duas correções encontradas em testes reais (não a
 
 Se for reaplicar em um projeto novo do zero, esses três pontos já estão corrigidos nos arquivos — não precisa repetir a descoberta.
 
+## Grants explícitos em tabelas novas (desde 30/10/2026)
+
+O Supabase deixou de conceder automaticamente acesso da Data API (supabase-js, PostgREST, GraphQL) a tabelas e views criadas no schema `public`. Vale para tabelas novas no `portal`, projetos novos, preview branches e `supabase db reset`. As tabelas que já existiam mantiveram os grants. Sem o grant, a API devolve `permission denied` (`42501`).
+
+Ao criar uma tabela ou view, colocar no mesmo arquivo SQL os grants de cada papel, só com os privilégios usados:
+
+- **`service_role`**: obrigatório quando uma Edge Function (`event-quote`, `send-notifications`, `send-openai-ads-conversions`) acessa o objeto com `.from(...)`. A chave de serviço ignora RLS, mas não dispensa o grant de tabela. Modelos: `eventos-rls.sql` (tabelas usadas só pela Edge Function, com `usage` na sequência do `bigserial`) e a migration `20260930010000` do gestao (só os privilégios usados em tabelas compartilhadas).
+- **`authenticated`**: o que o painel admin usa, coerente com as policies.
+- **`anon`**: nada, salvo decisão explícita (hoje só `restaurant_settings` e `rv_table_state`, além da `cardapio_publico` do gestao). Não copiar o exemplo do aviso do Supabase que concede `select` ao `anon`.
+- `drop` + `create` gera um objeto novo e perde os grants; repeti-los ao recriar.
+
+**Duplicação do projeto:** `rls.sql` e `reveillon-rls.sql` concedem tabelas a `anon` e `authenticated`, mas ao `service_role` só `select` em `app_users`. No `portal`, a `event-quote` lê e altera a agenda com os grants das migrations `20260930000000` e `20260930010000` do repositório gestao. Num projeto novo, aplicar também essas migrations (ou grants equivalentes) antes de publicar as Edge Functions.
+
 ## Extensões usadas
 
 - `pgcrypto` (schema `extensions`) — hash do token de cancelamento, geração de bytes aleatórios.

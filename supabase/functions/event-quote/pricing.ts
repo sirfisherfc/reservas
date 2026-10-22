@@ -341,19 +341,19 @@ export const ITEMS: Record<
   travessa_essencial: {
     name: "Prato principal para compartilhar",
     detail:
-      "Até 2 proteínas entre peito de frango com ervas, picanha suína e filé de peixe grelhado. Travessas com arroz, batata ou macaxeira, salada, farota e molho, 1 para cada 2 convidados.",
+      "Até 2 proteínas entre peito de frango com ervas, picanha suína e filé de peixe grelhado. Travessas com arroz, batata ou macaxeira, salada, farofa e molho, 1 para cada 2 convidados.",
     unit: "travessas",
   },
   travessa_equilibrada: {
     name: "Prato principal para compartilhar",
     detail:
-      "Até 2 proteínas entre peito de frango com ervas, picanha suína, filé de peixe grelhado e carne de sol acebolada. Travessas com arroz, batata ou macaxeira, salada, farota e molho, 1 para cada 2 convidados.",
+      "Até 2 proteínas entre peito de frango com ervas, picanha suína, filé de peixe grelhado e carne de sol acebolada. Travessas com arroz, batata ou macaxeira, salada, farofa e molho, 1 para cada 2 convidados.",
     unit: "travessas",
   },
   travessa_completa: {
     name: "Prato principal para compartilhar",
     detail:
-      "Até 2 proteínas entre filé de peixe grelhado, carne de sol acebolada, filé mignon e picanha importada. Travessas com arroz, batata ou macaxeira, salada, farota e molho, 1 para cada 2 convidados.",
+      "Até 2 proteínas entre filé de peixe grelhado, carne de sol acebolada, filé mignon e picanha importada. Travessas com arroz, batata ou macaxeira, salada, farofa e molho, 1 para cada 2 convidados.",
     unit: "travessas",
   },
   brownie: {

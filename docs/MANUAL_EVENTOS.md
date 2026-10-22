@@ -12,7 +12,7 @@ O configurador tem 4 etapas: data e horário, convidados, comida e bebidas. Acei
 |---|---|
 | **Petiscos** | Petiscos servidos por garçons circulando (serviço volante) durante todo o evento. |
 | **Petiscos + clássico da casa** | Petiscos na recepção e, depois, **1 clássico da casa por convidado**, à escolha: Edimburger, Fisher Burger ou Fish & Chips. O cliente informa até 7 dias antes quantos de cada. |
-| **Petiscos + almoço ou jantar** | Petiscos na recepção e **pratos para compartilhar em travessas** (1 travessa de 300 g de proteína a cada 2 convidados), com arroz, batata ou macaxeira, salada, farota e molho. O cliente escolhe 2 proteínas da lista do nível até 7 dias antes. |
+| **Petiscos + almoço ou jantar** | Petiscos na recepção e **pratos para compartilhar em travessas** (1 travessa de 300 g de proteína a cada 2 convidados), com arroz, batata ou macaxeira, salada, farofa e molho. O cliente escolhe 2 proteínas da lista do nível até 7 dias antes. |
 
 ### O que muda em cada nível
 

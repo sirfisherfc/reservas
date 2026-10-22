@@ -1,4 +1,5 @@
 import { OPENAI_ADS_PIXEL_ID } from './config.js';
+import { reservationFunnelContext } from './reservation-funnel.js?v=20261022';
 
 const STORAGE_KEY = 'sf_attribution_v1';
 const COOKIE_KEY = 'sf_attribution_v1';
@@ -303,6 +304,8 @@ export function measureReservationConfirmedGA4(result) {
 
   const partySize = Number(result.party_size) || 0;
   window.gtag('event', 'reservation_confirmed', {
+    ...reservationFunnelContext(),
+    reservation_stage: 'confirmed',
     party_size: partySize,
     reservation_code: result.public_code || null,
   });

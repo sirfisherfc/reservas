@@ -54,7 +54,67 @@ o valor estimado de R$58 por pessoa no GA4 e na OpenAI. Os eventos continuam
 contando resultados, sem declarar faturamento. Valores históricos estimados
 e o evento Meta legado não equivalem a receita realizada.
 
-## Validação
+## Funil da reserva comum (22/10/2026)
+
+O formulário normal envia eventos GA4 próprios, sem depender dos eventos
+automáticos de qualquer formulário do site:
+
+| Evento | Significado |
+| --- | --- |
+| `reservation_form_view` | Formulário renderizado, antes da consulta de configurações |
+| `reservation_form_start` | Primeira interação em campo, horário ou botão de envio |
+| `reservation_availability` | Consulta retornou ao menos um horário disponível |
+| `reservation_slot_selected` | Visitante escolheu um horário |
+| `reservation_submit_attempt` | Tentativa de enviar, inclusive com campos faltantes |
+| `reservation_unavailable` | Impedimento operacional, como corte do dia, lotação ou grupo maior |
+| `reservation_error` | Validação incompleta ou falha técnica |
+| `reservation_confirmed` | Mesmo evento existente, somente após sucesso do RPC |
+
+Os parâmetros `form_kind=standard`, `reservation_stage`, `reservation_reason`
+e `cta_position` usam valores categóricos. `sf_cta` recebido no link aceita
+apenas as posições conhecidas do site; sem esse contexto usa `unspecified`.
+Nenhum novo evento envia valores digitados, data desejada ou erro bruto.
+O contexto do botão não altera a atribuição de campanha salva no banco.
+O Réveillon continua no fluxo próprio, com `reveillon_prebooking` e a decisão
+de tracking do evento; não é tratado como reserva comum confirmada.
+
+Visualização/início são únicos por carregamento. Indisponibilidade idêntica
+é deduplicada até mudar a seleção ou voltar a haver horários. Tentativas e
+erros são ocorrências, não pessoas distintas. Respostas antigas de uma consulta
+de disponibilidade não substituem a seleção atual nem geram medição falsa.
+Falhas dos pixels não escondem a confirmação de uma reserva já criada.
+
+As quatro dimensões de escopo de evento foram criadas e relidas no GA4
+`353205396` em 22/10/2026. O registro só libera dados novos e a propagação
+nos relatórios pode levar até 48 horas. O MCP continua somente leitura;
+o cadastro foi feito pela Admin API com a credencial existente, sem copiar
+a chave ou alterar a configuração do MCP. Conferir sem escrita:
+
+```powershell
+# Usar o Python do ambiente isolado do MCP, que ja contem o SDK Google.
+python tools/registrar_funil_ga4.py
+```
+
+Somente `--aplicar` cria definições faltantes; definições existentes são
+preservadas. Esta coleta começa após a publicação e não reconstrói as etapas
+que faltavam nos relatórios anteriores. O total de confirmações GA4 continua
+sujeito à cobertura da tag: conferir também a coorte de reservas efetivas no
+banco, pela data de criação em Fortaleza, sem exportar dados pessoais.
+
+## Validação do funil
+
+```powershell
+deno test --allow-read tools/reservation_funnel_test.mjs tools/attribution_test.mjs
+# Python do ambiente analytics, que ja possui Playwright:
+../site/tools/analytics/.venv/Scripts/python.exe -X utf8 tools/reservation_funnel_browser_test.py
+```
+
+O teste de navegador usa Edge isolado em tela de celular, bloqueia rede
+externa e simula todos os RPCs. Cobre PT/EN, confirmação, falta de campos,
+corte, lotação, falha de rede, resposta antiga e pixels quebrados. Não envia
+eventos reais, não grava reservas nem acessa dados de clientes.
+
+## Validação da atribuição
 
 ```powershell
 deno test --allow-read reservas/tools/attribution_test.mjs

@@ -9,7 +9,8 @@ import { WHATSAPP_NUMBER, RESTAURANT_NAME } from './config.js';
 import {
   initOpenAIAdsPixel, measureReservationPageViewed, measureReservationConfirmed,
   measureReservationConfirmedGA4, measureReservationConfirmedMeta, reservationAttribution,
-} from './attribution.js?v=20261013';
+} from './attribution.js?v=20261022';
+import { createReservationFunnel, reservationFailure } from './reservation-funnel.js?v=20261022';
 
 const form = qs('#reservation-form');
 const alertArea = qs('#form-alert-area');
@@ -21,10 +22,12 @@ const whatsappCtaLink = qs('#whatsapp-cta-link');
 const phoneInput = qs('#phone');
 const submitBtn = qs('#submit-btn');
 const successPanel = qs('#success-panel');
+const funnel = createReservationFunnel(form);
 
 let settings = null;
 let selectedTime = null;
 let currentSlots = [];
+let availabilityVersion = 0;
 
 // Mensagens de erro por código: ver STRINGS em i18n.js.
 const friendlyMessage = (error) => friendlyError(error);
@@ -63,6 +66,7 @@ function buildWaLink(message) {
 
 async function init() {
   applyTranslations('reserva');
+  funnel.view();
   if (t('tzNote')) {
     qs('#tz-note').textContent = t('tzNote');
     qs('#tz-note').classList.remove('hidden');
@@ -119,6 +123,7 @@ function checkPartySizeOverflow() {
   const size = Number(partySizeInput.value);
   const max = Number(partySizeInput.max);
   if (size > max) {
+    funnel.unavailable('party_size_limit', String(size));
     whatsappCta.classList.remove('hidden');
     slotsContainer.innerHTML = '';
     submitBtn.disabled = true;
@@ -130,6 +135,7 @@ function checkPartySizeOverflow() {
 }
 
 async function handleAvailabilityInputs() {
+  const version = ++availabilityVersion;
   clearAlert();
   selectedTime = null;
 
@@ -153,8 +159,20 @@ async function handleAvailabilityInputs() {
   }
 
   slotsContainer.innerHTML = `<p class="hint">${t('searching')}</p>`;
+  const isCurrent = () => version === availabilityVersion
+    && dateInput.value === date && Number(partySizeInput.value) === size;
 
-  const { slots, error } = await fetchAvailableSlots(date, size);
+  let response;
+  try {
+    response = await fetchAvailableSlots(date, size);
+  } catch {
+    if (!isCurrent()) return;
+    renderNoAvailability(date, size, 'NETWORK_ERROR');
+    return;
+  }
+  // Uma resposta de uma selecao anterior nao descreve a escolha atual.
+  if (!isCurrent()) return;
+  const { slots, error } = response;
 
   if (error) {
     renderNoAvailability(date, size, error);
@@ -168,6 +186,9 @@ async function handleAvailabilityInputs() {
     return;
   }
 
+  if (slots.some((slot) => slot.is_available)) funnel.available();
+  else funnel.unavailable('no_slots', `${date}:${size}`);
+
   renderSlots(slotsContainer, currentSlots, selectedTime, selectSlot, LANG);
 }
 
@@ -177,6 +198,7 @@ function specialDateNotice(date) {
 }
 
 function renderSpecialDateNotice(notice) {
+  funnel.unavailable('special_date', dateInput.value);
   slotsContainer.innerHTML = '';
   const box = document.createElement('div');
   box.className = 'alert alert--info';
@@ -196,6 +218,11 @@ function renderSpecialDateNotice(notice) {
 }
 
 function renderNoAvailability(date, size, errorCode) {
+  if (errorCode) {
+    const { stage, reason } = reservationFailure(errorCode);
+    if (stage === 'unavailable') funnel.unavailable(reason, `${date}:${size}`);
+    else funnel.track(stage, reason);
+  } else funnel.unavailable('no_slots', `${date}:${size}`);
   const waHref = buildWaLink(t('waAvailability', RESTAURANT_NAME, size, formatDateLong(date, LANG))) || '#';
 
   if (errorCode === 'SAME_DAY_CUTOFF' && date === todayISO()) {
@@ -215,6 +242,8 @@ function renderNoAvailability(date, size, errorCode) {
 }
 
 function selectSlot(time) {
+  funnel.interact();
+  funnel.track('slot');
   selectedTime = time;
   renderSlots(slotsContainer, currentSlots, selectedTime, selectSlot, LANG);
 }
@@ -222,6 +251,8 @@ function selectSlot(time) {
 async function handleSubmit(evt) {
   evt.preventDefault();
   clearAlert();
+  funnel.interact();
+  funnel.track('submit');
 
   const honeypot = qs('#website').value;
   const name = qs('#name').value.trim();
@@ -234,14 +265,17 @@ async function handleSubmit(evt) {
   const marketingOptIn = qs('#marketing_opt_in').checked;
 
   if (!name || !email || !phone || !date || !partySize) {
+    funnel.track('error', 'required_fields');
     showAlert(t('fillRequired'));
     return;
   }
   if (!selectedTime) {
+    funnel.track('error', 'time_required');
     showAlert(t('selectTime'));
     return;
   }
   if (!acceptPolicy) {
+    funnel.track('error', 'policy_required');
     showAlert(t('acceptRules'));
     return;
   }
@@ -249,32 +283,42 @@ async function handleSubmit(evt) {
 
   setLoading(submitBtn, true, t('confirming'));
 
-  const { data, error } = await supabase.rpc('fn_create_reservation', {
-    p_name: name,
-    p_email: email,
-    p_phone: phone,
-    p_date: date,
-    p_time: selectedTime,
-    p_party_size: partySize,
-    p_notes: notes || null,
-    p_marketing_opt_in: marketingOptIn,
-    p_accepted_policy: acceptPolicy,
-    p_honeypot: honeypot || null,
-    // lang define o idioma dos e-mails de confirmação e de lembrete.
-    p_attribution: { ...(await reservationAttribution()), lang: LANG },
-  });
-
-  setLoading(submitBtn, false);
+  let response;
+  try {
+    response = await supabase.rpc('fn_create_reservation', {
+      p_name: name,
+      p_email: email,
+      p_phone: phone,
+      p_date: date,
+      p_time: selectedTime,
+      p_party_size: partySize,
+      p_notes: notes || null,
+      p_marketing_opt_in: marketingOptIn,
+      p_accepted_policy: acceptPolicy,
+      p_honeypot: honeypot || null,
+      // lang define o idioma dos e-mails de confirmação e de lembrete.
+      p_attribution: { ...(await reservationAttribution()), lang: LANG },
+    });
+  } catch {
+    funnel.track('error', 'network_error');
+    showAlert(friendlyMessage({ message: 'UNKNOWN:' }));
+    return;
+  } finally {
+    setLoading(submitBtn, false);
+  }
+  const { data, error } = response;
 
   if (error) {
+    funnel.failure(error);
     showAlert(friendlyMessage(error));
     return;
   }
 
   const result = Array.isArray(data) ? data[0] : data;
-  await measureReservationConfirmed(result, { email, phone, name });
-  measureReservationConfirmedGA4(result);
-  measureReservationConfirmedMeta(result);
+  // Uma falha em qualquer pixel nao pode esconder uma reserva ja criada.
+  try { await measureReservationConfirmed(result, { email, phone, name }); } catch { /* pixel */ }
+  try { measureReservationConfirmedGA4(result); } catch { /* tag */ }
+  try { measureReservationConfirmedMeta(result); } catch { /* pixel */ }
   showSuccess(result);
 }
 
@@ -302,4 +346,7 @@ function showSuccess(result) {
   successPanel.scrollIntoView({ behavior: 'smooth' });
 }
 
-init();
+init().catch(() => {
+  funnel.track('error', 'initialization');
+  showAlert(friendlyMessage({ message: 'UNKNOWN:' }));
+});

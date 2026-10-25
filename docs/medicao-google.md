@@ -33,8 +33,9 @@ atribuição disponíveis; não é prova absoluta do canal que gerou a visita.
 
 ## Prazo da atribuição e contrato Meta (25/10/2026)
 
-Correções preparadas e testadas localmente. A publicação do portal foi
-autorizada; a implantação da Edge Function ainda depende da etapa própria.
+Publicado no portal em 25/10/2026, no commit `f92378d`, após 32 testes locais
+e os fluxos de navegador com RPCs simulados. A Edge Function foi implantada
+na versão 22, ativa e com `verify_jwt=false` preservado.
 
 `sf_attribution_v1` aceita apenas objetos com `captured_at` válido, positivo,
 sem data futura e com idade menor que 90 dias. Entre cookie e armazenamento
@@ -61,10 +62,22 @@ python -X utf8 tools/reservation_funnel_browser_test.py
 ```
 
 Push de `main` publica o portal estático pelo GitHub Pages. A Edge Function
-exige implantação própria. Na conferência prévia, a função
-`send-openai-ads-conversions` estava ativa, versão 21, com `verify_jwt=false`;
-o segredo do cron ou o usuário autorizado continuam sendo validados dentro
-da função. Não alterar a configuração de autenticação ao implantar.
+exige implantação própria. A função `send-openai-ads-conversions` passou da
+versão 21 para 22 por implantação restrita a essa função. O segredo do cron
+ou o usuário autorizado continuam sendo validados dentro da função.
+
+Os três módulos publicados foram baixados para diretório isolado fora do
+Git e comparados com `f92378d`, sem sobrescrever o workspace. SHA-256 após
+normalizar as quebras de linha para LF:
+
+| Módulo | SHA-256 publicado |
+| --- | --- |
+| `index.ts` | `3be33ed42bacffff92bd2a41bfe6b3147b4b751b4b781560bd173794bd244eef` |
+| `openai-event.ts` | `585e4e73729319bd25e536922c3dd512e5e1c6566fe12d31cb6b303e15ffd004` |
+| `meta-event.ts` | `e079d22f5c7aed3a4399fce53c3c7169fdffaed42fc68c83f888d0c86e0f5c90` |
+
+Essa conferência não chamou a função nem enviou conversões de teste. Não
+houve SQL, alteração de secrets, reserva ou marcação de comparecimento.
 
 ## Conferência da equipe
 

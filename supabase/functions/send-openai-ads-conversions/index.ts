@@ -12,6 +12,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildOpenAiEvent } from "./openai-event.ts";
+import { metaEventTimestamp, normalizeMetaPhone } from "./meta-event.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -242,14 +243,6 @@ function normalizeEmail(raw: string | null): string | null {
   return v.includes("@") ? v : null;
 }
 
-// O Meta espera so digitos, com codigo do pais. Os telefones daqui vem como
-// 11 digitos (DDD + numero) ou 10 nos fixos antigos; nesses casos falta o 55.
-function normalizePhone(raw: string | null): string | null {
-  let d = (raw ?? "").replace(/\D/g, "");
-  if (d.length === 10 || d.length === 11) d = "55" + d;
-  return d.length >= 12 && d.length <= 15 ? d : null;
-}
-
 async function processMetaQueue(): Promise<QueueResult> {
   if (!META_PIXEL_ID || !META_CAPI_TOKEN) return IDLE;
 
@@ -276,7 +269,7 @@ async function processMetaQueue(): Promise<QueueResult> {
   const { sent, failed } = await drain(rows, async (row) => {
     const userData: Record<string, unknown> = {};
     const email = normalizeEmail(row.email);
-    const phone = normalizePhone(row.phone);
+    const phone = normalizeMetaPhone(row.phone);
     if (email) userData.em = [await sha256Hex(email)];
     if (phone) userData.ph = [await sha256Hex(phone)];
     if (row.fbp) userData.fbp = row.fbp;
@@ -288,10 +281,8 @@ async function processMetaQueue(): Promise<QueueResult> {
       throw new Error("reservation has no usable Meta identifier (email, phone, fbp or fbc)");
     }
 
-    // A CAPI descarta eventos com mais de 7 dias.
-    const occurredMs = Date.parse(row.occurred_at);
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const eventTimeMs = Number.isFinite(occurredMs) && occurredMs > sevenDaysAgo ? occurredMs : Date.now();
+    // Preserva a ocorrencia; uma data invalida nao vira um evento de hoje.
+    const eventTime = metaEventTimestamp(row.occurred_at);
 
     const guests = Number(row.party_size) || 0;
     const response = await fetch(endpoint, {
@@ -300,7 +291,7 @@ async function processMetaQueue(): Promise<QueueResult> {
       body: JSON.stringify({
         data: [{
           event_name: "Schedule",
-          event_time: Math.floor(eventTimeMs / 1000),
+          event_time: eventTime,
           // Mesmo id enviado pelo Pixel no navegador. E o que evita contar a
           // reserva duas vezes.
           event_id: row.event_id,

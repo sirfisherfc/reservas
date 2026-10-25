@@ -1,9 +1,11 @@
 const path = new URL('../supabase/functions/send-openai-ads-conversions/index.ts', import.meta.url);
 const helper = new URL('../supabase/functions/send-openai-ads-conversions/openai-event.ts', import.meta.url).href;
+const metaHelper = new URL('../supabase/functions/send-openai-ads-conversions/meta-event.ts', import.meta.url).href;
 const source = (await Deno.readTextFile(path))
   .replace('import { createClient } from "https://esm.sh/@supabase/supabase-js@2";',
     'const createClient = () => globalThis.__adsTest.client;')
-  .replace('"./openai-event.ts"', JSON.stringify(helper));
+  .replace('"./openai-event.ts"', JSON.stringify(helper))
+  .replace('"./meta-event.ts"', JSON.stringify(metaHelper));
 
 Deno.test('validacao autenticada envia somente validate_only sem reivindicar fila ou expor segredos', async () => {
   const original = { serve: Deno.serve, envGet: Deno.env.get, fetch: globalThis.fetch };

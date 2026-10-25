@@ -31,6 +31,41 @@ Eventos do servidor podem não ter hostname, por isso aparecem em uma seção
 separada da propriedade. A origem informada pelo GA4 depende da coleta e da
 atribuição disponíveis; não é prova absoluta do canal que gerou a visita.
 
+## Prazo da atribuição e contrato Meta (25/10/2026)
+
+Correções preparadas e testadas localmente. A publicação do portal foi
+autorizada; a implantação da Edge Function ainda depende da etapa própria.
+
+`sf_attribution_v1` aceita apenas objetos com `captured_at` válido, positivo,
+sem data futura e com idade menor que 90 dias. Entre cookie e armazenamento
+local, vale a cópia válida mais recente. Um clique interno mantém a data
+original e o cookie recebe apenas os segundos restantes até o fim do prazo.
+Sem uma cópia válida, a nova chegada registra a referência disponível,
+sem reutilizar a campanha ou os identificadores expirados.
+
+O worker Meta preserva o país de telefones que começam com `+`; sem esse
+sinal, números de 10 ou 11 dígitos recebem o código brasileiro. O número
+normalizado, entre 8 e 15 dígitos, continua sendo enviado somente em SHA-256.
+Datas inválidas, futuras ou com mais de sete dias são recusadas e registradas
+como falha na fila, sem substituição pela data do processamento. Os eventos,
+IDs de deduplicação e o valor estimado legado de R$58 por pessoa continuam
+com o contrato anterior.
+
+Os helpers Meta são puros em `meta-event.ts`. O teste do worker simula RPCs,
+autenticação e fetch: não lê clientes nem envia conversões. Executar na pasta
+do portal:
+
+```powershell
+npx --yes deno test --allow-read tools/attribution_test.mjs tools/reservation_funnel_test.mjs tools/openai_event_test.ts tools/openai_validation_test.mjs tools/meta_event_test.mjs
+python -X utf8 tools/reservation_funnel_browser_test.py
+```
+
+Push de `main` publica o portal estático pelo GitHub Pages. A Edge Function
+exige implantação própria. Na conferência prévia, a função
+`send-openai-ads-conversions` estava ativa, versão 21, com `verify_jwt=false`;
+o segredo do cron ou o usuário autorizado continuam sendo validados dentro
+da função. Não alterar a configuração de autenticação ao implantar.
+
 ## Conferência da equipe
 
 Registrar o comparecimento e a ausência de forma consistente no painel.

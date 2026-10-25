@@ -9,7 +9,7 @@ import { WHATSAPP_NUMBER, RESTAURANT_NAME } from './config.js';
 import {
   initOpenAIAdsPixel, measureReservationPageViewed, measureReservationConfirmed,
   measureReservationConfirmedGA4, measureReservationConfirmedMeta, reservationAttribution,
-} from './attribution.js?v=20261022';
+} from './attribution.js?v=20261025';
 import { createReservationFunnel, reservationFailure } from './reservation-funnel.js?v=20261022';
 
 const form = qs('#reservation-form');

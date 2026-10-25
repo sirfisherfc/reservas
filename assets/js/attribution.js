@@ -3,6 +3,7 @@ import { reservationFunnelContext } from './reservation-funnel.js?v=20261022';
 
 const STORAGE_KEY = 'sf_attribution_v1';
 const COOKIE_KEY = 'sf_attribution_v1';
+const ATTRIBUTION_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const TRACKED_KEYS = [
   'oppref', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
   'campaign_id', 'ad_group_id', 'ad_id', 'fbclid', 'gclid',
@@ -30,7 +31,12 @@ function loadStoredAttribution() {
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+      if (typeof parsed.captured_at !== 'string') return null;
+      const capturedAt = Date.parse(parsed.captured_at);
+      const age = Date.now() - capturedAt;
+      return Number.isFinite(capturedAt) && capturedAt > 0
+        && age >= 0 && age < ATTRIBUTION_TTL_MS ? parsed : null;
     } catch {
       // Atributos corrompidos não impedem uma reserva.
       return null;
@@ -56,7 +62,9 @@ function persistAttribution(attribution) {
   const domain = window.location.hostname.endsWith('.sirfisher.com.br')
     ? '; Domain=.sirfisher.com.br'
     : '';
-  document.cookie = `${COOKIE_KEY}=${encodeURIComponent(value)}; Max-Age=7776000; Path=/${domain}; SameSite=Lax${secure}`;
+  const capturedAt = Date.parse(attribution.captured_at);
+  const remainingSeconds = Math.max(0, Math.floor((capturedAt + ATTRIBUTION_TTL_MS - Date.now()) / 1000));
+  document.cookie = `${COOKIE_KEY}=${encodeURIComponent(value)}; Max-Age=${remainingSeconds}; Path=/${domain}; SameSite=Lax${secure}`;
 }
 
 function limitedValue(value, max = 255) {

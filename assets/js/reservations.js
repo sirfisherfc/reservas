@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient.js';
-import { fetchPublicSettings, fetchAvailableSlots, renderSlots } from './availability.js?v=20261007';
+import { fetchPublicSettings, fetchAvailableSlots, renderSlots } from './availability.js?v=20261025';
 import {
   qs, qsa, todayISO, addDaysISO, maskPhone, waLink,
   setLoading, debounce, formatDateLong, formatTimeLocal,
@@ -71,8 +71,10 @@ async function init() {
     qs('#tz-note').textContent = t('tzNote');
     qs('#tz-note').classList.remove('hidden');
   }
-  initOpenAIAdsPixel();
-  measureReservationPageViewed();
+  try {
+    initOpenAIAdsPixel();
+    measureReservationPageViewed();
+  } catch { /* Uma falha do pixel nao impede a montagem do formulario. */ }
   settings = await fetchPublicSettings();
 
   const min = Number(settings.min_party_size) || 1;
@@ -103,7 +105,16 @@ async function init() {
     phoneInput.value = maskPhone(phoneInput.value);
   });
 
-  const refreshAvailability = debounce(handleAvailabilityInputs, 250);
+  const queryAvailability = debounce(handleAvailabilityInputs, 250);
+  const refreshAvailability = () => {
+    // Invalida a escolha anterior no mesmo evento, antes de aguardar o debounce.
+    // Assim um envio rapido usa apenas horarios da data e do grupo atuais.
+    availabilityVersion += 1;
+    selectedTime = null;
+    currentSlots = [];
+    slotsContainer.innerHTML = `<p class="hint">${t('slotsHint')}</p>`;
+    queryAvailability();
+  };
   partySizeInput.addEventListener('input', refreshAvailability);
   dateInput.addEventListener('input', refreshAvailability);
   // O seletor nativo de data do Safari/iOS confirma a escolha via `change`.
@@ -226,7 +237,7 @@ function renderNoAvailability(date, size, errorCode) {
   const waHref = buildWaLink(t('waAvailability', RESTAURANT_NAME, size, formatDateLong(date, LANG))) || '#';
 
   if (errorCode === 'SAME_DAY_CUTOFF' && date === todayISO()) {
-    const cutoff = String(settings?.same_day_cutoff_time || '12:00').slice(0, 5);
+    const cutoff = String(settings?.same_day_cutoff_time || '15:30').slice(0, 5);
     slotsContainer.innerHTML = `
       <p class="hint">${t('sameDayCutoff', formatTimeLocal(cutoff, LANG))}</p>
       <a class="btn btn--whatsapp" style="margin-top:8px;" href="${waHref}" target="_blank" rel="noopener">${t('waButton')}</a>

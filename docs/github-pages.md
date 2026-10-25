@@ -22,10 +22,12 @@ Se algum dia adicionar uma página nova, mantenha esse padrão (nunca comece um 
 
 Depois de publicar, adicione a URL final do site (e a de qualquer domínio customizado) em **Authentication > URL Configuration > Redirect URLs** no painel Supabase — sem isso, o login Google completa no Google mas falha ao redirecionar de volta. Veja `docs/supabase.md`.
 
-## Domínio próprio (fase futura)
+## Domínio próprio em uso
 
-Se um dia migrar para `www.sirfisher.com.br` (ver `docs/future-roadmap.md`):
+O portal já está publicado em `https://reservas.sirfisher.com.br`, com esse
+domínio no arquivo `CNAME` da raiz. `www.sirfisher.com.br` atende ao site
+institucional. A seção de domínio do roadmap registra uma etapa histórica.
 
-1. Configure um registro CNAME apontando para `SEU-USUARIO.github.io`.
-2. Adicione um arquivo `CNAME` na raiz do repositório com o domínio.
-3. Atualize as Redirect URLs no Supabase Auth para o novo domínio.
+Após publicar uma alteração, conferir a página e os módulos afetados no
+domínio do portal. Uma mudança futura de domínio também exige ajustar DNS,
+`CNAME` e as Redirect URLs do Supabase Auth.

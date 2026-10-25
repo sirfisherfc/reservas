@@ -114,6 +114,39 @@ externa e simula todos os RPCs. Cobre PT/EN, confirmação, falta de campos,
 corte, lotação, falha de rede, resposta antiga e pixels quebrados. Não envia
 eventos reais, não grava reservas nem acessa dados de clientes.
 
+### Revisão da jornada em 25/10/2026
+
+A leitura anônima das configurações públicas confirmou mínimo de 1 pessoa,
+máximo de 10, corte às 15h30, antecedência de 60 dias, tolerância de 15 minutos
+e liberação após 60 minutos sem ocupação. Esses valores continuam no painel;
+o RPC confere as regras vigentes ao consultar horários e criar a reserva.
+
+- A falha da leitura de configurações passa a usar os valores de apoio do
+  formulário, que foram alinhados à configuração confirmada. Antes, uma
+  exceção interrompia a instalação dos controles e os valores de apoio ainda
+  diziam mínimo de 2 pessoas e corte ao meio-dia. O WhatsApp do rodapé também
+  funciona antes de o JavaScript carregar. Uma falha do pixel na abertura
+  também permite que o formulário termine de carregar.
+- Alterar data ou quantidade de pessoas remove a escolha de horário no mesmo
+  evento. A espera de 250 ms antes da consulta continua reduzindo requisições;
+  o formulário exige uma escolha compatível com a seleção atual.
+- Uma falha de cancelamento mantém o botão para tentar novamente e mostra
+  mensagem no idioma escolhido. A equipe continua recebendo os mesmos status.
+
+O teste de navegador agora cobre os retornos de erro e exceções de rede na
+leitura das configurações, envio imediato após trocar o grupo, repetição do
+cancelamento após falha, celular e desktop. Todos os RPCs desse teste são
+simulados. Os 20 testes locais de atribuição, funil e contratos OpenAI passaram.
+Nenhuma reserva, cancelamento ou conversão real foi criada nesta verificação.
+
+Neste PC, o ambiente virtual antigo aponta para outro caminho de instalação.
+O Python global já tem Playwright e o Deno pode ser executado por `npx`:
+
+```powershell
+python -X utf8 tools/reservation_funnel_browser_test.py
+npx --yes deno test --allow-read tools/reservation_funnel_test.mjs tools/attribution_test.mjs tools/openai_event_test.ts tools/openai_validation_test.mjs
+```
+
 ## Validação da atribuição
 
 ```powershell

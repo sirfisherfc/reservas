@@ -5,9 +5,9 @@ import { supabase } from './supabaseClient.js';
 import { formatTimeLocal } from './utils.js?v=20261007';
 
 const DEFAULT_SETTINGS = {
-  min_party_size: 2,
+  min_party_size: 1,
   max_party_size: 10,
-  same_day_cutoff_time: '12:00',
+  same_day_cutoff_time: '15:30',
   advance_booking_days: 60,
   tolerance_minutes: 15,
   hold_release_minutes: 60,
@@ -15,10 +15,18 @@ const DEFAULT_SETTINGS = {
 };
 
 export async function fetchPublicSettings() {
-  const { data, error } = await supabase
-    .from('restaurant_settings')
-    .select('key,value')
-    .eq('is_public', true);
+  let response;
+  try {
+    response = await supabase
+      .from('restaurant_settings')
+      .select('key,value')
+      .eq('is_public', true);
+  } catch {
+    // A consulta de horarios e o RPC continuam conferindo as regras no banco.
+    // Uma falha nesta leitura nao deve interromper a montagem do formulario.
+    return { ...DEFAULT_SETTINGS };
+  }
+  const { data, error } = response;
 
   if (error || !data) {
     return { ...DEFAULT_SETTINGS };

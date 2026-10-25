@@ -5,6 +5,8 @@ import { LANG, t, friendlyError, applyTranslations } from './i18n.js?v=20261007'
 const card = document.getElementById('cancel-card');
 
 function friendlyMessage(error) {
+  const code = (error?.message || '').split(':')[0].trim();
+  if (!code || code === 'UNKNOWN') return t('err.CANCEL_UNKNOWN');
   return friendlyError(error, 'err.CANCEL_UNKNOWN');
 }
 
@@ -51,15 +53,31 @@ async function doCancel(token) {
   const btn = document.getElementById('confirm-cancel-btn');
   setLoading(btn, true, t('cancelling'));
 
-  const { data, error } = await supabase.rpc('fn_cancel_reservation_public', { p_token: token });
+  let response;
+  try {
+    response = await supabase.rpc('fn_cancel_reservation_public', { p_token: token });
+  } catch {
+    renderCancelFailure(token);
+    return;
+  }
+  const { data, error } = response;
 
   if (error) {
-    renderError(friendlyMessage(error));
+    renderCancelFailure(token, error);
     return;
   }
 
   const result = Array.isArray(data) ? data[0] : data;
   renderResult(result);
+}
+
+function renderCancelFailure(token, error) {
+  renderConfirm(token);
+  const alert = document.createElement('div');
+  alert.className = 'alert alert--danger';
+  alert.setAttribute('role', 'alert');
+  alert.textContent = friendlyMessage(error);
+  card.prepend(alert);
 }
 
 function init() {

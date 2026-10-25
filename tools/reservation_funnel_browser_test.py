@@ -2,6 +2,7 @@
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import re
 from threading import Thread
 
 from playwright.sync_api import sync_playwright, expect
@@ -11,8 +12,12 @@ STUB = """
 window.fixtureCalls = [];
 window.fixtureAvailability = 'available';
 window.fixtureBooking = 'success';
+window.fixtureSettings = new URLSearchParams(location.search).get('fixture_settings');
 export const supabase = {
-  from() { return { select() { return { async eq() { return { data: [
+  from() { return { select() { return { async eq() {
+    if(window.fixtureSettings === 'network') throw new Error('fixture settings network');
+    if(window.fixtureSettings === 'error') return { data:null,error:{message:'fixture settings error'} };
+    return { data: [
     {key:'min_party_size',value:1},{key:'max_party_size',value:10},
     {key:'same_day_cutoff_time',value:'15:30'},{key:'advance_booking_days',value:60}
   ], error:null }; } }; } }; },
@@ -26,6 +31,12 @@ export const supabase = {
       if(window.fixtureAvailability === 'cutoff') return { data:null,error:{message:'SAME_DAY_CUTOFF: fixture'} };
       if(window.fixtureAvailability === 'full') return { data:[{time_slot:'18:00:00',is_available:false}],error:null };
       return { data:[{time_slot:'18:00:00',is_available:true}],error:null };
+    }
+    if(name === 'fn_cancel_reservation_public') {
+      if(window.fixtureBooking === 'network') throw new Error('fixture network');
+      if(window.fixtureBooking === 'error') return {data:null,error:{message:'UNKNOWN: fixture'}};
+      return {data:[{public_code:'FIXTURE',reservation_date:'2026-10-26',
+        reservation_time:'18:00:00',status:'cancelada_cliente',already_cancelled:false}],error:null};
     }
     if(name !== 'fn_create_reservation') throw new Error('Unexpected RPC');
     if(window.fixtureBooking === 'network') throw new Error('fixture network');
@@ -129,6 +140,58 @@ def run():
             expect(page.locator('#success-panel')).to_be_visible()
             assert page.evaluate("fixtureCalls.filter(c => c.name==='fn_create_reservation').length") == 1
             print('ENGLISH_BOOKING_WITH_BROKEN_ANALYTICS_OK')
+            page.add_init_script("window.oaiq=()=>{throw new Error('fixture broken pixel during init')}")
+            for mode, lang, width in [('network', 'pt', 390), ('error', 'en', 1440)]:
+                page.set_viewport_size({'width': width, 'height': 900})
+                page.goto(base + f'/?lang={lang}&fixture_settings={mode}', wait_until='networkidle')
+                expect(page.locator('#footer-whatsapp')).to_have_attribute('href', re.compile(r'https://wa.me/5585988544274.*'))
+                expect(page.locator('#party_size')).to_have_attribute('min', '1')
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                page.locator('#name').fill('Fixture Guest')
+                page.locator('#email').fill('fixture@example.invalid')
+                page.locator('#phone').fill('+441234567890')
+                page.locator('#party_size').fill('1')
+                page.locator('#date').fill(tomorrow)
+                expect(page.locator('.slot-btn:not([disabled])')).to_have_count(1)
+                page.locator('.slot-btn').click()
+                page.locator('#accept_policy').check()
+                # Trocar a seleção e enviar no mesmo tick antecede o debounce.
+                # O horário antigo deve ser invalidado antes da próxima consulta.
+                page.evaluate("""() => {
+                    const field = document.querySelector('#party_size');
+                    field.value = '2';
+                    field.dispatchEvent(new Event('input', {bubbles:true}));
+                    document.querySelector('#reservation-form').requestSubmit();
+                }""")
+                assert page.evaluate("fixtureCalls.filter(c => c.name==='fn_create_reservation').length") == 0
+                has_reason('time_required')
+                expect(page.locator('.slot-btn:not([disabled])')).to_have_count(1)
+                page.locator('.slot-btn').click()
+                if lang == 'en':
+                    (ROOT / 'output').mkdir(exist_ok=True)
+                    page.screenshot(path=str(ROOT / 'output' / 'reserva-en-desktop.png'), full_page=True)
+                else:
+                    (ROOT / 'output').mkdir(exist_ok=True)
+                    page.screenshot(path=str(ROOT / 'output' / 'reserva-pt-mobile.png'), full_page=True)
+                page.locator('#submit-btn').click()
+                expect(page.locator('#success-panel')).to_be_visible()
+                assert page.evaluate("fixtureCalls.filter(c => c.name==='fn_create_reservation').length") == 1
+            print('SETTINGS_FAILURE_RECOVERY_PT_EN_AND_FRESH_SELECTION_OK')
+            page.set_viewport_size({'width':390, 'height':844})
+            page.goto(base + '/cancelar.html?t=fixture-not-real&lang=en', wait_until='networkidle')
+            for mode in ['network', 'error']:
+                page.evaluate(f"fixtureBooking='{mode}'")
+                page.locator('#confirm-cancel-btn').click()
+                expect(page.locator('#confirm-cancel-btn')).to_be_enabled()
+                expect(page.locator('#cancel-card [role=alert]')).to_contain_text('could not process')
+            page.screenshot(path=str(ROOT / 'output' / 'cancelamento-en-mobile.png'), full_page=True)
+            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+            page.set_viewport_size({'width':1440, 'height':900})
+            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+            page.evaluate("fixtureBooking='success'")
+            page.locator('#confirm-cancel-btn').click()
+            expect(page.locator('#cancel-card')).to_contain_text('Your booking has been cancelled.')
+            print('CANCELLATION_FAILURE_RETRY_WITH_MOCK_RPC_OK')
             browser.close()
     finally:
         server.shutdown()

@@ -1,7 +1,7 @@
 # Atendimento do Instagram em nuvem
 
 **Estado atual: TEST para a mesma conta controlada, com recuperação em nuvem
-ativa. Clientes continuam bloqueados.** Para corrigir mensagens canceladas,
+ativa. O agente responde apenas à conta de teste.** Para corrigir mensagens canceladas,
 o cron e a flag foram desligados, o banco ficou pausado e o uso de dados/modelo
 foi fechado, preservando histórico e custos.
 A migration `20261101130005_instagram_support_withdrawal.sql`, no projeto
@@ -57,6 +57,18 @@ confirmou persistência e campos de credenciais vazios. O rascunho declara
 piloto exclusivo do proprietário. O guia Meta de app próprio trata detalhes
 adicionais de verificação como opcionais e orienta credenciais vazias; não
 exigir convite ou conta nova por inferência.
+O proprietário confirmou que desligou o acesso a URLs de arquivos e reafirmou
+as respostas de segurança nacional, legitimidade e minimização do formulário.
+O cadastro preexistente de Anthropic foi preservado como pendência, pois sua
+integração efetiva não foi confirmada nem assumida para este agente.
+
+A captura da aba Instagram retornou indisponibilidade do CDP enquanto o
+BrowserUse resolvia uma resposta de documento pausada, tanto na aba existente
+quanto na nova. A gravação não iniciou e nenhuma pergunta extra, caso, chamada
+de modelo ou gravação de clientes foi gerada. O ensaio real de cancelamento
+continua aguardando a autorização específica; o helper privado não executou
+pausa, cancelamento ou restauração. O piloto TEST exclusivo e seu cron permanecem
+no estado anterior, com seis envios/três chamadas acumulados.
 Vídeo, dependências, declarações legais e dados de fornecedores/países continuam
 pendentes; o pedido de Review não foi enviado. Logs/contribuição do AI Studio
 não foram conferidos porque a tela permaneceu carregando. Paid não substitui

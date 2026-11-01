@@ -8,7 +8,7 @@ Site de reservas para o restaurante Sir Fisher Praia. HTML/CSS/JS puro (sem buil
 - Toda regra operacional (capacidade, horários, corte de mesmo dia, bloqueios) é configurável pelo painel — nada fixo no código.
 
 Atendimento Instagram em nuvem: piloto restrito a uma conta controlada,
-com clientes bloqueados. Horário, reserva por link, informação ausente,
+sem respostas do agente a remetentes fora da lista. Horário, reserva por link, informação ausente,
 WhatsApp humano, pausa por resposta manual e recuperação em nuvem passaram
 no caminho real. A correção de mensagens canceladas passou em testes locais,
 foi publicada em OFF e o mesmo piloto foi retomado com recuperação em nuvem.
@@ -17,6 +17,9 @@ com zero nova resposta ou IA. Races permanecem nos testes locais.
 A fila com perfis verificados está publicada no painel e exige login de
 administrador. Detalhes e estado operacional em
 [`docs/instagram-support.md`](docs/instagram-support.md).
+Indicar o WhatsApp mantém a próxima FAQ elegível e registra o caso sem
+pausa automática. Intervenções manuais e envios incertos preservam sua
+pausa. Consentimento e entrega públicos têm gates separados, fechados.
 
 ## Documentação
 

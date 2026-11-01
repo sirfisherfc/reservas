@@ -1,5 +1,43 @@
 # Atendimento do Instagram em nuvem
 
+## Atualização de 01/11/2026: próximas FAQs após WhatsApp
+
+Gestao `629247e` e reservas `9cdae46` publicados; Actions e Pages passaram,
+painel e módulo HTTP 200 com o texto novo. A migration `20261101161022` foi
+aplicada com histórico na mesma transação e cópia privada prévia. Funções
+públicas dos outros sistemas e seus grants ficaram iguais; Advisor do
+atendimento sem WARN/ERROR. Edge 27 ACTIVE começou em OFF e passou saúde,
+autenticação, challenge e HMAC de callback vazio. Os 29 nomes de segredos
+existentes foram preservados; dois gates públicos sem credencial foram
+acrescentados fechados.
+
+A indicação automática do WhatsApp mantém a próxima FAQ elegível. O caso
+continua aberto com um aviso por caso, sem repetir uma tentativa failed,
+uncertain ou sent. Se a fonte inicial foi cancelada antes da tentativa, um
+pedido novo pode receber o primeiro aviso. Orientação sensível pendente vem
+antes da FAQ. Pausas manuais, echo desconhecido e envio incerto preservam
+o bloqueio; encerrar preserva a pausa vigente. O cliente inicia o atendimento
+no WhatsApp: o link não transfere histórico nem avisa a equipe. Sem horário
+humano ou promessa de prazo. Horários da casa foram preservados.
+
+Validação: 81 testes Node (65 atendimento + 8 implantação + 8 ativação),
+42 contratos PostgreSQL18 + duas guardas de destino e catálogo227 passaram.
+Revisão independente repetiu os 81 Node, sem P1/P2 aberto. O mesmo TEST1 e
+cron único foram retomados após check real de identidade; health200,
+interseção1, zero pendências, seis envios/três chamadas anteriores,
+responsável NULL/e-mails desligados. Ambos os gates públicos de dados e
+entrega permanecem false no runtime e no banco. A continuidade real após
+WhatsApp ainda será conferida na conta controlada; os contratos são locais.
+
+A conexão Facebook permanece preservada. A opção oficial Instagram Login
+está em preparação pela coordenação: app Empresa separado depende de
+autorização específica; consentimento público para Gemini Paid/Supabase e
+prova real fora dos papéis continuam separados. Nenhuma IA pública ativada.
+O site `42a9ee6` foi publicado e conferido pela coordenação com esse fluxo
+futuro explícito. FAQs nativas e regra de reserva OFF estão sem horário humano.
+
+## Registros anteriores
+
 Regra de spam implantada no código `71c5a2d`, Edge 19 ACTIVE: padrões PT/EN antes da
 ingesta, caso, aviso e Gemini, com 76 testes Node aprovados (60 atendimento e
 16 dos helpers). Spam inequívoco gera 200 e contador agregado, sem guardar

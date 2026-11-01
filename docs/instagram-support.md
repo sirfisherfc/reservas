@@ -54,7 +54,9 @@ Pedidos, Review ou outra causa de transporte. Produção continua pendente.
 Na Meta, configurações 100%, ícone, categoria, descrição, plataforma Website
 e instruções do analista foram salvos. A coordenação reabriu as instruções e
 confirmou persistência e campos de credenciais vazios. O rascunho declara
-piloto exclusivo do proprietário e acesso do analista ainda por compatibilizar.
+piloto exclusivo do proprietário. O guia Meta de app próprio trata detalhes
+adicionais de verificação como opcionais e orienta credenciais vazias; não
+exigir convite ou conta nova por inferência.
 Vídeo, dependências, declarações legais e dados de fornecedores/países continuam
 pendentes; o pedido de Review não foi enviado. Logs/contribuição do AI Studio
 não foram conferidos porque a tela permaneceu carregando. Paid não substitui
@@ -72,8 +74,11 @@ Desligar as respostas concorrentes antes de liberar o agente ao público.
 O CI de gestao inicialmente recusou o endereço interno do PostgreSQL no
 service Docker. O runner agora aceita esse destino só com flags explícitos
 do Actions/descartável, host loopback, banco dedicado, porta e rede privada
-conferidos. Os 37 contratos locais continuam verdes, com duas guardas de
-destino adicionais; o CI será conferido após o push dessa correção.
+conferidos. O fixture também confere o banco dedicado antes de ajustar somente
+BYPASSRLS do papel fictício service_role, que outros testes criam no mesmo
+cluster. Uma reprodução local partindo da role sem BYPASSRLS passou nos
+37 contratos e nas duas guardas de destino adicionais. Nenhuma dessas
+correções de CI altera o ambiente em nuvem.
 
 Na etapa anterior, a conversa de teste foi
 retomada explicitamente após encerrar os dois casos de teste. Não há pendência

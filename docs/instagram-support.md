@@ -6,10 +6,21 @@ Os três gates de runtime foram conferidos por digest: modo off, uso de dados
 de clientes false e alertas false. Nenhum cliente recebeu mensagem por esta
 função e o cron não foi ativado.
 
-O HTTP público retornou 503 `not_configured`, esperado enquanto falta o App
-Secret; controle anônimo retornou 403 e worker sem segredo retornou 401.
-Página administrativa e módulo JavaScript responderam HTTP 200. Login,
-fila e callback com conta controlada continuam como testes separados.
+Depois da configuração das credenciais existentes, seis cenários HTTP
+passaram: challenge correto 200; token incorreto 403; evento vazio assinado
+200 com zero eventos; assinatura incorreta 401; worker autenticado em off
+200 com zero processamentos, envios e alertas; controle anônimo 403. O
+challenge também passou após a substituição do Verify Token. Nenhum teste
+inseriu conversa de cliente. Página e módulo administrativo responderam 200.
+Login, fila e evento de conta controlada continuam como testes separados.
+
+App, Página e Instagram foram confirmados por GET oficial, incluindo a
+identidade dos tokens. Isso não presume Advanced Access. Verify Token e
+segredo do worker persistem no arquivo privado `reservas/.env.local`,
+ignorado pelo Git; seus valores não ficam neste documento. Os outros
+segredos existentes foram preservados. O callback oficial da Meta é
+configurado separadamente pela coordenação da tarefa, com o mesmo token
+canônico, sem ativar atendimento ou cron.
 
 ## Componentes
 
@@ -105,9 +116,12 @@ garante o bloqueio financeiro de outros usos da mesma conta do Google.
 
 O teste real com pergunta pública retornou HTTP 200, enum `HOURS`, 297
 tokens de entrada e dois de saída. Isso comprova a chamada por enum;
-não comprova o tier financeiro ou a franquia desta chave. O tier gratuito
-pode usar conteúdo para melhorar produtos. Antes de texto real de clientes,
-o responsável deve verificar o plano/termos e liberar os gates de privacidade.
+não comprova, sozinho, o tier financeiro ou a franquia desta chave. Depois,
+a coordenação conferiu Nível 1 pré-pagamento na interface e a correspondência
+da chave em memória. O gate de uso de dados de clientes continua false.
+O tier gratuito pode usar conteúdo para melhorar produtos. Antes de texto
+real de clientes, o responsável deve conferir os termos e liberar os gates
+de privacidade separadamente.
 
 Não são gravados corpos de webhook ou respostas do provedor em logs. E-mails,
 telefones, perfis e links do texto são removidos antes do armazenamento e da
@@ -232,6 +246,12 @@ dos testes e do push; somente os gates próprios off/false foram gravados,
 e os 20 nomes de segredos existentes foram preservados. Os testes do
 helper simulam a API e comprovam ordem, preservação de nomes e ausência de
 valores no resultado.
+
+A configuração posterior usou `secrets --apply --replace-owned` por entrada
+em memória para os segredos próprios. A chave Gemini existente foi reutilizada;
+os segredos Resend não foram copiados nem alterados. Uma nova execução trocou
+somente o Verify Token local e em nuvem, conservando os demais. As verificações
+e o worker permaneceram em off, sem Meta POST ou ativação do cron.
 
 ## Referências consultadas em 01/11/2026
 

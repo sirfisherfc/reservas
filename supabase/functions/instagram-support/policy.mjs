@@ -218,8 +218,8 @@ export function reviewedReply(intent, text, now, { firstReply = true, handoff = 
       : intent === 'URGENCY' ? 'Se você está no restaurante, procure a equipe presente agora. '
       : intent === 'RESERVATION_CHANGE' ? 'Para cancelar, use o link seguro recebido no e-mail da reserva. Alterações precisam da equipe. ' : '';
     return (firstReply ? 'Sou o assistente virtual do Sir Fisher. ' : '') + specific
-      + 'Esta solicitação precisa de atendimento humano. As respostas automáticas estão pausadas nesta conversa. '
-      + `Para falar com nossa equipe, abra ${WHATSAPP} e envie sua mensagem por lá. Atendimento das 7h às 21h.`;
+      + 'Esta solicitação precisa de atendimento humano. '
+      + `Para falar com nossa equipe, abra ${WHATSAPP} e envie sua mensagem por lá.`;
   }
   return (firstReply ? 'Sou o assistente virtual do Sir Fisher. ' : '') + (replies[intent] ?? replies.UNKNOWN);
 }

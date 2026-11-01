@@ -353,7 +353,7 @@ uma classificação de segurança antes de qualquer truncamento. A ingesta
 pausa a conversa e cria o caso na mesma transação. Uma mensagem posterior
 não pode apagar esse pedido. O evento fica reservado para um único aviso
 curto: o cliente deve abrir o WhatsApp e enviar a mensagem por lá. O aviso
-informa atendimento das 7h às 21h e que esta conversa está pausada. O link
+oferece somente o WhatsApp, sem horário humano ou promessa de prazo. O link
 oferecido não comprova transferência nem atendimento no WhatsApp.
 
 O aviso pertence ao caso ativo. Repetições e mensagens normais durante a

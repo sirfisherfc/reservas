@@ -315,7 +315,7 @@ test('unknown echo is persisted before incoming in the same envelope and pauses 
 test('human request creates pause before acknowledgement and future incoming stays silent', async () => {
   const app = harness(); await app.store.ingest(incoming('synthetic-human', 'Quero falar com a gerente.'));
   await app.drain(); assert.equal(app.calls.length, 0); assert.equal(app.store.cases.length, 1);
-  assert.equal(app.store.threads.get(CUSTOMER).human, true); assert.match(app.sent[0].text, /pausadas/);
+  assert.equal(app.store.threads.get(CUSTOMER).human, true); assert.match(app.sent[0].text, /wa\.me\/5585988544274/);
   await app.store.ingest(incoming('synthetic-human-followup', 'Qual é o horário?')); await app.drain();
   assert.equal(app.sent.length, 1); assert.equal(app.calls.length, 0);
 });
@@ -686,9 +686,20 @@ test('native human FAQ and WhatsApp requests create one curated notice, with zer
     await app.handler(await signed(app.config, envelope('synthetic-falo-repeat', text))); await Promise.all(app.tasks);
     assert.equal(app.calls.length, 0); assert.equal(app.store.reservationCount, 0); assert.equal(app.sent.length, 1);
     assert.match(app.sent[0].text, /assistente virtual/); assert.match(app.sent[0].text, /envie sua mensagem por lá/);
-    assert.match(app.sent[0].text, /7h às 21h/); assert.match(app.sent[0].text, /wa\.me\/5585988544274/);
+    assert.doesNotMatch(app.sent[0].text, /7h|21h|em breve|retornaremos|responderemos|resposta imediata/); assert.match(app.sent[0].text, /wa\.me\/5585988544274/);
     assert.doesNotMatch(app.sent[0].text, /Hêmile|encaminhei|avisei|transferi/);
   }
+});
+
+test('every human reply gives WhatsApp without availability or response-time promises, preserving business hours',()=>{
+  for(const intent of ['HUMAN','COMPLAINT','PAYMENT_DISPUTE','URGENCY','ALLERGY','RESERVATION_CHANGE','GROUP_EVENT','LOST_ITEM']){
+    const text=reviewedReply(intent,'',NOW,{handoff:true});
+    assert.match(text,/wa\.me\/5585988544274/);
+    assert.doesNotMatch(text,/7h|21h|07:00|21:00|em breve|resposta imediata|retornaremos|responderemos|em \d+ (?:minutos|horas)|até \d+h/);
+  }
+  assert.match(reviewedReply('HOURS','',NOW),/9h às 22h15/);
+  assert.match(reviewedReply('EXECUTIVE','',NOW),/10h às 14h/);
+  assert.match(reviewedReply('RESERVATION_LINK','',NOW),/15h30/);
 });
 
 test('urgent burst invalidates claimed generic notice and sends urgent guidance without a model', async () => {

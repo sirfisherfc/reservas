@@ -26,8 +26,20 @@ Revisão independente repetiu os 81 Node, sem P1/P2 aberto. O mesmo TEST1 e
 cron único foram retomados após check real de identidade; health200,
 interseção1, zero pendências, seis envios/três chamadas anteriores,
 responsável NULL/e-mails desligados. Ambos os gates públicos de dados e
-entrega permanecem false no runtime e no banco. A continuidade real após
-WhatsApp ainda será conferida na conta controlada; os contratos são locais.
+entrega permanecem false no runtime e no banco.
+
+A continuidade passou depois em ensaio real restrito: pedido humano → FAQ
+de endereço → novo pedido humano no mesmo caso produziu um aviso de WhatsApp,
+uma FAQ e nenhum segundo aviso. O caso permaneceu aberto e sem pausa até a
+coordenação encerrá-lo pelo painel autenticado. O aviso estava sem horário,
+prazo ou afirmação de pausa. A FAQ nativa Instagram ficou temporariamente
+desligada no ensaio, sob controle da coordenação.
+Recebimento até conclusão no banco: aviso 4,620 s, FAQ 5,397 s. São duas
+observações, sem SLA. Só a FAQ usou modelo, com 297 tokens de entrada e um
+de saída. Leitura após encerrar: oito envios/quatro chamadas acumulados,
+zero casos abertos, três fechados, zero pendências e conversa sem pausa.
+Cron único ativo/TEST1/gates públicos false preservados, sem replay. O
+observador fez somente leituras; o encerramento era de um caso de teste.
 
 A conexão Facebook permanece preservada. A opção oficial Instagram Login
 está em preparação pela coordenação: app Empresa separado depende de

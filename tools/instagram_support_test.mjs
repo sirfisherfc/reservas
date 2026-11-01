@@ -26,6 +26,7 @@ const envelope = (mid, text = 'Qual é o horário?', sender = CUSTOMER, extra = 
     message: { mid, text, ...extra } }] }] });
 const incoming = (mid, text = 'Qual é o horário?', sender = CUSTOMER) => ({ mid, sender_id: sender,
   recipient_id: ASSETS.instagramId, timestamp_ms: NOW, text, kind: 'incoming' });
+const priority = reason => ({ URGENCY: 100, ALLERGY: 90, PAYMENT_DISPUTE: 80, COMPLAINT: 70, HUMAN: 50 }[reason?.toUpperCase()] ?? 10);
 
 // In-memory contract fixture. Actual SQL locking/lease tests live with the migration.
 class Store {
@@ -42,29 +43,45 @@ class Store {
     if (!thread) { thread = { id: uid(++this.count), version: 0, human: false, clarify: 0, sent: false }; this.threads.set(input.sender_id, thread); }
     if (input.kind === 'echo') {
       const own = [...this.outbox.values()].some(row => row.provider_mid === input.mid);
-      if (!own) { thread.human = true; thread.version++; this.cases.push({ thread_id: thread.id, reason: 'manual_echo' }); }
+      if (!own) { thread.human = true; thread.version++; this.cancelNotice(thread);
+        if (!this.cases.some(row => row.thread_id === thread.id)) this.cases.push({ thread_id: thread.id, reason: 'manual_echo' }); }
       this.events.set(input.mid, { ...input, status: 'ignored' }); return { queued: false };
     }
-    if (input.safety_intent && this.state.mode !== 'off'
+    const event = { ...input, event_id: uid(++this.count), thread_id: thread.id,
+      message_at: new Date(input.timestamp_ms).toISOString(), status: 'ignored' };
+    if (thread.human) {
+      const active = this.cases.find(row => row.thread_id === thread.id);
+      const notice = active && this.row(active.notice);
+      if (input.safety_intent && active && priority(input.safety_intent) > priority(active.reason)) {
+        active.reason = input.safety_intent.toLowerCase();
+        if (notice?.ack && ['pending', 'completed'].includes(notice.status)) {
+          thread.version++; thread.leased = null;
+          notice.status = 'pending'; notice.lease = null; notice.thread_version = thread.version; notice.reply_key = input.safety_intent;
+        }
+      }
+      this.events.set(input.mid, event); return { queued: notice?.status === 'pending', case_saved: !!active };
+    }
+    if (input.safety_intent && !this.state.paused && this.state.mode !== 'off'
       && (this.state.mode !== 'test' || this.state.test_sender_ids.includes(input.sender_id))) {
       thread.human = true; thread.version++;
-      if (!this.cases.some(row => row.thread_id === thread.id)) this.cases.push({ thread_id: thread.id, reason: input.safety_intent.toLowerCase() });
-      this.events.set(input.mid, { ...input, text: '', status: 'human' });
-      return { queued: false, case_saved: true };
+      const active = { id: uid(++this.count), thread_id: thread.id, reason: input.safety_intent.toLowerCase(), notice: event.event_id };
+      this.cases.push(active);
+      Object.assign(event, { text: '', status: 'pending', ack: true, handoff_ack: true,
+        case_id: active.id, reply_key: input.safety_intent, thread_version: thread.version });
+      this.events.set(input.mid, event); return { queued: true, case_saved: true };
     }
     thread.version++;
     const queued = !thread.human && !this.state.paused && this.state.mode !== 'off'
       && (this.state.mode !== 'test' || this.state.test_sender_ids.includes(input.sender_id));
-    const event = { ...input, event_id: uid(++this.count), thread_id: thread.id,
-      message_at: new Date(input.timestamp_ms).toISOString(), status: queued ? 'pending' : 'ignored' };
+    event.status = queued ? 'pending' : 'ignored';
     this.events.set(input.mid, event); return { queued };
   }
   async claim() {
     if (this.state.paused || this.state.mode === 'off') return [];
     for (const event of this.events.values()) {
       const thread = this.threads.get(event.sender_id);
-      if (event.status !== 'pending' || thread.human || thread.leased) continue;
-      event.status = 'processing'; event.lease = uid(++this.count); event.thread_version = thread.version;
+      if (event.status !== 'pending' || (thread.human && !event.ack) || thread.leased) continue;
+      event.status = event.ack ? 'completed' : 'processing'; event.lease = uid(++this.count); event.thread_version = thread.version;
       thread.leased = event.lease;
       return [{ ...event, clarify_count: thread.clarify, first_reply: !thread.sent }];
     }
@@ -87,7 +104,7 @@ class Store {
     let decision = 'reply';
     if (result.intent === 'UNKNOWN') { thread.clarify++; decision = 'clarify'; } else if (!result.handoff_reason) thread.clarify = 0;
     if (result.handoff_reason) { decision = 'handoff'; thread.human = true; thread.version++; event.ack = true;
-      this.cases.push({ thread_id: thread.id, reason: result.handoff_reason }); }
+      this.cases.push({ id: uid(++this.count), thread_id: thread.id, reason: result.handoff_reason, notice: id }); }
     event.thread_version = thread.version;
     return { allowed: true, decision, thread_version: thread.version, case_saved: decision === 'handoff' };
   }
@@ -107,7 +124,17 @@ class Store {
     if (status === 'sent') thread.sent = true; else { thread.human = true; thread.version++; this.cases.push({ reason: 'delivery_' + status }); }
     return { changed: true };
   }
-  async control(action, thread, args) { this.controls.push({ action, thread, args }); return { changed: true }; }
+  cancelNotice(thread) {
+    for (const event of this.events.values()) if (event.thread_id === thread.id && event.ack && ['pending', 'completed'].includes(event.status)) {
+      event.status = 'superseded'; event.ack = false; thread.leased = null;
+    }
+  }
+  async control(action, id, args) {
+    this.controls.push({ action, thread: id, args });
+    if (action === 'pause_global') { this.state.paused = args.paused; if (args.paused) for (const thread of this.threads.values()) this.cancelNotice(thread); }
+    else { const thread = [...this.threads.values()].find(row => row.id === id); if (thread) this.cancelNotice(thread); }
+    return { changed: true };
+  }
 }
 
 function harness(options = {}) {
@@ -285,6 +312,19 @@ test('drain secret and administrator authorization are separate and never accept
   assert.equal(admin.store.controls[0].args.actor_id, AUTH_USER);
 });
 
+test('authenticated health proves runtime gates without claiming work, calling AI or sending', async () => {
+  const app = harness(); const url = 'https://example.invalid/health';
+  assert.equal((await app.handler(new Request(url))).status, 403);
+  assert.equal((await app.handler(new Request(url, { headers: { 'x-instagram-drain-secret': 'wrong' } }))).status, 403);
+  const result = await app.handler(new Request(url, { headers: { 'x-instagram-drain-secret': app.config.drainSecret } }));
+  assert.equal(result.status, 200);
+  const health = await result.json();
+  assert.equal(health.runtime_mode, 'test'); assert.equal(health.effective_mode, 'test');
+  assert.equal(health.runtime_test_senders, 2); assert.equal(health.matched_test_senders, 2);
+  assert.equal(JSON.stringify(health).includes(CUSTOMER), false);
+  assert.equal(app.calls.length, 0); assert.equal(app.sent.length, 0); assert.equal(app.store.events.size, 0);
+});
+
 test('server checks getUser then fn_is_admin using the user JWT, ignoring editable metadata', async () => {
   const seen = []; let isAdmin = false;
   const transport = createTransports(fixtureConfig(), async (url, options) => {
@@ -365,7 +405,7 @@ test('long messages preserve safety intent from the tail and never reach the mod
   const extracted = extractEvents(payload, NOW)[0];
   assert.equal(extracted.safety_intent, 'ALLERGY'); assert.ok(extracted.text.length < 1200);
   await app.handler(await signed(app.config, payload)); await Promise.all(app.tasks);
-  assert.equal(app.calls.length, 0); assert.equal(app.sent.length, 0);
+  assert.equal(app.calls.length, 0); assert.equal(app.sent.length, 1); assert.match(app.sent[0].text, /mesmo óleo/);
   assert.equal(app.store.threads.get(CUSTOMER).human, true); assert.equal(app.store.cases[0].reason, 'allergy');
 });
 
@@ -375,7 +415,7 @@ test('a later message cannot supersede an explicit request for human or allergy'
     payload.entry[0].messaging.push(...envelope('synthetic-followup-safe', 'Quais porções têm?').entry[0].messaging);
     await app.handler(await signed(app.config, payload)); await app.drain();
     assert.equal(app.store.threads.get(CUSTOMER).human, true); assert.equal(app.store.cases.length, 1);
-    assert.equal(app.calls.length, 0); assert.equal(app.sent.length, 0);
+    assert.equal(app.calls.length, 0); assert.equal(app.sent.length, 1); assert.match(app.sent[0].text, /wa\.me\/5585988544274/);
   }
 });
 
@@ -384,6 +424,48 @@ test('spam vocabulary does not suppress a request for a person', async () => {
   await app.store.ingest(incoming('synthetic-spam-human', 'Recebi spam de cassino citando o restaurante. Quero falar com a gerente.'));
   await app.drain(); assert.equal(app.store.threads.get(CUSTOMER).human, true);
   assert.equal(app.store.cases.length, 1); assert.equal(app.calls.length, 0);
+});
+
+test('native human FAQ and WhatsApp requests create one curated notice, with zero model spend', async () => {
+  for (const text of ['Como falo com uma pessoa?', 'Qual o WhatsApp da equipe?']) {
+    const app = harness({ background: true });
+    const payload = envelope('synthetic-falo', text);
+    assert.equal(extractEvents(payload, NOW)[0].safety_intent, 'HUMAN');
+    await app.handler(await signed(app.config, payload)); await Promise.all(app.tasks);
+    await app.handler(await signed(app.config, envelope('synthetic-falo-repeat', text))); await Promise.all(app.tasks);
+    assert.equal(app.calls.length, 0); assert.equal(app.store.reservationCount, 0); assert.equal(app.sent.length, 1);
+    assert.match(app.sent[0].text, /assistente virtual/); assert.match(app.sent[0].text, /envie sua mensagem por lá/);
+    assert.match(app.sent[0].text, /7h às 21h/); assert.match(app.sent[0].text, /wa\.me\/5585988544274/);
+    assert.doesNotMatch(app.sent[0].text, /Hêmile|encaminhei|avisei|transferi/);
+  }
+});
+
+test('urgent burst invalidates claimed generic notice and sends urgent guidance without a model', async () => {
+  const app = harness();
+  await app.store.ingest(extractEvents(envelope('synthetic-generic', 'Como falo com uma pessoa?'), NOW)[0]);
+  const old = (await app.store.claim())[0];
+  await app.store.ingest(extractEvents(envelope('synthetic-urgent', 'É urgente, tem uma emergência no restaurante.'), NOW)[0]);
+  assert.equal((await app.store.prepareSend(old.event_id, old.lease, 'Aviso antigo.', old.thread_version)).allowed, false);
+  await app.drain();
+  assert.equal(app.sent.length, 1); assert.match(app.sent[0].text, /procure a equipe presente agora/);
+  assert.equal(app.calls.length, 0); assert.equal(app.store.reservationCount, 0);
+});
+
+test('manual echo and global pause cancel a pending WhatsApp notice before any send', async () => {
+  for (const manual of [true, false]) {
+    const app = harness();
+    await app.store.ingest(extractEvents(envelope('synthetic-pending-wa', 'Como falo com uma pessoa?'), NOW)[0]);
+    if (manual) await app.store.ingest({ ...incoming('synthetic-manual-wa'), kind: 'echo' });
+    else { await app.store.control('pause_global', null, { paused: true }); await app.store.control('pause_global', null, { paused: false }); }
+    await app.drain(); assert.equal(app.sent.length, 0); assert.equal(app.calls.length, 0);
+  }
+});
+
+test('missing kitchen hours explain the missing source and offer a clear next step', async () => {
+  const app = harness({ classify: async () => responseFor('UNKNOWN') });
+  await app.handler(await signed(app.config, envelope('synthetic-kitchen', 'Até que horas a cozinha funciona?'))); await app.drain();
+  assert.equal(app.sent.length, 1); assert.match(app.sent[0].text, /Não tenho uma resposta confirmada/);
+  assert.match(app.sent[0].text, /falar com uma pessoa/);
 });
 
 test('callback-to-reply retains explicit Christmas date after redaction', async () => {

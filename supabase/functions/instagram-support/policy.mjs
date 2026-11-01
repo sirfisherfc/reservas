@@ -48,7 +48,7 @@ export function urgentIntent(value) {
     ['ALLERGY', /alerg|celiac|gluten|lactose|restric[a-z ]*aliment|anafil|intoleran/],
     ['PAYMENT_DISPUTE', /estorno|cobranc|cobrad|cobraram|comprovante|paguei|chargeback|devolu|pix.{0,20}(enviei|feito|pago)/],
     ['COMPLAINT', /reclam|pessimo|mal atend|ninguem responde|sem resposta|horrivel|discrimin|demora.{0,20}(respost|atend)/],
-    ['HUMAN', /atendente|atendimento humano|gerente|hemile|falar.{0,20}(pessoa|alguem)|quero.{0,15}humano/],
+    ['HUMAN', /atendente|atendimento humano|gerente|whats(?:app)?|fal(?:ar|o|a|e).{0,20}(pessoa|alguem|equipe)|quero.{0,15}humano/],
     ['RESERVATION_CHANGE', /cancel|remarcar|alterar.{0,20}reserva|mudar.{0,20}reserva|trocar.{0,20}reserva/],
     ['LOST_ITEM', /esqueci|perdi|objeto.{0,20}(esquec|perdid)|achados e perdidos/],
     ['GROUP_EVENT', /casamento|evento|reveillon|confraterniz/],
@@ -139,7 +139,7 @@ export function reviewedReply(intent, text, now, { firstReply = true, handoff = 
     HAPPY_HOUR: 'A casa não tem happy hour. Temos terça em dobro no almoço, conforme as condições da promoção.',
     CAKE: 'Você pode levar bolo sem taxa. Outras comidas e a organização da comemoração precisam ser conferidas com a equipe. O Réveillon tem regras próprias.',
     CAREERS: 'Envie seu currículo para sir.fisher@outlook.com. A equipe confere as oportunidades disponíveis.',
-    UNKNOWN: 'Pode me dizer o que gostaria de saber sobre o Sir Fisher? Posso ajudar com horários, cardápio e reservas. Para atendimento humano, escreva “falar com uma pessoa”.',
+    UNKNOWN: 'Não tenho uma resposta confirmada para esse pedido. Você pode detalhar a dúvida ou escrever “falar com uma pessoa” para a equipe conferir.',
   };
   if (handoff || HUMAN_INTENTS.has(intent)) {
     const specific = intent === 'ALLERGY' ? 'A equipe precisa conferir ingredientes e preparo com a cozinha. Os fritos usam o mesmo óleo. '
@@ -147,7 +147,7 @@ export function reviewedReply(intent, text, now, { firstReply = true, handoff = 
       : intent === 'RESERVATION_CHANGE' ? 'Para cancelar, use o link seguro recebido no e-mail da reserva. Alterações precisam da equipe. ' : '';
     return (firstReply ? 'Sou o assistente virtual do Sir Fisher. ' : '') + specific
       + 'Esta solicitação precisa de atendimento humano. As respostas automáticas estão pausadas nesta conversa. '
-      + `Você também pode falar com Hêmile pelo WhatsApp: ${WHATSAPP} O horário informado é das 7h às 21h.`;
+      + `Para falar com nossa equipe, abra ${WHATSAPP} e envie sua mensagem por lá. Atendimento das 7h às 21h.`;
   }
   return (firstReply ? 'Sou o assistente virtual do Sir Fisher. ' : '') + (replies[intent] ?? replies.UNKNOWN);
 }

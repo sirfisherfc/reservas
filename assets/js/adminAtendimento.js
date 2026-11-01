@@ -114,10 +114,10 @@ function renderCases(rows) {
     const when = document.createElement('span'); when.textContent = date(row.last_inbound_at ?? row.created_at);
     const profile = verifiedProfile(row);
     const identity = document.createElement('span'); identity.textContent = profile ? '@' + profile.username : 'Perfil indisponível; confira o horário no Direct';
-    const alert = document.createElement('span'); alert.textContent = 'Aviso por e-mail: ' + ({ pending: 'na fila', sending: 'enviando',
-      sent: 'aceito pelo provedor', failed: 'falhou; confira a fila', uncertain: 'envio a conferir',
-      suppressed: 'desligado para este caso', blocked: 'configuração a conferir' }[row.alert_status] ?? 'ainda não enviado');
-    meta.append(state, when, identity, alert);
+    const notice = document.createElement('span'); notice.textContent = 'Orientação para WhatsApp: ' + ({ pending: 'aviso pendente',
+      sending: 'envio em andamento', sent: 'link enviado no Instagram', failed: 'envio falhou; confira o Direct',
+      uncertain: 'resultado incerto; confira o Direct', cancelled: 'aviso cancelado', not_queued: 'sem aviso automático' }[row.handoff_notice_status] ?? 'estado a conferir');
+    meta.append(state, when, identity, notice);
     const actions = document.createElement('div'); actions.className = 'support-actions';
     const direct = document.createElement('a'); direct.className = 'btn btn--outline btn--sm'; direct.href = 'https://www.instagram.com/direct/inbox/';
     direct.target = '_blank'; direct.rel = 'noopener noreferrer'; direct.textContent = 'Abrir Direct';

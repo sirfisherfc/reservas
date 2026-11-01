@@ -131,10 +131,39 @@ export function createHandler({ config, store, classify, send, sendAlert = null,
       handoff_reason: reason, summary });
   }
 
+  async function dispatch(row, reply, version) {
+    const fresh = await store.settings();
+    if (!senderAllowed(config, fresh, row.sender_id) || config.pageToken.length < 20) return 'paused';
+    const prepared = await store.prepareSend(row.event_id, row.lease, reply, version);
+    if (!prepared?.allowed) return 'paused';
+    let delivered;
+    try { delivered = await send(row.sender_id, reply); }
+    catch (error) {
+      const status = error?.deliveryStatus === 'failed' ? 'failed' : 'uncertain';
+      await store.finishSend(prepared.outbox_id, row.lease, status, null);
+      return status === 'failed' ? 'human' : 'uncertain';
+    }
+    const mid = delivered?.message_id;
+    if (typeof mid !== 'string' || !mid || mid.length > 512) {
+      await store.finishSend(prepared.outbox_id, row.lease, 'uncertain', null); return 'uncertain';
+    }
+    await store.finishSend(prepared.outbox_id, row.lease, 'sent', mid);
+    return 'sent';
+  }
+
   async function process(row, settings) {
     if (!senderAllowed(config, settings, row.sender_id)) {
       await store.complete(row.event_id, row.lease, { intent: 'IGNORE', skip: true, summary: 'Modo de teste: remetente fora da lista.' });
       return 'ignored';
+    }
+    if (row.handoff_ack === true) {
+      // The database already saved the case and pause, then leased this one notice.
+      // No classifier or paid reservation runs on this branch.
+      if (!UUID.test(row.case_id ?? '')) return 'paused';
+      const reply = reviewedReply(row.reply_key || 'HUMAN', '', now(), {
+        firstReply: row.first_reply !== false, handoff: true });
+      const outcome = await dispatch(row, reply, row.thread_version);
+      return outcome === 'sent' ? 'human' : outcome;
     }
     const eventAt = Date.parse(row.message_at);
     if (!Number.isFinite(eventAt) || eventAt > now() + 300_000 || now() - eventAt >= WINDOW_MS) {
@@ -194,25 +223,8 @@ export function createHandler({ config, store, classify, send, sendAlert = null,
     if (isHandoff && !completed.case_saved) return 'human';
     const reply = reviewedReply(result.reply_key || result.intent, text, now(), {
       firstReply: row.first_reply !== false, handoff: isHandoff });
-    const fresh = await store.settings();
-    if (!senderAllowed(config, fresh, row.sender_id) || config.pageToken.length < 20) return 'paused';
-    const preparedSend = await store.prepareSend(row.event_id, row.lease, reply, completed.thread_version);
-    if (!preparedSend?.allowed) return 'paused';
-    let delivered;
-    try {
-      delivered = await send(row.sender_id, reply);
-    } catch (error) {
-      const status = error?.deliveryStatus === 'failed' ? 'failed' : 'uncertain';
-      await store.finishSend(preparedSend.outbox_id, row.lease, status, null);
-      return status === 'failed' ? 'human' : 'uncertain';
-    }
-    const messageId = delivered?.message_id;
-    if (typeof messageId !== 'string' || !messageId || messageId.length > 512) {
-      await store.finishSend(preparedSend.outbox_id, row.lease, 'uncertain', null);
-      return 'uncertain';
-    }
-    await store.finishSend(preparedSend.outbox_id, row.lease, 'sent', messageId);
-    return isHandoff ? 'human' : 'sent';
+    const outcome = await dispatch(row, reply, completed.thread_version);
+    return isHandoff && outcome === 'sent' ? 'human' : outcome;
   }
 
   async function drainAlerts(worker) {
@@ -304,6 +316,17 @@ export function createHandler({ config, store, classify, send, sendAlert = null,
           ai_key_configured: config.geminiKey.length >= 20, ai_data_approved: config.dataApproved,
           alerts_configured: config.alertsEnabled && config.resendKey.length >= 10 && Boolean(config.resendFrom),
         } }, 200, cors);
+      }
+      if (tail === 'health') {
+        if (request.method !== 'GET') return json({ error: 'method_not_allowed' }, 405);
+        if (config.drainSecret.length < 32 || !constantTimeEqual(request.headers.get('x-instagram-drain-secret'), config.drainSecret)) return json({ error: 'unauthorized' }, 403);
+        if (!webhookReady(config)) return json({ error: 'not_configured' }, 503);
+        const state = await store.settings();
+        const allowed = new Set(Array.isArray(state.test_sender_ids) ? state.test_sender_ids : []);
+        return json({ runtime_mode: config.mode, effective_mode: effectiveMode(config, state), paused: state.paused === true,
+          ai_data_approved: config.dataApproved, alerts_enabled: config.alertsEnabled,
+          runtime_test_senders: config.testSenders.size, database_test_senders: allowed.size,
+          matched_test_senders: [...config.testSenders].filter(sender => allowed.has(sender)).length });
       }
       if (tail === 'drain') {
         if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);

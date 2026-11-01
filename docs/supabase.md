@@ -37,6 +37,11 @@ Ao criar uma tabela ou view, colocar no mesmo arquivo SQL os grants de cada pape
 O atendimento Instagram tem schema privado próprio `instagram_support` e
 RPCs exclusivos de `service_role`, criados pela migration
 `gestao/supabase/migrations/20261101071634_instagram_support_durable_queue.sql`.
+O aviso único de WhatsApp por caso ativo fica na migration
+`20261101102855_instagram_support_whatsapp_notice.sql`, no mesmo repositório.
+Ela acrescenta `cases.handoff_notice_event_id` com FK de retenção, recria os
+RPCs de fila/controle com grants somente ao servidor e mantém a instalação OFF,
+sem responsável padrão, e-mail ou cron. A pausa humana continua ativa durante o aviso.
 A Edge Function instala com modo desligado e autentica o webhook por HMAC;
 o controle administrativo valida o JWT e `fn_is_admin`. Nenhuma tabela de
 reservas ou financeira participa da fila. Implantação, segredos e testes

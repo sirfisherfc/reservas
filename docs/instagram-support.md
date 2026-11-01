@@ -1,5 +1,10 @@
 # Atendimento do Instagram em nuvem
 
+Revisão de 01/11/2026 em validação local: pedidos humanos vão ao WhatsApp
+oficial `https://wa.me/5585988544274`, conforme decisão do proprietário.
+O novo fluxo grava o caso e a pausa antes de enviar um único aviso revisado,
+sem IA, por caso ativo. O modo TEST exige revisão em etapa separada.
+
 Implantado em 01/11/2026: **instagram-support versão 5, ACTIVE no portal,
 com atendimento desligado**. O código atual está no commit `368acf0` em
 `reservas`; a primeira implantação foi a versão 1, do commit `104f007`.
@@ -105,16 +110,25 @@ foram conferidos como off/false; o banco estava em off, pausado, com
 desligados. A documentação consultada não fixou
 um prazo de propagação para presumir que aguardar 30 minutos resolverá.
 
+Depois, o proprietário concluiu a associação do Instagram pessoal ao Facebook
+pelo Accounts Center e conferiu a persistência após recarregar. O DM controlado
+seguinte foi recebido às 10:08:41 UTC, com POST 200 e um evento persistido em
+OFF. A User Profile API retornou 200 e o username correspondeu exatamente à
+conta de teste autorizada. O identificador permaneceu privado. Esse teste
+comprova recebimento e identidade desse remetente; envio, IA e produção seguem
+como etapas separadas. O evento de bootstrap não recebe resposta retroativa.
+
 ## Componentes
 
 - `supabase/functions/instagram-support/`: webhook assinado, processamento
   da fila, classificação por enum e API administrativa. Usa Web APIs nativas,
   sem nova dependência externa.
-- `admin/atendimento.html`: fila humana, aviso de falha de e-mail, pausa
+- `admin/atendimento.html`: fila humana, estado do aviso de WhatsApp, pausa
   global, assumir caso, encerrar e retomar uma conversa. A navegação do
   portal exibe o link somente para administradores.
 - Banco isolado em `instagram_support`, na migration do repositório
   `gestao`: `20261101071634_instagram_support_durable_queue.sql`.
+  O aviso único usa `20261101102855_instagram_support_whatsapp_notice.sql`.
   Não modifica tabelas de reservas ou finanças. RPCs somente `service_role`,
   RLS e grants explícitos. Consultar a migration para o contrato atual.
 
@@ -142,8 +156,18 @@ Mensagens longas ou com pedido de humano, reclamação, cobrança contestada,
 urgência, alergia, alteração de reserva, objeto perdido ou evento recebem
 uma classificação de segurança antes de qualquer truncamento. A ingesta
 pausa a conversa e cria o caso na mesma transação. Uma mensagem posterior
-não pode apagar esse pedido. Nesse caminho conservador, a gerente responde;
-o bot não envia uma confirmação automática de transferência.
+não pode apagar esse pedido. O evento fica reservado para um único aviso
+curto: o cliente deve abrir o WhatsApp e enviar a mensagem por lá. O aviso
+informa atendimento das 7h às 21h e que esta conversa está pausada. O link
+oferecido não comprova transferência nem atendimento no WhatsApp.
+
+O aviso pertence ao caso ativo. Repetições e mensagens normais durante a
+pausa não geram outro aviso nem chamam IA. Uma urgência ou alergia de maior
+prioridade antes do envio atualiza a orientação e invalida o lease anterior.
+Urgência orienta procurar a equipe presente se a pessoa estiver na casa.
+Depois de iniciado um envio, o sistema conserva seu resultado sem repetir
+automaticamente o link. Pausa global, echo desconhecido, assumir, encerrar e
+retomar cancelam avisos pendentes; despausar não os reapresenta.
 
 Echo com `mid` já registrado no outbox é reconhecido como próprio. Echo
 desconhecido pausa a conversa sem prazo automático. Um echo próprio que
@@ -167,7 +191,8 @@ de contatos do texto.
 Reservas, disponibilidade, pagamentos e cancelamentos **não são executados
 por esta função**. Ela orienta o portal e o link seguro de cancelamento.
 Não confirma vaga, reserva ou quitação sem resultado do sistema correspondente.
-Um assunto desconhecido recebe um pedido de esclarecimento; se continuar
+Um assunto desconhecido informa que falta uma resposta confirmada e oferece
+detalhar a dúvida ou pedir uma pessoa; se continuar
 sem resposta, a conversa vai para a fila humana e fica pausada.
 
 A automação respeita uma janela conservadora de 24h desde a mensagem
@@ -247,7 +272,15 @@ Atualizações seguintes podem consultar casos ainda sem cache. O username
 não é gravado no banco, nos alertas ou nos logs. Os testes simulados cobrem
 autorização antes da consulta, falha sem perder a fila e renderização segura.
 
-O Resend existente pode avisar sobre **caso novo**, quando os dois gates
+O fluxo escolhido mantém `manager_auth_user_id=NULL` e alertas desativados.
+Nenhum nome de gerente aparece na mensagem. Os acessos administrativos
+existentes do portal permanecem como estão. O painel mostra aviso pendente,
+envio iniciado, link enviado no Instagram, falha, resultado incerto ou aviso
+cancelado. Confirmação exige o MID retornado pela Meta; o painel não confirma
+leitura nem atendimento da equipe no WhatsApp.
+
+O adaptador Resend permanece disponível no código para outro fluxo autorizado;
+ele pode avisar sobre **caso novo**, quando os dois gates
 de alerta estiverem liberados. O destinatário é resolvido no banco pelo
 `manager_auth_user_id` configurado e validado como administrador ativo.
 O cliente do navegador não recebe esse e-mail. A mensagem contém somente
@@ -257,7 +290,7 @@ O outbox de alerta é idempotente por caso/revisão. `Idempotency-Key` fica
 estável; a Resend conserva a proteção por 24h. Uma resposta aceita com ID
 marca o alerta como aceito pelo provedor, sem afirmar leitura ou entrega na
 caixa da gerente. Timeout fica incerto e não é repetido automaticamente.
-Falha e supressão aparecem no painel. Ativar avisos não envia casos anteriores
+Falha e supressão ficam registradas no banco. Ativar avisos não envia casos anteriores
 ao instante de liberação. A fila possui cap próprio de tentativas.
 
 ## Configuração reservada ao responsável
@@ -284,14 +317,14 @@ Gates que começam fechados:
 
 Teste futuro: `mode=test` nos dois lados e **interseção** entre
 `INSTAGRAM_TEST_SENDER_IDS` e `test_sender_ids` no banco. Usar somente conta
-controlada com papel no app, mensagens sintéticas e destinatário de e-mail
-de teste confirmado. O modo live depende de revisão, autenticação, custos
+controlada com identidade confirmada pela Profile API e mensagens sintéticas.
+E-mail e cron continuam desligados. O modo live depende de revisão, autenticação, custos
 e testes com o responsável. O painel não muda esses gates para produção.
 
 ## Verificação local e passos antes de ativar
 
 ```powershell
-node --test tools/instagram_support_test.mjs tools/deploy_instagram_support_test.mjs
+node --test tools/instagram_support_test.mjs tools/deploy_instagram_support_test.mjs tools/activate_instagram_support_test_test.mjs
 node --check supabase/functions/instagram-support/index.ts
 node --check assets/js/adminAtendimento.js
 git diff --check
@@ -307,10 +340,42 @@ Um tipo de teste não substitui o outro.
 Antes de ativar: aplicar a migration revisada no portal; implantar a função
 em off; testar 403 para controle anônimo e assinatura inválida; verificar
 login administrativo e leitura real da fila; configurar callback oficial
-e receber evento de conta controlada; testar encaminhamento, alerta e pausa;
+e receber evento de conta controlada; testar orientação ao WhatsApp e pausa;
 conferir ausência de resposta duplicada com as automações nativas/ManyChat;
 confirmar custo total e privacidade; apresentar os resultados ao proprietário.
 Somente depois liberar clientes. Não enviar mensagem de teste a cliente real.
+
+Os quatro FAQs nativos continuam ativos para os clientes durante o teste
+restrito. Antes da produção, escolher um único motor de respostas e desligar
+as automações nativas que duplicarem este fluxo. Um echo sem MID do outbox
+continua causando pausa conservadora, inclusive se vier de outra automação.
+Não liberar modo live enquanto o escopo de produção/App Review estiver pendente.
+
+## Helper separado de teste restrito
+
+`tools/activate_instagram_support_test.mjs` tem plano offline por padrão.
+`--check` confere somente por leitura; `--apply` é reservado à revisão da
+coordenação e habilita exclusivamente a conta de teste autorizada. Não aceita
+modo live, IDs na linha de comando, criação de credenciais ou alterações em
+faturamento, cron, analytics e automações nativas da Meta.
+
+O remetente único, o username esperado e o Page token canônico são lidos em memória de `.env.local`
+ignorado ou do ambiente. O helper valida inbound OFF persistido, username exato,
+backend com suporte ao aviso único, limites e gates desligados nos dois lados.
+Ele grava quatro flags de teste no runtime com o banco ainda OFF, confere seus
+digests e muda o banco atomicamente por último. O evento de bootstrap continua
+terminal. A confirmação imprime somente booleans e contagens. Uma falha parcial
+fecha o banco e o runtime; se a conferência de rollback falhar, informa a
+necessidade de conferir OFF. O helper não chama `/drain`. O GET `/health`,
+protegido pelo mesmo segredo do worker em cabeçalho, confirma modo efetivo,
+gates e contagens após a troca, sem processar eventos ou revelar identificadores.
+Lease ativo e envio de resultado incerto do remetente impedem a ativação.
+
+O teste autorizado usa Supabase e Gemini Paid, texto redigido e teto do agente
+de R$45/mês, com R$5 de margem dentro do orçamento de R$50. A tarifa vale por
+até 30 dias; depois o modelo encaminha para atendimento humano. São no máximo
+três gerações por dez minutos para o remetente. O teste real depende de uma
+mensagem nova após a conferência da ativação; os clientes permanecem fora da lista.
 
 ## Helper de implantação em modo desligado
 

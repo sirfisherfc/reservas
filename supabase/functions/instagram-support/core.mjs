@@ -37,6 +37,8 @@ export function loadConfig(read) {
     appSecret: read('INSTAGRAM_APP_SECRET') ?? '', verifyToken: read('INSTAGRAM_VERIFY_TOKEN') ?? '',
     pageToken: read('INSTAGRAM_PAGE_ACCESS_TOKEN') ?? '', drainSecret: read('INSTAGRAM_DRAIN_SECRET') ?? '',
     geminiKey: read('GEMINI_API_KEY') ?? '', dataApproved: read('INSTAGRAM_AI_DATA_APPROVED') === 'true',
+    publicDataApproved: read('INSTAGRAM_PUBLIC_DATA_APPROVED') === 'true',
+    publicDeliveryVerified: read('INSTAGRAM_PUBLIC_DELIVERY_VERIFIED') === 'true',
     resendKey: read('RESEND_API_KEY') ?? '', resendFrom: read('RESEND_FROM') ?? '',
     alertsEnabled: read('INSTAGRAM_ALERTS_ENABLED') === 'true',
     testSenders: new Set(String(read('INSTAGRAM_TEST_SENDER_IDS') ?? '').split(',')
@@ -110,7 +112,9 @@ export function extractEvents(payload, now) {
 export function effectiveMode(config, settings) {
   if (config.mode === 'off' || settings?.mode === 'off' || settings?.paused === true) return 'off';
   if (!['test', 'live'].includes(settings?.mode)) return 'off';
-  return config.mode === 'test' || settings.mode === 'test' ? 'test' : 'live';
+  if (config.mode === 'test' || settings.mode === 'test') return 'test';
+  return config.publicDataApproved === true && config.publicDeliveryVerified === true
+    && settings.public_data_approved === true && settings.public_delivery_verified === true ? 'live' : 'off';
 }
 
 function senderAllowed(config, settings, sender) {
@@ -161,7 +165,7 @@ export function createHandler({ config, store, classify, send, sendAlert = null,
       return 'ignored';
     }
     if (row.handoff_ack === true) {
-      // The database already saved the case and pause, then leased this one notice.
+      // The database saved the case and leased its single WhatsApp notice.
       // No classifier or paid reservation runs on this branch.
       if (!UUID.test(row.case_id ?? '')) return 'paused';
       const reply = reviewedReply(row.reply_key || 'HUMAN', '', now(), {
@@ -225,7 +229,7 @@ export function createHandler({ config, store, classify, send, sendAlert = null,
     const completed = await store.complete(row.event_id, row.lease, result);
     if (!completed?.allowed || completed.decision === 'cancelled') return 'skipped';
     const isHandoff = completed.decision === 'handoff';
-    // Handoff text is allowed only after the case and pause were persisted.
+    // Handoff text is allowed only after the case was persisted. Manual pauses still win.
     if (isHandoff && !completed.case_saved) return 'human';
     const reply = reviewedReply(result.reply_key || result.intent, text, now(), {
       firstReply: row.first_reply !== false, handoff: isHandoff });
@@ -320,6 +324,7 @@ export function createHandler({ config, store, classify, send, sendAlert = null,
         return json({ data, runtime_mode: config.mode, runtime: {
           webhook_configured: webhookReady(config), send_configured: config.pageToken.length >= 20,
           ai_key_configured: config.geminiKey.length >= 20, ai_data_approved: config.dataApproved,
+          public_data_approved: config.publicDataApproved, public_delivery_verified: config.publicDeliveryVerified,
           alerts_configured: config.alertsEnabled && config.resendKey.length >= 10 && Boolean(config.resendFrom),
         } }, 200, cors);
       }
@@ -331,6 +336,8 @@ export function createHandler({ config, store, classify, send, sendAlert = null,
         const allowed = new Set(Array.isArray(state.test_sender_ids) ? state.test_sender_ids : []);
         return json({ runtime_mode: config.mode, effective_mode: effectiveMode(config, state), paused: state.paused === true,
           ai_data_approved: config.dataApproved, alerts_enabled: config.alertsEnabled,
+          public_data_approved: config.publicDataApproved && state.public_data_approved === true,
+          public_delivery_verified: config.publicDeliveryVerified && state.public_delivery_verified === true,
           runtime_test_senders: config.testSenders.size, database_test_senders: allowed.size,
           matched_test_senders: [...config.testSenders].filter(sender => allowed.has(sender)).length });
       }

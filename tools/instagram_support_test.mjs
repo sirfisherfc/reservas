@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHandler, loadConfig, extractEvents, limitedBody } from '../supabase/functions/instagram-support/core.mjs';
+import { createHandler, loadConfig, effectiveMode, extractEvents, limitedBody } from '../supabase/functions/instagram-support/core.mjs';
 import { ASSETS, LIMITS, MODEL, redactText, inputTokenUpperBound, reviewedReply, spamReason, isSpam, prepareIncomingText } from '../supabase/functions/instagram-support/policy.mjs';
 import { createTransports, createProfileEnricher } from '../supabase/functions/instagram-support/transport.mjs';
 import { readFile } from 'node:fs/promises';
@@ -80,14 +80,23 @@ class Store {
     }
     if (input.safety_intent && !this.state.paused && this.state.mode !== 'off'
       && (this.state.mode !== 'test' || this.state.test_sender_ids.includes(input.sender_id))) {
-      thread.human = true; thread.version++;
-      const active = { id: uid(++this.count), thread_id: thread.id, reason: input.safety_intent.toLowerCase(), notice: event.event_id };
+      thread.version++;
+      let active = this.cases.find(row => row.thread_id === thread.id);
+      if (active) {
+        if (priority(input.safety_intent) > priority(active.reason)) active.reason = input.safety_intent.toLowerCase();
+        if (this.bindNotice(thread, active, event)) { this.events.set(input.mid, event); return { queued: true, case_saved: true }; }
+        this.refreshNotice(thread, active);
+        event.status = 'human'; event.text = ''; this.events.set(input.mid, event);
+        return { queued: this.row(active.notice)?.status === 'pending', case_saved: true };
+      }
+      active = { id: uid(++this.count), thread_id: thread.id, reason: input.safety_intent.toLowerCase(), notice: event.event_id };
       this.cases.push(active);
       Object.assign(event, { text: '', status: 'pending', ack: true, handoff_ack: true,
         case_id: active.id, reply_key: input.safety_intent, thread_version: thread.version });
       this.events.set(input.mid, event); return { queued: true, case_saved: true };
     }
     thread.version++;
+    this.refreshNotice(thread, this.cases.find(row => row.thread_id === thread.id));
     const queued = !thread.human && !this.state.paused && this.state.mode !== 'off'
       && (this.state.mode !== 'test' || this.state.test_sender_ids.includes(input.sender_id));
     event.status = queued ? 'pending' : 'ignored';
@@ -95,9 +104,9 @@ class Store {
   }
   async claim() {
     if (this.state.paused || this.state.mode === 'off') return [];
-    for (const event of this.events.values()) {
+    for (const event of [...this.events.values()].sort((a,b) => Number(!!b.ack)-Number(!!a.ack))) {
       const thread = this.threads.get(event.sender_id);
-      if (event.withdrawn || event.status !== 'pending' || (thread.human && !event.ack) || thread.leased) continue;
+      if (event.withdrawn || event.status !== 'pending' || thread.human || thread.leased) continue;
       event.status = event.ack ? 'completed' : 'processing'; event.lease = uid(++this.count); event.thread_version = thread.version;
       thread.leased = event.lease;
       return [{ ...event, clarify_count: thread.clarify, first_reply: !thread.sent }];
@@ -119,8 +128,15 @@ class Store {
     if (result.skip) { event.status = 'ignored'; thread.leased = null; return { allowed: false, decision: 'cancelled' }; }
     event.result = result; event.status = 'completed';
     let decision = 'reply';
-    if (result.intent === 'UNKNOWN') { thread.clarify++; decision = 'clarify'; } else if (!result.handoff_reason) thread.clarify = 0;
-    if (result.handoff_reason) { decision = 'handoff'; thread.human = true; thread.version++; event.ack = true;
+    if (result.intent === 'UNKNOWN') thread.clarify++; else if (!result.handoff_reason) thread.clarify = 0;
+    if (result.handoff_reason) { decision = 'handoff'; thread.version++;
+      const active = this.cases.find(row => row.thread_id === thread.id);
+      if (active) {
+        if (this.bindNotice(thread, active, event)) { event.status = 'completed'; event.thread_version = thread.version;
+          return { allowed: true, decision, case_saved: true, thread_version: thread.version }; }
+        event.status = 'human'; thread.leased = null; return { allowed: false, decision, case_saved: true };
+      }
+      event.ack = true;
       this.cases.push({ id: uid(++this.count), thread_id: thread.id, reason: result.handoff_reason, notice: id }); }
     event.thread_version = thread.version;
     return { allowed: true, decision, thread_version: thread.version, case_saved: decision === 'handoff' };
@@ -128,8 +144,11 @@ class Store {
   async prepareSend(id, lease, text, version) {
     const event = this.row(id); const thread = this.threads.get(event.sender_id);
     if (event.withdrawn || event.status !== 'completed' || event.lease !== lease || thread.version !== version
-      || (thread.human && !event.ack) || this.state.paused || this.state.mode === 'off') return { allowed: false };
+      || thread.human || this.state.paused || this.state.mode === 'off') return { allowed: false };
     if ([...this.outbox.values()].some(row => row.event_id === id)) return { allowed: false };
+    const active = this.cases.find(row => row.notice === id);
+    if (event.ack && (!active || active.notice_attempted)) return { allowed: false };
+    if (event.ack) active.notice_attempted = true;
     const outboxId = uid(++this.count); event.status = 'sending';
     this.outbox.set(outboxId, { event_id: id, sender_id: event.sender_id, status: 'sending', text });
     return { allowed: true, outbox_id: outboxId };
@@ -145,6 +164,21 @@ class Store {
     for (const event of this.events.values()) if (event.thread_id === thread.id && event.ack && ['pending', 'completed'].includes(event.status)) {
       event.status = 'superseded'; event.ack = false; thread.leased = null;
     }
+  }
+  refreshNotice(thread, active) {
+    const notice = active && this.row(active.notice);
+    if (thread.human || active?.notice_attempted || !notice?.ack || !['pending','completed'].includes(notice.status)) return;
+    if (thread.leased === notice.lease) thread.leased = null;
+    Object.assign(notice, { status: 'pending', lease: null, thread_version: thread.version, reply_key: active.reason.toUpperCase() });
+  }
+  bindNotice(thread, active, event) {
+    const old = this.row(active.notice);
+    if (thread.human || active.notice_attempted || (old?.ack && ['pending','completed'].includes(old.status))
+      || [...this.outbox.values()].some(box => this.row(box.event_id)?.case_id === active.id)) return false;
+    active.notice = event.event_id;
+    Object.assign(event, { status: 'pending', text: '', ack: true, handoff_ack: true,
+      case_id: active.id, reply_key: active.reason.toUpperCase(), thread_version: thread.version });
+    return true;
   }
   async control(action, id, args) {
     this.controls.push({ action, thread: id, args });
@@ -255,7 +289,7 @@ test('cancellation just before ACK preparation prevents the WhatsApp notice with
   const app = harness({ store });
   await app.handler(await signed(app.config, envelope('synthetic-cancel-ack', 'Como falo com uma pessoa?'))); await app.drain();
   assert.equal(app.sent.length, 0); assert.equal(app.calls.length, 0);
-  assert.equal(store.threads.get(CUSTOMER).human, true); assert.equal(store.outbox.size, 0);
+  assert.equal(store.threads.get(CUSTOMER).human, false); assert.equal(store.outbox.size, 0);
 });
 
 test('cancellation after Graph begins clears saved text and keeps uncertain result without retry', async () => {
@@ -312,12 +346,67 @@ test('unknown echo is persisted before incoming in the same envelope and pauses 
   assert.equal(app.store.threads.get(CUSTOMER).human, true);
 });
 
-test('human request creates pause before acknowledgement and future incoming stays silent', async () => {
+test('human request offers WhatsApp once, later FAQ answers and repeated request keeps the same case', async () => {
   const app = harness(); await app.store.ingest(incoming('synthetic-human', 'Quero falar com a gerente.'));
   await app.drain(); assert.equal(app.calls.length, 0); assert.equal(app.store.cases.length, 1);
-  assert.equal(app.store.threads.get(CUSTOMER).human, true); assert.match(app.sent[0].text, /wa\.me\/5585988544274/);
+  assert.equal(app.store.threads.get(CUSTOMER).human, false); assert.match(app.sent[0].text, /wa\.me\/5585988544274/);
   await app.store.ingest(incoming('synthetic-human-followup', 'Qual é o horário?')); await app.drain();
+  assert.equal(app.sent.length, 2); assert.equal(app.calls.length, 1); assert.match(app.sent[1].text, /22h15/);
+  await app.store.ingest({ ...incoming('synthetic-human-repeat', ''), safety_intent: 'HUMAN' }); await app.drain();
+  assert.equal(app.sent.length, 2); assert.equal(app.store.cases.length, 1);
+});
+
+test('sensitive pending notice precedes FAQ and a new severity invalidates its old lease', async () => {
+  const app = harness();
+  await app.handler(await signed(app.config, envelope('synthetic-wa-source', 'Como falo com uma pessoa?')));
+  const old = (await app.store.claim())[0];
+  await app.handler(await signed(app.config, envelope('synthetic-wa-urgent', 'É urgente, estou passando mal no restaurante.')));
+  await app.handler(await signed(app.config, envelope('synthetic-wa-faq', 'Qual o horário?')));
+  assert.equal((await app.store.prepareSend(old.event_id, old.lease, 'Aviso antigo', old.thread_version)).allowed, false);
+  await app.drain();
+  assert.equal(app.sent.length, 2); assert.match(app.sent[0].text, /equipe presente agora/);
+  assert.match(app.sent[1].text, /22h15/); assert.equal(app.calls.length, 1);
+  assert.equal(app.store.cases.length, 1); assert.equal(app.store.threads.get(CUSTOMER).human, false);
+});
+
+test('a real manual echo after WhatsApp suppresses FAQ and unknown without clearing the case', async () => {
+  const app = harness();
+  await app.handler(await signed(app.config, envelope('synthetic-route-manual', 'Como falo com uma pessoa?'))); await app.drain();
+  await app.store.ingest({ ...incoming('synthetic-real-echo', ''), kind: 'echo' });
+  await app.store.ingest(incoming('synthetic-paused-faq', 'Qual o horário?')); await app.drain();
+  await app.store.ingest(incoming('synthetic-paused-unknown', 'Até que horas fecha a cozinha?')); await app.drain();
   assert.equal(app.sent.length, 1); assert.equal(app.calls.length, 0);
+  assert.equal(app.store.threads.get(CUSTOMER).human, true); assert.equal(app.store.cases.length, 1);
+});
+
+test('public consent and official delivery proof are separate gates from owner TEST approval', async () => {
+  const config = { ...fixtureConfig(), mode: 'live' };
+  const state = { mode: 'live', paused: false, public_data_approved: true, public_delivery_verified: true };
+  assert.equal(effectiveMode(config, state), 'off');
+  const production = { ...config, publicDataApproved: true, publicDeliveryVerified: true };
+  assert.equal(effectiveMode(production, state), 'live');
+  for (const key of ['public_data_approved', 'public_delivery_verified'])
+    assert.equal(effectiveMode(production, { ...state, [key]: false }), 'off');
+  for (const key of ['publicDataApproved', 'publicDeliveryVerified'])
+    assert.equal(effectiveMode({ ...production, [key]: false }, state), 'off');
+  assert.equal(effectiveMode(config, { ...state, mode: 'test' }), 'test');
+});
+
+test('a fresh human request can offer the first WhatsApp notice after a pre-send cancellation', async () => {
+  for (const cancelledBy of ['pause', 'withdrawal']) {
+    const app = harness();
+    await app.handler(await signed(app.config, envelope('synthetic-first-cancelled', 'Como falo com uma pessoa?')));
+    if (cancelledBy === 'pause') {
+      await app.store.control('pause_global', null, { paused: true });
+      await app.store.control('pause_global', null, { paused: false });
+    } else await app.handler(await signed(app.config, envelope('synthetic-first-cancelled', '', CUSTOMER, { is_deleted: true })));
+    await app.drain(); assert.equal(app.sent.length, 0);
+    await app.handler(await signed(app.config, envelope('synthetic-fresh-human-after-cancel', 'Como falo com uma pessoa?'))); await app.drain();
+    assert.equal(app.sent.length, 1); assert.match(app.sent[0].text, /wa\.me/);
+    assert.equal(app.store.cases.length, 1); assert.equal(app.calls.length, 0);
+    await app.handler(await signed(app.config, envelope('synthetic-fresh-human-repeat', 'Como falo com uma pessoa?'))); await app.drain();
+    assert.equal(app.sent.length, 1);
+  }
 });
 
 test('manual takeover racing with model completion suppresses the automatic response', async () => {
@@ -339,13 +428,14 @@ test('atomic reservation prevents two simultaneous calls from exceeding the budg
   assert.ok(app.store.cases.some(row => row.reason === 'budget_or_rate_limit'));
 });
 
-test('one clarification then human, with no model calls while human-paused', async () => {
+test('unknown offers WhatsApp once and keeps the case open for a later unknown', async () => {
   const app = harness({ classify: async () => responseFor('UNKNOWN') });
   await app.store.ingest(incoming('synthetic-unknown-1', 'Outra questão.')); await app.drain();
-  assert.equal(app.store.threads.get(CUSTOMER).clarify, 1); assert.equal(app.store.cases.length, 0);
+  assert.equal(app.store.threads.get(CUSTOMER).clarify, 1); assert.equal(app.store.cases.length, 1);
+  assert.match(app.sent[0].text, /Não tenho uma resposta confirmada/); assert.match(app.sent[0].text, /wa\.me/);
   await app.store.ingest(incoming('synthetic-unknown-2', 'Ainda não entendi.')); await app.drain();
-  assert.equal(app.store.threads.get(CUSTOMER).human, true); assert.equal(app.sent.length, 2);
-  await app.store.ingest(incoming('synthetic-unknown-3', 'Pode verificar?')); await app.drain(); assert.equal(app.sent.length, 2);
+  assert.equal(app.store.threads.get(CUSTOMER).human, false); assert.equal(app.sent.length, 1);
+  await app.store.ingest(incoming('synthetic-unknown-3', 'Pode verificar?')); await app.drain(); assert.equal(app.sent.length, 1);
 });
 
 test('unsafe/generated output never becomes a customer response', async () => {
@@ -492,7 +582,7 @@ test('long messages preserve safety intent from the tail and never reach the mod
   assert.equal(extracted.safety_intent, 'ALLERGY'); assert.ok(extracted.text.length < 1200);
   await app.handler(await signed(app.config, payload)); await Promise.all(app.tasks);
   assert.equal(app.calls.length, 0); assert.equal(app.sent.length, 1); assert.match(app.sent[0].text, /mesmo óleo/);
-  assert.equal(app.store.threads.get(CUSTOMER).human, true); assert.equal(app.store.cases[0].reason, 'allergy');
+  assert.equal(app.store.threads.get(CUSTOMER).human, false); assert.equal(app.store.cases[0].reason, 'allergy');
 });
 
 test('a later message cannot supersede an explicit request for human or allergy', async () => {
@@ -500,15 +590,15 @@ test('a later message cannot supersede an explicit request for human or allergy'
     const app = harness(); const payload = envelope('synthetic-first-risk', risk);
     payload.entry[0].messaging.push(...envelope('synthetic-followup-safe', 'Quais porções têm?').entry[0].messaging);
     await app.handler(await signed(app.config, payload)); await app.drain();
-    assert.equal(app.store.threads.get(CUSTOMER).human, true); assert.equal(app.store.cases.length, 1);
-    assert.equal(app.calls.length, 0); assert.equal(app.sent.length, 1); assert.match(app.sent[0].text, /wa\.me\/5585988544274/);
+    assert.equal(app.store.threads.get(CUSTOMER).human, false); assert.equal(app.store.cases.length, 1);
+    assert.equal(app.calls.length, 1); assert.equal(app.sent.length, 2); assert.match(app.sent[0].text, /wa\.me\/5585988544274/);
   }
 });
 
 test('spam vocabulary does not suppress a request for a person', async () => {
   const app = harness();
   await app.store.ingest(incoming('synthetic-spam-human', 'Recebi spam de cassino citando o restaurante. Quero falar com a gerente.'));
-  await app.drain(); assert.equal(app.store.threads.get(CUSTOMER).human, true);
+  await app.drain(); assert.equal(app.store.threads.get(CUSTOMER).human, false);
   assert.equal(app.store.cases.length, 1); assert.equal(app.calls.length, 0);
 });
 
@@ -666,14 +756,14 @@ test('media without usable text stays inconclusive and follows the human flow', 
     {attachments:[{type:'image',payload:{url:'https://example.invalid/fixture-image'}}]});
   await app.handler(await signed(app.config,payload));await app.drain();
   assert.equal(app.store.cases.length,1);assert.equal(app.calls.length,0);assert.equal(app.sent.length,1);
-  assert.equal(app.store.threads.get(CUSTOMER).human,true);
+  assert.equal(app.store.threads.get(CUSTOMER).human,false);
 });
 
 test('a later clear spam delivery preserves an existing human case and pause', async () => {
   const app=harness();await app.handler(await signed(app.config,envelope('synthetic-existing-help','Quero falar com uma pessoa.')));await app.drain();
   const before=structuredClone(app.store.cases);const threadVersion=app.store.threads.get(CUSTOMER).version;
   await app.handler(await signed(app.config,envelope('synthetic-spam-after-help',fakeWarning)));await app.drain();
-  assert.deepEqual(app.store.cases,before);assert.equal(app.store.threads.get(CUSTOMER).human,true);
+  assert.deepEqual(app.store.cases,before);assert.equal(app.store.threads.get(CUSTOMER).human,false);
   assert.equal(app.store.threads.get(CUSTOMER).version,threadVersion);assert.equal(app.sent.length,1);assert.equal(app.calls.length,0);
 });
 
@@ -729,7 +819,7 @@ test('missing kitchen hours explain the missing source and offer a clear next st
     const app = harness(); // Would return HOURS if a call escaped the source guard.
     await app.handler(await signed(app.config, envelope('synthetic-kitchen', text))); await app.drain();
     assert.equal(app.sent.length, 1); assert.match(app.sent[0].text, /Não tenho uma resposta confirmada/);
-    assert.match(app.sent[0].text, /falar com uma pessoa/);
+    assert.match(app.sent[0].text, /wa\.me\/5585988544274/);
     assert.equal(app.calls.length, 0); assert.equal(app.store.reservationCount, 0);
     assert.doesNotMatch(app.sent[0].text, /9h|22h15|23h/);
   }
@@ -738,7 +828,7 @@ test('missing kitchen hours explain the missing source and offer a clear next st
 test('human and sensitive kitchen requests keep priority over the missing-source guard', async () => {
   for (const text of ['Qual o horário da cozinha? Quero falar com uma pessoa.', 'Cozinha fecha quando? Tenho alergia grave.']) {
     const app = harness(); await app.handler(await signed(app.config, envelope('synthetic-kitchen-sensitive', text))); await app.drain();
-    assert.equal(app.store.threads.get(CUSTOMER).human, true); assert.equal(app.sent.length, 1);
+    assert.equal(app.store.threads.get(CUSTOMER).human, false); assert.equal(app.sent.length, 1);
     assert.match(app.sent[0].text, /wa\.me\/5585988544274/); assert.equal(app.calls.length, 0);
   }
 });

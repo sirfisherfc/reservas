@@ -67,8 +67,10 @@ async function refresh() {
   const mode = statusResult.runtime_mode === 'off' || settings.mode === 'off' ? 'Desligado'
     : statusResult.runtime_mode === 'test' || settings.mode === 'test' ? 'Teste com lista permitida' : 'Produção configurada';
   const runtime = statusResult.runtime ?? {};
+  const publicReady = runtime.public_data_approved === true && runtime.public_delivery_verified === true
+    && settings.public_data_approved === true && settings.public_delivery_verified === true;
   const ready = runtime.webhook_configured && runtime.send_configured && runtime.ai_key_configured && runtime.ai_data_approved
-    && settings.model_usage_allowed && settings.billing_verified;
+    && settings.model_usage_allowed && settings.billing_verified && (mode !== 'Produção configurada' || publicReady);
   el('support-status').textContent = `Modo: ${mode}. ${paused ? 'As respostas automáticas estão pausadas.'
     : ready ? 'A pausa global está liberada; os controles por conversa e orçamento continuam valendo.'
       : 'A automação ainda depende de configuração ou validação. Os casos seguem para atendimento humano.'}`;
@@ -94,10 +96,10 @@ function button(label, action, thread, needsConfirmation = false) {
     const snapshot = await refresh();
     const current = snapshot.rows.find(row => row.thread_id === thread);
     if (action === 'assume' && (!current?.human_paused || !current.assigned_to)) throw new Error('A atribuição não foi confirmada ao atualizar a fila. Confira o Direct e o responsável.');
-    if (action === 'close' && (!current?.human_paused || current.status !== 'closed')) throw new Error('O encerramento não foi confirmado ao atualizar a fila. Confira o caso.');
+    if (action === 'close' && current && current.status !== 'closed') throw new Error('O encerramento não foi confirmado ao atualizar a fila. Confira o caso.');
     if (action === 'resume' && current?.human_paused) throw new Error('A conversa continua pausada. Confira o caso antes de retomar.');
     notice(action === 'resume' ? 'Retomada registrada. Os controles de modo e orçamento continuam valendo.'
-      : action === 'close' ? 'Caso encerrado. A conversa continua com a automação pausada.' : 'Caso assumido para atendimento humano.');
+      : action === 'close' ? 'Caso encerrado. A pausa anterior da conversa foi preservada.' : 'Caso assumido. A automação desta conversa está pausada até a retomada.');
   }));
   return node;
 }
@@ -154,7 +156,7 @@ async function init() {
   await mountLayout(user, 'atendimento');
   el('support-refresh').addEventListener('click', () => run(refresh));
   el('support-pause').addEventListener('click', () => run(async () => {
-    if (paused && !await confirmResume('Liberar a pausa global permite novas respostas nas conversas automáticas. Casos humanos continuam pausados.')) return;
+    if (paused && !await confirmResume('Liberar a pausa global permite novas respostas. Pausas manuais por conversa continuam valendo.')) return;
     const targetPaused = !paused;
     requireChange(await control('pause_global', { paused: targetPaused }));
     const snapshot = await refresh();

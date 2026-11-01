@@ -9,7 +9,8 @@ export const PROJECT = 'lucpxoynpvogkvzepagi';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SLUG = 'instagram-support';
 const FILES = ['index.ts', 'core.mjs', 'policy.mjs', 'transport.mjs'];
-const SAFE_GATES = Object.freeze({ INSTAGRAM_SUPPORT_MODE: 'off', INSTAGRAM_AI_DATA_APPROVED: 'false', INSTAGRAM_ALERTS_ENABLED: 'false' });
+const SAFE_GATES = Object.freeze({ INSTAGRAM_SUPPORT_MODE: 'off', INSTAGRAM_AI_DATA_APPROVED: 'false', INSTAGRAM_ALERTS_ENABLED: 'false',
+  INSTAGRAM_PUBLIC_DATA_APPROVED: 'false', INSTAGRAM_PUBLIC_DELIVERY_VERIFIED: 'false' });
 const OWNED_SECRETS = new Set(['INSTAGRAM_APP_SECRET', 'INSTAGRAM_VERIFY_TOKEN',
   'INSTAGRAM_PAGE_ACCESS_TOKEN', 'INSTAGRAM_DRAIN_SECRET', 'INSTAGRAM_TEST_SENDER_IDS',
   'GEMINI_API_KEY', ...Object.keys(SAFE_GATES)]);

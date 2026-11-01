@@ -24,6 +24,10 @@ test('secret plan preserves existing provider/email settings and never permits a
   assert.throws(() => secretPlan({ SUPABASE_SERVICE_ROLE_KEY: 'synthetic' }), /secret_not_allowed/);
   assert.throws(() => secretPlan({ INSTAGRAM_SUPPORT_MODE: 'live' }), /activation_not_supported/);
   assert.throws(() => secretPlan({ INSTAGRAM_AI_DATA_APPROVED: 'true' }), /activation_not_supported/);
+  for (const name of ['INSTAGRAM_PUBLIC_DATA_APPROVED', 'INSTAGRAM_PUBLIC_DELIVERY_VERIFIED']) {
+    assert.equal(planned.updated.find(row => row.name === name).value, 'false');
+    assert.throws(() => secretPlan({ [name]: 'true' }), /activation_not_supported/);
+  }
 });
 
 test('secret dry run uses stdin object and prints names only', async () => {

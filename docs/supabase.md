@@ -41,7 +41,10 @@ O aviso único de WhatsApp por caso ativo fica na migration
 `20261101102855_instagram_support_whatsapp_notice.sql`, no mesmo repositório.
 Ela acrescenta `cases.handoff_notice_event_id` com FK de retenção, recria os
 RPCs de fila/controle com grants somente ao servidor e mantém a instalação OFF,
-sem responsável padrão, e-mail ou cron. A pausa humana continua ativa durante o aviso.
+sem responsável padrão, e-mail ou cron. A revisão `20261101161022`
+separa indicação automática do WhatsApp de pausa: uma FAQ posterior segue
+elegível. Pausas manuais/echo e envio incerto exigem conferência. O caso
+mantém um único aviso e o fechamento preserva a pausa vigente.
 A Edge Function instala com modo desligado e autentica o webhook por HMAC;
 o controle administrativo valida o JWT e `fn_is_admin`. Nenhuma tabela de
 reservas ou financeira participa da fila. Implantação, segredos e testes

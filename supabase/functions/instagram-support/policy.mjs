@@ -211,10 +211,11 @@ export function reviewedReply(intent, text, now, { firstReply = true, handoff = 
     HAPPY_HOUR: 'A casa não tem happy hour. Temos terça em dobro no almoço, conforme as condições da promoção.',
     CAKE: 'Você pode levar bolo sem taxa. Outras comidas e a organização da comemoração precisam ser conferidas com a equipe. O Réveillon tem regras próprias.',
     CAREERS: 'Envie seu currículo para sir.fisher@outlook.com. A equipe confere as oportunidades disponíveis.',
-    UNKNOWN: 'Não tenho uma resposta confirmada para esse pedido. Você pode detalhar a dúvida ou escrever “falar com uma pessoa” para a equipe conferir.',
+    UNKNOWN: `Não tenho uma resposta confirmada para esse pedido. Abra ${WHATSAPP} e envie sua dúvida por lá para a equipe conferir.`,
   };
   if (handoff || HUMAN_INTENTS.has(intent)) {
-    const specific = intent === 'ALLERGY' ? 'A equipe precisa conferir ingredientes e preparo com a cozinha. Os fritos usam o mesmo óleo. '
+    const specific = intent === 'UNKNOWN' ? 'Não tenho uma resposta confirmada para esse pedido. '
+      : intent === 'ALLERGY' ? 'A equipe precisa conferir ingredientes e preparo com a cozinha. Os fritos usam o mesmo óleo. '
       : intent === 'URGENCY' ? 'Se você está no restaurante, procure a equipe presente agora. '
       : intent === 'RESERVATION_CHANGE' ? 'Para cancelar, use o link seguro recebido no e-mail da reserva. Alterações precisam da equipe. ' : '';
     return (firstReply ? 'Sou o assistente virtual do Sir Fisher. ' : '') + specific
@@ -227,7 +228,7 @@ export function reviewedReply(intent, text, now, { firstReply = true, handoff = 
 export function decisionFor(intent, clarifyCount = 0) {
   if (HUMAN_INTENTS.has(intent)) return { intent, reply_key: intent, handoff_reason: intent.toLowerCase(),
     summary: 'Solicitação de atendimento humano: ' + intent.toLowerCase() + '.' };
-  if (intent === 'UNKNOWN' && clarifyCount > 0) return { intent: 'HUMAN', reply_key: 'HUMAN',
-    handoff_reason: 'unknown_after_clarification', summary: 'Dúvida sem resposta após pedido de esclarecimento.' };
+  if (intent === 'UNKNOWN') return { intent, reply_key: intent,
+    handoff_reason: 'unresolved_question', summary: 'Dúvida sem informação confirmada; WhatsApp indicado.' };
   return { intent, reply_key: intent, summary: 'Assunto: ' + intent.toLowerCase() + '.' };
 }

@@ -462,10 +462,23 @@ test('manual echo and global pause cancel a pending WhatsApp notice before any s
 });
 
 test('missing kitchen hours explain the missing source and offer a clear next step', async () => {
-  const app = harness({ classify: async () => responseFor('UNKNOWN') });
-  await app.handler(await signed(app.config, envelope('synthetic-kitchen', 'Até que horas a cozinha funciona?'))); await app.drain();
-  assert.equal(app.sent.length, 1); assert.match(app.sent[0].text, /Não tenho uma resposta confirmada/);
-  assert.match(app.sent[0].text, /falar com uma pessoa/);
+  // Intentionally misleading classifier reproduces the real HOURS mistake.
+  for (const text of ['Até que horas funciona a cozinha?', 'Qual o horário da cozinha?', 'Que horas fecha a cozinha?', 'Qual o horário do último pedido?']) {
+    const app = harness(); // Would return HOURS if a call escaped the source guard.
+    await app.handler(await signed(app.config, envelope('synthetic-kitchen', text))); await app.drain();
+    assert.equal(app.sent.length, 1); assert.match(app.sent[0].text, /Não tenho uma resposta confirmada/);
+    assert.match(app.sent[0].text, /falar com uma pessoa/);
+    assert.equal(app.calls.length, 0); assert.equal(app.store.reservationCount, 0);
+    assert.doesNotMatch(app.sent[0].text, /9h|22h15|23h/);
+  }
+});
+
+test('human and sensitive kitchen requests keep priority over the missing-source guard', async () => {
+  for (const text of ['Qual o horário da cozinha? Quero falar com uma pessoa.', 'Cozinha fecha quando? Tenho alergia grave.']) {
+    const app = harness(); await app.handler(await signed(app.config, envelope('synthetic-kitchen-sensitive', text))); await app.drain();
+    assert.equal(app.store.threads.get(CUSTOMER).human, true); assert.equal(app.sent.length, 1);
+    assert.match(app.sent[0].text, /wa\.me\/5585988544274/); assert.equal(app.calls.length, 0);
+  }
 });
 
 test('callback-to-reply retains explicit Christmas date after redaction', async () => {

@@ -1,11 +1,50 @@
 # Atendimento do Instagram em nuvem
 
-Revisão de 01/11/2026 em validação local: pedidos humanos vão ao WhatsApp
+**Estado atual: OFF durante correção de precisão identificada no teste
+controlado. Clientes não foram liberados.** A aplicação anterior de TEST foi
+restrita a uma única conta com identidade confirmada pela Meta, após revisão
+e `--check` real. O banco/runtime foram novamente fechados e conferidos,
+preservando consumo e histórico.
+
+Na etapa anterior de TEST,
+Health confirmou runtime e banco TEST, pausa global false, dados aprovados
+somente nesse teste, listas e interseção com uma conta. Modelo/faturamento
+verificados, teto R$45, 2.000 gerações, reserva de 2 centavos e tarifa válida
+por até 30 dias. Responsável NULL, alertas e cron false. Na leitura imediatamente
+após ativar: zero outbox, chamadas de modelo, casos e bootstrap pendente.
+O helper não processou a fila. A primeira mensagem nova foi classificada como
+HOURS; o outbox recebeu `sent` e MID confirmado pela Meta, com 298 tokens de
+entrada e dois de saída. Uma chamada/um envio, sem caso ou pausa humana.
+O segundo teste, sobre horário da cozinha, falhou: o modelo escolheu HOURS
+apesar da instrução UNKNOWN. A resposta sobre o funcionamento da casa foi
+enviada à conta controlada. O teste foi suspenso. A correção aplica uma regra
+antes do modelo para horário da cozinha/último pedido sem fonte confirmada;
+responde que falta informação e oferece detalhar ou pedir uma pessoa.
+Regras humanas/sensíveis mantêm prioridade. O teste de regressão usa um
+classificador que retornaria HOURS e exige zero chamada/reserva. São agora
+57 testes Node aprovados. Repetição real, reserva e WhatsApp seguem pendentes.
+
+Revisão de 01/11/2026 implantada em OFF: pedidos humanos vão ao WhatsApp
 oficial `https://wa.me/5585988544274`, conforme decisão do proprietário.
 O novo fluxo grava o caso e a pausa antes de enviar um único aviso revisado,
-sem IA, por caso ativo. O modo TEST exige revisão em etapa separada.
+sem IA, por caso ativo. Migration `20261101102855` aplicada e registrada
+na mesma transação. Edge Function versão **7 ACTIVE**, commit `281e2e7`.
+Os 28 nomes de segredos foram preservados; responsável NULL, alertas e cron
+desligados. O modo TEST exige revisão em etapa separada.
 
-Implantado em 01/11/2026: **instagram-support versão 5, ACTIVE no portal,
+Passaram 56 testes Node (40 atendimento/painel + 8 instalador OFF + 8 helper
+TEST) e 26 contratos reais PostgreSQL18. A revisão independente não apontou
+P0/P1. O Security Advisor trouxe dez INFO de RLS sem policy no schema privado,
+sem WARN/ERROR do atendimento. A conferência confirmou grants somente ao
+servidor e preservação das definições/grants das outras funções públicas.
+
+Na versão publicada, health autenticado retornou 200 com runtime/effective OFF,
+pausa ativa e dados/alertas false; anônimo e segredo incorreto retornaram 403.
+Payload vazio assinado retornou 200/zero eventos e assinatura inválida, 401.
+O helper `--check` real confirmou perfil correspondente, remetente único e
+prontidão em OFF. Não houve drain, envio de Direct ou ativação TEST nesta etapa.
+
+Histórico anterior: **instagram-support versão 5, ACTIVE no portal,
 com atendimento desligado**. O código atual está no commit `368acf0` em
 `reservas`; a primeira implantação foi a versão 1, do commit `104f007`.
 Os três gates de runtime foram conferidos por digest: modo off, uso de dados
@@ -226,7 +265,8 @@ O teste real com pergunta pública retornou HTTP 200, enum `HOURS`, 297
 tokens de entrada e dois de saída. Isso comprova a chamada por enum;
 não comprova, sozinho, o tier financeiro ou a franquia desta chave. Depois,
 a coordenação conferiu Nível 1 pré-pagamento na interface e a correspondência
-da chave em memória. O gate de uso de dados de clientes continua false.
+da chave em memória. O gate permaneceu false durante essa preparação. A
+liberação posterior aplica-se somente à conta de teste descrita no estado atual.
 O tier gratuito pode usar conteúdo para melhorar produtos. Antes de texto
 real de clientes, o responsável deve conferir os termos e liberar os gates
 de privacidade separadamente.

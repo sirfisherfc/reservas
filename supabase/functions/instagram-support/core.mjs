@@ -1,4 +1,4 @@
-import { ASSETS, LIMITS, MODEL, redactText, prepareIncomingText, urgentIntent, isSpam, inputTokenUpperBound,
+import { ASSETS, LIMITS, MODEL, redactText, prepareIncomingText, urgentIntent, unconfirmedIntent, isSpam, inputTokenUpperBound,
   parseClassification, reviewedReply, decisionFor } from './policy.mjs';
 
 const encoder = new TextEncoder();
@@ -176,6 +176,7 @@ export function createHandler({ config, store, classify, send, sendAlert = null,
       await store.complete(row.event_id, row.lease, { intent: 'IGNORE', skip: true, summary: 'Conteúdo de prospecção de jogos/apostas.' });
       return 'ignored';
     }
+    intent ??= unconfirmedIntent(text);
     let result;
     if (!text) {
       intent = 'HUMAN';

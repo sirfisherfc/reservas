@@ -81,7 +81,7 @@ export function extractEvents(payload, now) {
     for (const event of entry.messaging) {
       if (++seen > LIMITS.events) throw new Error('event_limit');
       const message = event?.message;
-      if (!message || event.read || event.reaction || message.is_deleted
+      if (!message || event.read || event.reaction
         || event.is_group || message.is_group || (Array.isArray(event.participants) && event.participants.length > 2)) continue;
       if (typeof message.mid !== 'string' || !message.mid || message.mid.length > 512
         || /[\u0000-\u001f]/.test(message.mid)) continue;
@@ -91,16 +91,20 @@ export function extractEvents(payload, now) {
       const recipient = String(event.recipient?.id ?? '');
       const own = value => [ASSETS.instagramId, ASSETS.pageId].includes(value);
       const echo = message.is_echo === true;
+      const withdrawal = message.is_deleted === true;
+      // Customer cancellation targets only that customer's MID. Business echoes remain separate.
+      if (withdrawal && (own(sender) || !own(recipient))) continue;
       if (echo ? !own(sender) || own(recipient) : !own(recipient) || own(sender)) continue;
       const customer = echo ? recipient : sender;
       if (!VALID_ID.test(customer)) continue;
       found.push({ mid: message.mid, sender_id: customer, recipient_id: ASSETS.instagramId,
-        timestamp_ms: timestamp, ...(echo ? { text: '', safety_intent: null } : prepareIncomingText(message.text)),
-        kind: echo ? 'echo' : 'incoming' });
+        timestamp_ms: timestamp, ...(echo || withdrawal ? { text: '', safety_intent: null } : prepareIncomingText(message.text)),
+        kind: withdrawal ? 'withdrawal' : echo ? 'echo' : 'incoming' });
     }
   }
-  // Pause events are persisted before an incoming message from the same envelope.
-  return found.sort((a, b) => Number(a.kind !== 'echo') - Number(b.kind !== 'echo'));
+  // A cancellation wins over late originals in the same envelope; echoes pause before new work.
+  const priority = { withdrawal: 0, echo: 1, incoming: 2 };
+  return found.sort((a, b) => priority[a.kind] - priority[b.kind]);
 }
 
 export function effectiveMode(config, settings) {

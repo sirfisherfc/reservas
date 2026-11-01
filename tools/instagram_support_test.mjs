@@ -38,6 +38,23 @@ class Store {
   async settings() { return structuredClone(this.state); }
   async ingest(input) {
     this.ingested.push(input.kind);
+    if (input.kind === 'withdrawal') {
+      const original = this.events.get(input.mid);
+      if (original && original.sender_id !== input.sender_id) return { queued: false, reason: 'mid_sender_mismatch' };
+      if (!original) this.events.set(input.mid, { ...input, text: '', withdrawn: true, status: 'ignored' });
+      else {
+        original.withdrawn = true; original.text = ''; delete original.result; delete original.reply_key;
+        const boxes = [...this.outbox.values()].filter(row => row.event_id === original.event_id);
+        for (const box of boxes) box.text = '';
+        if (!boxes.length) {
+          original.status = 'superseded'; original.ack = false;
+          const thread = this.threads.get(input.sender_id);
+          if (thread?.leased === original.lease) { thread.leased = null; thread.version++; }
+          original.lease = null;
+        }
+      }
+      return { queued: false };
+    }
     if (this.events.has(input.mid)) return { status: 'duplicate', queued: false };
     let thread = this.threads.get(input.sender_id);
     if (!thread) { thread = { id: uid(++this.count), version: 0, human: false, clarify: 0, sent: false }; this.threads.set(input.sender_id, thread); }
@@ -80,7 +97,7 @@ class Store {
     if (this.state.paused || this.state.mode === 'off') return [];
     for (const event of this.events.values()) {
       const thread = this.threads.get(event.sender_id);
-      if (event.status !== 'pending' || (thread.human && !event.ack) || thread.leased) continue;
+      if (event.withdrawn || event.status !== 'pending' || (thread.human && !event.ack) || thread.leased) continue;
       event.status = event.ack ? 'completed' : 'processing'; event.lease = uid(++this.count); event.thread_version = thread.version;
       thread.leased = event.lease;
       return [{ ...event, clarify_count: thread.clarify, first_reply: !thread.sent }];
@@ -91,14 +108,14 @@ class Store {
   async reserveBudget(id, lease, cents) {
     const event = this.row(id); const thread = this.threads.get(event.sender_id);
     if (event.reserved) return { allowed: false, reason: 'already_started' };
-    if (event.lease !== lease || thread.version !== event.thread_version || thread.human) return { allowed: false, reason: 'lease_invalid' };
+    if (event.withdrawn || event.lease !== lease || thread.version !== event.thread_version || thread.human) return { allowed: false, reason: 'lease_invalid' };
     if (this.reserved + cents > this.cap) return { allowed: false, reason: 'monthly_limit' };
     event.reserved = true; this.reserved += cents; this.reservationCount++;
     return { allowed: true, reservation_id: uid(++this.count) };
   }
   async complete(id, lease, result) {
     const event = this.row(id); const thread = this.threads.get(event.sender_id);
-    if (event.lease !== lease || event.status !== 'processing' || thread.human || thread.version !== event.thread_version) return { allowed: false, decision: 'cancelled' };
+    if (event.withdrawn || event.lease !== lease || event.status !== 'processing' || thread.human || thread.version !== event.thread_version) return { allowed: false, decision: 'cancelled' };
     if (result.skip) { event.status = 'ignored'; thread.leased = null; return { allowed: false, decision: 'cancelled' }; }
     event.result = result; event.status = 'completed';
     let decision = 'reply';
@@ -110,7 +127,7 @@ class Store {
   }
   async prepareSend(id, lease, text, version) {
     const event = this.row(id); const thread = this.threads.get(event.sender_id);
-    if (event.status !== 'completed' || event.lease !== lease || thread.version !== version
+    if (event.withdrawn || event.status !== 'completed' || event.lease !== lease || thread.version !== version
       || (thread.human && !event.ack) || this.state.paused || this.state.mode === 'off') return { allowed: false };
     if ([...this.outbox.values()].some(row => row.event_id === id)) return { allowed: false };
     const outboxId = uid(++this.count); event.status = 'sending';
@@ -184,12 +201,80 @@ test('streamed and announced bodies are bounded before parsing', async () => {
   await assert.rejects(() => limitedBody(new Request('https://example.invalid', { method: 'POST', body: stream, duplex: 'half' }), 8), /body_limit/);
 });
 
-test('foreign assets, groups, deleted messages, reactions and read events are ignored', () => {
+test('foreign assets, groups, reactions and read events are ignored', () => {
   const foreign = envelope('synthetic-foreign'); foreign.entry[0].id = '999999999999999';
   assert.deepEqual(extractEvents(foreign, NOW), []);
-  for (const extra of [{ is_group: true }, { is_deleted: true }]) assert.deepEqual(extractEvents(envelope('synthetic-ignored', '', CUSTOMER, extra), NOW), []);
+  assert.deepEqual(extractEvents(envelope('synthetic-ignored', '', CUSTOMER, { is_group: true }), NOW), []);
   const read = envelope('synthetic-read'); read.entry[0].messaging[0].read = { mid: 'synthetic-read' };
   assert.deepEqual(extractEvents(read, NOW), []);
+});
+
+test('customer cancellation is content-free and wins before original in one signed callback', async () => {
+  const app = harness(); const payload = envelope('synthetic-withdraw-first');
+  payload.entry[0].messaging.push(envelope('synthetic-withdraw-first', 'discarded content', CUSTOMER, { is_deleted: true }).entry[0].messaging[0]);
+  assert.equal((await app.handler(await signed(app.config, payload))).status, 200); await app.drain();
+  assert.deepEqual(app.store.ingested, ['withdrawal', 'incoming']);
+  assert.equal(app.store.events.get('synthetic-withdraw-first').text, '');
+  assert.equal(app.calls.length, 0); assert.equal(app.sent.length, 0);
+  await app.handler(await signed(app.config, envelope('synthetic-withdraw-first'))); await app.drain();
+  assert.equal(app.calls.length, 0); assert.equal(app.sent.length, 0);
+  const company = envelope('synthetic-company-deleted', '', ASSETS.instagramId, { is_deleted: true, is_echo: true });
+  company.entry[0].messaging[0].recipient.id = CUSTOMER;
+  assert.deepEqual(extractEvents(company, NOW), []);
+});
+
+test('pending cancellation stops work without pausing another message or accepting a wrong sender', async () => {
+  const app = harness(); await app.store.ingest(incoming('synthetic-cancel-pending'));
+  await app.handler(await signed(app.config, envelope('synthetic-cancel-pending', '', OTHER, { is_deleted: true })));
+  assert.equal(app.store.events.get('synthetic-cancel-pending').withdrawn, undefined);
+  await app.handler(await signed(app.config, envelope('synthetic-cancel-pending', '', CUSTOMER, { is_deleted: true })));
+  await app.drain(); assert.equal(app.calls.length, 0); assert.equal(app.sent.length, 0);
+  await app.store.ingest(incoming('synthetic-after-cancel')); await app.drain();
+  assert.equal(app.calls.length, 1); assert.equal(app.sent.length, 1);
+  assert.equal(app.store.threads.get(CUSTOMER).human, false);
+});
+
+test('cancellation after paid classification starts invalidates its result and preserves reservation', async () => {
+  const store = new Store(); let calls = 0;
+  const app = harness({ store, classify: async () => {
+    calls++; await store.ingest({ ...incoming('synthetic-inflight-cancel'), text: '', kind: 'withdrawal' });
+    return responseFor('HOURS');
+  } });
+  await app.handler(await signed(app.config, envelope('synthetic-inflight-cancel'))); await app.drain();
+  assert.equal(calls, 1); assert.equal(store.reservationCount, 1); assert.equal(store.reserved, 2);
+  assert.equal(app.sent.length, 0); assert.equal(store.events.get('synthetic-inflight-cancel').text, '');
+  assert.equal(store.events.get('synthetic-inflight-cancel').result, undefined);
+});
+
+test('cancellation just before ACK preparation prevents the WhatsApp notice with zero model calls', async () => {
+  const store = new Store(); const prepare = store.prepareSend.bind(store);
+  store.prepareSend = async (...args) => {
+    await store.ingest({ ...incoming('synthetic-cancel-ack'), text: '', kind: 'withdrawal' }); return prepare(...args);
+  };
+  const app = harness({ store });
+  await app.handler(await signed(app.config, envelope('synthetic-cancel-ack', 'Como falo com uma pessoa?'))); await app.drain();
+  assert.equal(app.sent.length, 0); assert.equal(app.calls.length, 0);
+  assert.equal(store.threads.get(CUSTOMER).human, true); assert.equal(store.outbox.size, 0);
+});
+
+test('cancellation after Graph begins clears saved text and keeps uncertain result without retry', async () => {
+  const store = new Store(); let attempts = 0;
+  const app = harness({ store, send: async () => {
+    attempts++; await store.ingest({ ...incoming('synthetic-cancel-sending'), text: '', kind: 'withdrawal' });
+    throw new Error('synthetic-disconnect');
+  } });
+  await app.handler(await signed(app.config, envelope('synthetic-cancel-sending'))); await app.drain(); await app.drain();
+  assert.equal(attempts, 1); assert.equal(store.reservationCount, 1);
+  assert.equal([...store.outbox.values()][0].status, 'uncertain'); assert.equal([...store.outbox.values()][0].text, '');
+});
+
+test('cancellation after confirmed send retains MID audit and permits a different fresh message', async () => {
+  const app = harness(); await app.handler(await signed(app.config, envelope('synthetic-cancel-sent'))); await app.drain();
+  await app.handler(await signed(app.config, envelope('synthetic-cancel-sent', '', CUSTOMER, { is_deleted: true })));
+  const box = [...app.store.outbox.values()][0];
+  assert.equal(box.status, 'sent'); assert.equal(box.provider_mid, 'synthetic-output-1'); assert.equal(box.text, '');
+  await app.handler(await signed(app.config, envelope('synthetic-fresh-after-sent'))); await app.drain();
+  assert.equal(app.sent.length, 2); assert.equal(app.store.reservationCount, 2);
 });
 
 test('redaction removes contact identifiers and model byte bound is enforced', () => {

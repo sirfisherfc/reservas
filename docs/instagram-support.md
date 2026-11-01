@@ -1,9 +1,33 @@
 # Atendimento do Instagram em nuvem
 
-**Estado atual: TEST restrito reaberto após corrigir a precisão da pergunta
-sobre a cozinha. Clientes não foram liberados.** A conversa de teste foi
+**Estado atual: OFF durante a validação de mensagens canceladas. Clientes
+continuam bloqueados.** O cron e a flag foram desligados, o banco ficou
+pausado e o uso de dados/modelo foi fechado, preservando histórico e custos.
+A migration `20261101130005_instagram_support_withdrawal.sql`, no projeto
+gestao, acrescenta cancelamento por MID e remetente. Antes do processamento,
+o cancelamento impede IA e envio; quando a IA já começou, o resultado perde
+validade e o consumo reservado é mantido. Texto, classificação e conteúdo
+derivado do alvo são retirados. Um registro mínimo impede reentrega tardia.
+Outras mensagens e o controle humano permanecem preservados.
+
+Se o envio à Meta já começou, o sistema guarda o resultado/MID ou a incerteza
+e não tenta reenviar. O cancelamento não recolhe uma mensagem já enviada nem
+remove um prompt já recebido pelo fornecedor. A validação usa dados fictícios;
+o teste real de cancelar uma mensagem continua pendente de autorização própria.
+O aviso WhatsApp permanece limitado a uma tentativa por caso, mesmo após
+cancelar sua fonte. Quando ainda não houve tentativa, outra fonte válida pode
+manter o aviso com a prioridade recalculada.
+
+Validação desta correção: 63 testes Node (47 atendimento + 8 instalador +
+8 ativação), 37 contratos PostgreSQL18 e catálogo de 226 migrations.
+Revisão independente sem P0/P1/P2 pendente. Fontes consultadas em 01/11/2026:
+[webhooks do Messenger Instagram, `is_deleted`](https://developers.facebook.com/documentation/business-messaging/instagram-messaging/webhooks),
+[revisão para apps da própria empresa](https://developers.facebook.com/documentation/business-messaging/instagram-messaging/app-review/apps-for-your-own-business)
+e [termos da plataforma Meta](https://developers.facebook.com/terms/).
+
+Na etapa anterior, a conversa de teste foi
 retomada explicitamente após encerrar os dois casos de teste. Não há pendência
-ou aviso reservado. O modo global continua TEST exclusivo dela, com cron inativo.
+ou aviso reservado. O modo global era TEST exclusivo dela, com cron inativo no fim desse ciclo.
 A aplicação anterior de TEST foi
 restrita a uma única conta com identidade confirmada pela Meta, após revisão
 e `--check` real. O banco/runtime foram novamente fechados e conferidos,

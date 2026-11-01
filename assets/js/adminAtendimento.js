@@ -14,6 +14,7 @@ const reasons = {
   ai_not_ready: 'IA aguardando configuração', budget_or_rate_limit: 'Limite de uso',
   window_expired: 'Janela de resposta automática encerrada', unsupported_message: 'Mídia para conferir no Direct',
   delivery_uncertain: 'Envio para conferir no Instagram',
+  message_withdrawn: 'Mensagem cancelada pelo cliente', human_assumed: 'Atendimento humano em andamento',
 };
 
 function notice(text, danger = false) {
@@ -108,7 +109,9 @@ function renderCases(rows) {
   for (const row of rows) {
     const card = document.createElement('article'); card.className = 'card support-case';
     const title = document.createElement('h3'); title.textContent = reasons[row.reason] ?? 'Atendimento humano';
-    const summary = document.createElement('p'); summary.textContent = 'O atendimento humano segue pelo WhatsApp. O histórico permanece no Direct.';
+    const summary = document.createElement('p'); summary.textContent = row.reason === 'message_withdrawn'
+      ? 'O conteúdo dessa mensagem foi retirado. A equipe mantém o controle da pausa existente.'
+      : 'O atendimento humano segue pelo WhatsApp. O histórico permanece no Direct.';
     const meta = document.createElement('p'); meta.className = 'support-case-meta';
     const state = document.createElement('span'); state.textContent = 'Estado: ' + ({ open: 'Pendente', closed: 'Encerrado' }[row.status] ?? 'Pendente');
     const when = document.createElement('span'); when.textContent = date(row.last_inbound_at ?? row.created_at);

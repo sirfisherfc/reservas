@@ -7,14 +7,12 @@ Site de reservas para o restaurante Sir Fisher Praia. HTML/CSS/JS puro (sem buil
 - Painel administrativo com login Google e dois perfis (admin/operador).
 - Toda regra operacional (capacidade, horários, corte de mesmo dia, bloqueios) é configurável pelo painel — nada fixo no código.
 
-Atendimento Instagram em nuvem: função `instagram-support` v5 publicada e
-credenciais conferidas em 01/11/2026, com modo off, uso de dados de clientes
-false e alertas false. Seis cenários HTTP de verificação e autenticação
-passaram, sem criar conversa de cliente ou enviar mensagens. Cron e
-atendimento por IA continuam desligados. O callback oficial e somente
-`messages` foram configurados para teste restrito; o recebimento real ainda
-aguarda validação. A fila com perfis verificados foi testada e está publicada
-no painel administrativo; o acesso exige login de administrador. Detalhes em
+Atendimento Instagram em nuvem: piloto restrito a uma conta controlada,
+com clientes bloqueados. Horário, reserva por link, informação ausente,
+WhatsApp humano, pausa por resposta manual e recuperação em nuvem passaram
+no caminho real. Uma correção de mensagens canceladas está em validação OFF.
+A fila com perfis verificados está publicada no painel e exige login de
+administrador. Detalhes e estado operacional em
 [`docs/instagram-support.md`](docs/instagram-support.md).
 
 ## Documentação

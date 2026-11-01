@@ -35,8 +35,10 @@ export function redactText(value) {
 
 export function prepareIncomingText(value) {
   const raw = typeof value === 'string' ? value : '';
+  const spam = spamReason(raw);
+  if (spam) return { text: '', safety_intent: null, clear_spam: spam };
   // Check the whole bounded webhook message before any truncation or queue supersession.
-  const safetyIntent = urgentIntent(raw) ?? (raw.length > LIMITS.textChars ? 'HUMAN' : null);
+  const safetyIntent = incomingSafetyIntent(raw) ?? (raw.length > LIMITS.textChars ? 'HUMAN' : null);
   return { text: raw.length > LIMITS.textChars ? '[mensagem longa: atendimento humano]' : redactText(raw),
     safety_intent: safetyIntent };
 }
@@ -59,9 +61,70 @@ export function urgentIntent(value) {
   return null;
 }
 
-export function isSpam(value) {
-  return /jogos pg|cassino|tigrinho|plataforma.{0,15}(jogos|apostas)|ganhe dinheiro|slot machine/.test(normalize(value));
+const medicalContext = text => /alerg|allerg|anafil|anaphyl|intoleran|celiac|gluten|lactose|restric.{0,25}aliment|engasg|choking|passando mal|fainted|desmai|bleeding|machuc|sangr|ambulancia|ambulance|socorro/.test(text);
+const ownCharge = text => /\b(?:paguei|pagamos|enviei pix|mandei pix|fiz (?:um )?pix|me cobraram|fui cobrad[oa]|cobraram errado|cobraram de novo|cobraram duas|cobranca duplicada|cobranca indevida|cobranca contestada|pagamento duplicado|pagamento em duplicidade|valor duplicado|quero estorno|preciso de estorno|i paid|charged twice|double charged|duplicate payment|unauthorized charge|i need a refund)\b/.test(text)
+  || /\bi (?:sent|transferred|made).{0,12}pix\b/.test(text)
+  || /\b(?:cobrad[oa]|debitad[oa]).{0,20}(?:duas vezes|duplicad|de novo)/.test(text);
+const humanRequest = text => /\b(?:quero|preciso|precisamos|gostaria|posso|poderia|como(?: eu)?).{0,40}(?:falar|falo|atendente|gerente|pessoa|humano|equipe)\b/.test(text)
+  || /\b(?:pode|podem|poderiam) me.{0,25}(?:pessoa|gerente|atendente|equipe)\b/.test(text)
+  || /\bi (?:want|need|would like).{0,30}(?:human|person|agent|manager)\b/.test(text)
+  || /\bcan i.{0,20}(?:speak|talk).{0,20}(?:person|human|manager|someone)\b/.test(text)
+  || /^(?:oi[,! ]*|ola[,! ]*)?atendimento humano\b/.test(text);
+const ownComplaint = text => /^(?:oi[,! ]*|ola[,! ]*)?reclamacao\b/.test(text)
+  || /\b(?:quero|preciso|tenho|registrar|abrir).{0,25}reclam|mal atend|atendimento.{0,25}(?:pessim|horrivel|ruim)|ninguem responde/.test(text);
+function reportedScam(text) {
+  const report = /\b(?:recebi|recebemos|me enviaram|me mandaram|mandaram pra mim|enviaram pra mim|cai num|cai em|cai neste|cai nesse|me aplicaram|fui enganad[oa]|fui vitima|sou vitima|e de voces|isso e de voces|esse link e de voces|i received|we received|i got|someone sent me|is this from you|i was scammed|i was tricked)\b/.test(text)
+    || /\bme (?:mandou|enviou)|\bi was sent\b|(?:isso|essa mensagem|esse aviso).{0,15}(?:e real|e verdade|e oficial|procede)|\be golpe\?|\bis this (?:real|official|legitimate|legit|a scam)\b/.test(text)
+    || /chegou (?:pra|para) mim|(?:olha|olhe|veja).{0,20}tentativa de golpe|\bvi (?:esse|este|essa|esta|um|uma).{0,20}(?:aviso|mensagem|anuncio|link)/.test(text)
+    || /(?:e seguro|posso|devo).{0,15}(?:clicar|abrir|acessar).{0,25}\?|(?:is (?:it|this) safe|should i|can i).{0,20}(?:click|open|access).{0,25}\?/.test(text)
+    || /(?:podem|poderiam|pode).{0,25}(?:conferir|confirmar|verificar).{0,45}(?:mensagem|aviso|link|golpe|verdadeir)/.test(text);
+  return report && /golpe|fraud|scam|spam|suspeit|fals|fake|\bmeta\b|facebook|senha|password|codigo de verificacao|(?:conta|perfil|pagina|account).{0,35}(?:bloque|desativ|cancel|suspend|disable)/.test(text);
 }
+function customerSupport(text) {
+  return reportedScam(text) || medicalContext(text) || ownCharge(text) || humanRequest(text) || ownComplaint(text)
+    || /^(?:oi[,! ]*|ola[,! ]*)?(?:cobranca contestada|pedido de estorno)\b/.test(text)
+    || /\b(?:minha|meu|nossa|nosso).{0,20}(?:reserva|mesa|pedido|consumo|pagamento|cobranca|cartao)\b/.test(text)
+    || /\b(?:minha|meu).{0,15}(?:conta|perfil|pagina)\b/.test(text)
+    || /\b(?:my|our).{0,20}(?:reservation|table|order|payment|card|charge)\b/.test(text)
+    || /\bsou cliente\b|\b(?:estou|estamos).{0,20}(?:no restaurante|na casa|na mesa)\b/.test(text)
+    || /curriculo|curriculum|candidatura|vaga de emprego|\bmy (?:cv|resume)\b|job application/.test(text);
+}
+
+export function incomingSafetyIntent(value) {
+  const text = normalize(value);
+  if (/\b(?:i|my child|my friend).{0,20}(?:choking|fainted|bleeding)|\b(?:need|call) an? ambulance/.test(text)) return 'URGENCY';
+  if (/\b(?:i|my child|my friend).{0,25}(?:have|has|am|is).{0,15}(?:allerg|celiac|gluten|lactose)/.test(text)) return 'ALLERGY';
+  if (ownCharge(text) && !medicalContext(text)) return 'PAYMENT_DISPUTE';
+  if (ownComplaint(text) && !medicalContext(text)) return 'COMPLAINT';
+  // A customer reporting a fake warning needs help; its quoted urgency is not a medical emergency.
+  if ((reportedScam(text) || humanRequest(text)) && !medicalContext(text)) return 'HUMAN';
+  return urgentIntent(value);
+}
+
+export function spamReason(value) {
+  const text = normalize(value);
+  // Actual requests and first-person reports take priority over the quoted spam vocabulary.
+  if (!text || customerSupport(text)) return null;
+  const claimedPlatform = /\b(?:meta|facebook|instagram)\b|suporte oficial|central de suporte/.test(text);
+  const account = /(?:sua|seu|your).{0,20}(?:conta|perfil|pagina|account|page)/.test(text);
+  const threatOrVerification = /suspens|suspend|disabled|desativ|bloque|cancel|violac|violation|verifi[cq].{0,25}(?:conta|identidade|perfil|pagina)|verify.{0,25}(?:account|identity|page)/.test(text);
+  const credentialAction = /clique|click|acesse|senha|password|codigo|code|confirme|confirm|verifique|verify|pague|pagamento|payment|https?:|\[link\]/.test(text);
+  if (claimedPlatform && account && threatOrVerification && credentialAction) return 'FAKE_VERIFICATION';
+  const engagement = /\b(?:compre|comprar|vendo|vendemos|venda de|oferecemos|pacotes? de)\s+(?:(?:mais|novos|reais|brasileiros|ativos|ate|agora|de|[0-9.,]+(?:k|mil)?|mil)\s+){0,8}(?:seguidores|curtidas|likes|visualizacoes|inscritos)\b/.test(text)
+    || /\b(?:buy|we sell|selling|sale of|packages? of)\s*(?:[0-9.,]+(?:k|m)?\s*)?(?:(?:real|active|new|instagram)\s+){0,4}(?:followers|likes|views|subscribers)\b/.test(text);
+  if (engagement && !/nao compre|nao comprar|do not buy|don't buy/.test(text)) return 'ENGAGEMENT_SALE';
+  const gambling = /jogos pg|cassino|casino|tigrinho|slot machine|plataforma.{0,20}(?:jogos|apostas)|\b(?:apostas|betting)\b/.test(text);
+  const invitation = /cadastre|cadastro|bonus|ganhe|comissao|lucre|apost[eai]|afiliad|plataforma|register|sign up|join|earn/.test(text);
+  if (gambling && invitation) return 'GAMBLING_INVITE';
+  const transfer = /\b(?:envie|deposite|transfira|invista|send|deposit|transfer|invest).{0,35}(?:pix|r\$|reais)/.test(text);
+  const multiplier = /multiplique|multiplicador|lucro garantido|retorno garantido|renda garantida|guaranteed profit|guaranteed return|(?:receba|receber|ganhe|ganhar|receive|get|earn).{0,15}(?:dobro|triplo|double|triple)/.test(text);
+  const amounts = text.match(/(?:envie|deposite|transfira|send|deposit|transfer).{0,20}(?:pix|r\$)\s*(\d{1,7}).{0,45}(?:receba|receber|ganhe|ganhar|receive|get|earn)\s*(?:r\$)?\s*(\d{1,7})/);
+  if (transfer && (multiplier || (amounts && Number(amounts[1]) > 0 && Number(amounts[2]) >= Number(amounts[1]) * 3))) return 'MONEY_SCHEME';
+  const chain = /\b(?:encaminhe|repasse|compartilhe).{0,45}(?:\d+\s+(?:grupos|contatos)|todos os (?:seus )?(?:grupos|contatos)).{0,90}(?:ganhe|receba|premio|pix|dinheiro)/.test(text);
+  return chain ? 'PROMOTIONAL_CHAIN' : null;
+}
+
+export const isSpam = value => spamReason(value) !== null;
 
 export function unconfirmedIntent(value) {
   const text = normalize(value);

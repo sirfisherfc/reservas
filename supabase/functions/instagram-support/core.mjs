@@ -1,4 +1,4 @@
-import { ASSETS, LIMITS, MODEL, redactText, prepareIncomingText, urgentIntent, unconfirmedIntent, isSpam, inputTokenUpperBound,
+import { ASSETS, LIMITS, MODEL, redactText, prepareIncomingText, incomingSafetyIntent, unconfirmedIntent, isSpam, inputTokenUpperBound,
   parseClassification, reviewedReply, decisionFor } from './policy.mjs';
 
 const encoder = new TextEncoder();
@@ -175,11 +175,12 @@ export function createHandler({ config, store, classify, send, sendAlert = null,
       return 'human';
     }
     const text = redactText(row.text);
-    let intent = urgentIntent(text);
-    if (!intent && isSpam(text)) {
-      await store.complete(row.event_id, row.lease, { intent: 'IGNORE', skip: true, summary: 'Conteúdo de prospecção de jogos/apostas.' });
+    // Fallback for work queued by an older release. The spam policy itself preserves real support requests.
+    if (isSpam(text)) {
+      await store.complete(row.event_id, row.lease, { intent: 'IGNORE', skip: true, summary: 'Spam inequívoco sem pedido de suporte.' });
       return 'ignored';
     }
+    let intent = incomingSafetyIntent(text);
     intent ??= unconfirmedIntent(text);
     let result;
     if (!text) {
@@ -351,14 +352,16 @@ export function createHandler({ config, store, classify, send, sendAlert = null,
       let events;
       try { events = extractEvents(JSON.parse(new TextDecoder().decode(bytes)), now()); }
       catch { return json({ error: 'payload_invalid' }, 400); }
-      let queued = false;
+      let queued = false; let ignoredSpam = 0;
       for (const event of events) {
+        if (event.clear_spam) { ignoredSpam++; continue; }
         const result = await store.ingest(event);
         queued ||= result?.queued === true || result?.case_saved === true;
       }
-      // Acknowledge only durable ingestion. waitUntil is an accelerator, not the queue.
+      if (ignoredSpam) safeMetric('ignored_clear_spam', ignoredSpam);
+      // Eligible events are durable before 200. Clear spam has no task or stored customer content.
       if (queued && waitUntil && config.mode !== 'off') waitUntil(drain().catch(() => safeMetric('background_failed')));
-      return json({ received: events.length });
+      return json({ received: events.length - ignoredSpam, ...(ignoredSpam ? { ignored_spam: ignoredSpam } : {}) });
     } catch (error) {
       if (error?.message === 'body_limit') return json({ error: 'body_limit' }, 413, cors);
       safeMetric('handler_failed');

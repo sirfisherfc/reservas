@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHandler, loadConfig, extractEvents, limitedBody } from '../supabase/functions/instagram-support/core.mjs';
-import { ASSETS, LIMITS, MODEL, redactText, inputTokenUpperBound, reviewedReply } from '../supabase/functions/instagram-support/policy.mjs';
+import { ASSETS, LIMITS, MODEL, redactText, inputTokenUpperBound, reviewedReply, spamReason, isSpam, prepareIncomingText } from '../supabase/functions/instagram-support/policy.mjs';
 import { createTransports, createProfileEnricher } from '../supabase/functions/instagram-support/transport.mjs';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
@@ -162,6 +162,7 @@ function harness(options = {}) {
     send: options.send ?? (async (sender, text) => { sent.push({ sender, text }); return { message_id: 'synthetic-output-' + sent.length }; }),
     authorizeAdmin: options.authorizeAdmin ?? (async () => null), sendAlert: options.sendAlert ?? null,
     enrichCases: options.enrichCases ?? null,
+    metric: options.metric ?? (() => {}),
     waitUntil: options.background ? promise => tasks.push(promise) : null,
   });
   return { ...app, store, sent, calls, tasks, config };
@@ -509,6 +510,171 @@ test('spam vocabulary does not suppress a request for a person', async () => {
   await app.store.ingest(incoming('synthetic-spam-human', 'Recebi spam de cassino citando o restaurante. Quero falar com a gerente.'));
   await app.drain(); assert.equal(app.store.threads.get(CUSTOMER).human, true);
   assert.equal(app.store.cases.length, 1); assert.equal(app.calls.length, 0);
+});
+
+const fakeWarning = 'META SUPORTE: sua conta será cancelada em 24h. URGENTE: verifique sua identidade neste link https://example.invalid/verificar, faça o pagamento e fale com nosso atendente.';
+const clearSpam = [
+  [fakeWarning, 'FAKE_VERIFICATION'],
+  ['Facebook: sua página foi suspensa por violação. Acesse https://example.invalid e confirme sua senha.', 'FAKE_VERIFICATION'],
+  ['META Support: your Instagram account will be suspended. Urgent: click https://example.invalid and confirm your password.', 'FAKE_VERIFICATION'],
+  ['Compre 10000 seguidores reais brasileiros. Pacote com entrega hoje!', 'ENGAGEMENT_SALE'],
+  ['Vendemos 10k curtidas agora por R$ 50.', 'ENGAGEMENT_SALE'],
+  ['Buy10000followers now, only R$50!', 'ENGAGEMENT_SALE'],
+  ['Buy 10000 real Instagram followers today.', 'ENGAGEMENT_SALE'],
+  ['Cadastre-se na plataforma de jogos PG, ganhe bônus e comissão.', 'GAMBLING_INVITE'],
+  ['URGENTE, ganhe bônus no cassino. Cadastre-se para apostar.', 'GAMBLING_INVITE'],
+  ['Fale com nosso atendente e envie Pix100 para receber1000 hoje.', 'MONEY_SCHEME'],
+  ['SendPix100and receive1000 today. Talk to our agent.', 'MONEY_SCHEME'],
+  ['Invista por Pix, multiplique seu saldo com retorno garantido.', 'MONEY_SCHEME'],
+  ['Encaminhe esta mensagem para 10 grupos e ganhe um prêmio em Pix.', 'PROMOTIONAL_CHAIN'],
+];
+
+test('clear spam is stopped before durable ingest, cases, ACK and paid classification', async () => {
+  for (const [index, [text, reason]] of clearSpam.entries()) {
+    const metrics = []; const app = harness({metric:(name,count)=>metrics.push({name,count}),background:true});
+    app.store.ingest = async () => { throw new Error('spam_must_not_enter_store'); };
+    const prepared = prepareIncomingText(text);
+    assert.equal(spamReason(text), reason); assert.equal(prepared.clear_spam, reason);
+    assert.equal(prepared.text, ''); assert.equal(prepared.safety_intent, null);
+    const response = await app.handler(await signed(app.config,envelope('synthetic-clear-spam-'+index,text)));
+    assert.equal(response.status,200); assert.deepEqual(await response.json(),{received:0,ignored_spam:1});
+    assert.equal(app.calls.length,0); assert.equal(app.sent.length,0); assert.equal(app.tasks.length,0);
+    assert.equal(app.store.events.size,0); assert.equal(app.store.cases.length,0); assert.equal(app.store.reservationCount,0);
+    assert.deepEqual(metrics,[{name:'ignored_clear_spam',count:1}]);
+  }
+});
+
+test('links, menus, CVs and ordinary commercial messages remain eligible', () => {
+  for (const text of [
+    'Podem enviar o cardápio? O link https://example.invalid/menu não abriu.',
+    'Olá, sou fornecedor de pescado. Posso enviar nosso catálogo? https://example.invalid/catalogo',
+    'Proposta comercial: gestão de redes sociais, anúncios e conteúdo para conquistar seguidores orgânicos.',
+    'Segue meu currículo para a vaga: https://example.invalid/cv . Trabalhei com marketing e análise de seguidores.',
+    'Vocês aceitam Pix e vale-refeição?',
+    'Quanto custa o almoço executivo? Tem promoção hoje?',
+    'Divulgação da promoção do fornecedor: peixe fresco com desconto de 10% nesta semana.',
+    'Quero saber se transmitem jogos na TV.',
+    'É possível reservar para 8 pessoas amanhã?',
+    'Vi um anúncio de cassino. Vocês têm alguma relação com ele?',
+    'O currículo menciona treinamento contra falsa verificação da Meta: '+fakeWarning,
+    'Fui enganado por um golpe com o nome de vocês. '+fakeWarning,
+    'Fui enganada por esse aviso, poderiam conferir? '+fakeWarning,
+    'Fui vítima de golpe, podem me ajudar? '+fakeWarning,
+    'Meu perfil recebeu este aviso. '+fakeWarning,
+    'Fiz um Pix e o valor foi cobrado duas vezes. '+fakeWarning,
+    'I received this Meta warning. Is this from you? '+fakeWarning,
+    'Essa mensagem procede? '+fakeWarning,
+    'Isso é golpe? '+fakeWarning,
+    'Is this a scam? '+fakeWarning,
+    'Can I reserve a table for 4 people? https://example.invalid/reservations',
+    'Can you send me the menu? Your menu link is not opening.',
+    'Here is my CV: https://example.invalid/cv . My work included marketing for casino registrations.',
+    'Do not buy followers. Is that ad really from you?',
+  ]) {
+    assert.equal(isSpam(text),false,text); assert.equal(prepareIncomingText(text).clear_spam,undefined,text);
+  }
+});
+
+test('a real report of the same fake warning gets human help with no medical urgency or AI', async () => {
+  for (const prefix of ['Recebi este golpe, é de vocês? ', 'Podem conferir essa mensagem que diz ser da Meta? ', 'Como falo com uma pessoa? Recebi essa mensagem: ', 'I received this, is it from you? ',
+    'Olha a tentativa de golpe que chegou pra mim: ', 'Vi este aviso da Meta. É seguro clicar? ']) {
+    const app=harness(); const text=prefix+fakeWarning;
+    assert.equal(spamReason(text),null); assert.equal(prepareIncomingText(text).safety_intent,'HUMAN');
+    await app.handler(await signed(app.config,envelope('synthetic-reported-warning',text)));await app.drain();
+    assert.equal(app.store.cases.length,1);assert.equal(app.calls.length,0);assert.equal(app.store.reservationCount,0);
+    assert.equal(app.sent.length,1);assert.match(app.sent[0].text,/wa\.me\/5585988544274/);
+    assert.doesNotMatch(app.sent[0].text,/procure a equipe presente agora/);
+  }
+});
+
+test('real disputes, complaints and medical urgency win over spam quoted in the message', async () => {
+  for (const [prefix,intent] of [
+    ['Enviei Pix e cobraram de novo. Quero estorno e falar com uma pessoa. ','PAYMENT_DISPUTE'],
+    ['Meu cartão ficou com pagamento duplicado. Podem conferir? ','PAYMENT_DISPUTE'],
+    ['Reclamação: alguém usou o nome de vocês neste golpe. Quero falar com gerente. ','COMPLAINT'],
+    ['Urgente, uma pessoa está passando mal no restaurante. ','URGENCY'],
+    ['Tenho alergia grave e preciso falar com uma pessoa. ','URGENCY'],
+    ['My child is choking, call an ambulance. ','URGENCY'],
+    ['I have a severe allergy and need a person. ','ALLERGY'],
+  ]) {
+    const text=prefix+fakeWarning;const app=harness();
+    assert.equal(isSpam(text),false);assert.equal(prepareIncomingText(text).safety_intent,intent);
+    await app.handler(await signed(app.config,envelope('synthetic-priority-report',text)));await app.drain();
+    assert.equal(app.store.cases.length,1);assert.equal(app.calls.length,0);assert.equal(app.sent.length,1);
+  }
+});
+
+test('food restrictions preserve allergy priority over a human request', async () => {
+  for(const text of ['Tenho restrição alimentar a glúten e quero falar com gerente.',
+    'Tenho intolerância à lactose e preciso falar com uma pessoa.']){
+    assert.equal(isSpam(text),false);assert.equal(prepareIncomingText(text).safety_intent,'ALLERGY');
+    const app=harness();await app.handler(await signed(app.config,envelope('synthetic-food-restriction-priority',text)));await app.drain();
+    assert.equal(app.calls.length,0);assert.equal(app.store.cases.length,1);assert.match(app.sent[0].text,/cozinha/);
+  }
+});
+
+test('long spam cannot hide a human request at the tail; a bare spam offer does not create a case', async () => {
+  const app=harness();const text=fakeWarning+' contexto'.repeat(180)+' Preciso falar com uma pessoa.';
+  const prepared=prepareIncomingText(text);assert.equal(prepared.clear_spam,undefined);assert.equal(prepared.safety_intent,'HUMAN');
+  await app.handler(await signed(app.config,envelope('synthetic-spam-human-tail',text)));await app.drain();
+  assert.equal(app.store.cases.length,1);assert.equal(app.calls.length,0);assert.equal(app.sent.length,1);
+  const longSpam=harness();await longSpam.handler(await signed(longSpam.config,envelope('synthetic-long-clear-spam',fakeWarning+' oferta'.repeat(200))));
+  assert.equal(longSpam.store.events.size,0);assert.equal(longSpam.store.cases.length,0);assert.equal(longSpam.calls.length,0);
+});
+
+test('spam re-delivery counts callbacks without storing a MID or retrying effects', async () => {
+  const app=harness();for(let i=0;i<2;i++)await app.handler(await signed(app.config,envelope('synthetic-spam-repeated',clearSpam[2][0])));
+  await app.drain();assert.equal(app.store.events.size,0);assert.equal(app.calls.length,0);assert.equal(app.sent.length,0);
+});
+
+test('echoes and withdrawals bypass spam filtering, including the same words', async () => {
+  const app=harness();const echo=envelope('synthetic-spam-manual-echo',fakeWarning,ASSETS.instagramId,{is_echo:true});
+  echo.entry[0].messaging[0].recipient.id=CUSTOMER;
+  await app.handler(await signed(app.config,echo));assert.deepEqual(app.store.ingested,['echo']);
+  assert.equal(app.store.threads.get(CUSTOMER).human,true);
+  await app.handler(await signed(app.config,envelope('synthetic-spam-withdrawal',fakeWarning,CUSTOMER,{is_deleted:true})));
+  assert.deepEqual(app.store.ingested,['echo','withdrawal']);assert.equal(app.store.events.get('synthetic-spam-withdrawal').withdrawn,true);
+  assert.equal(app.calls.length,0);assert.equal(app.sent.length,0);
+});
+
+test('spam in older queued work is skipped before generic urgency can create an ACK', async () => {
+  const app=harness();await app.store.ingest(incoming('synthetic-old-spam-warning',fakeWarning));await app.drain();
+  assert.equal(app.store.events.get('synthetic-old-spam-warning').status,'ignored');
+  assert.equal(app.store.cases.length,0);assert.equal(app.calls.length,0);assert.equal(app.sent.length,0);
+});
+
+test('mixed callback keeps legitimate help while dropping only the clear spam event', async () => {
+  const app=harness({classify:async()=>responseFor('MENU')});const payload=envelope('synthetic-mixed-spam',clearSpam[2][0]);
+  payload.entry[0].messaging.push(envelope('synthetic-mixed-menu','Podem enviar o cardápio?').entry[0].messaging[0]);
+  const response=await app.handler(await signed(app.config,payload));assert.deepEqual(await response.json(),{received:1,ignored_spam:1});await app.drain();
+  assert.equal(app.store.events.size,1);assert.equal(app.sent.length,1);assert.equal(app.store.cases.length,0);
+  assert.match(app.sent[0].text,/cardapio/);
+});
+
+test('spam still needs a valid signature and an incoming flag cannot make legitimate text disappear', async () => {
+  const metrics=[];const app=harness({metric:(name,count)=>metrics.push({name,count}),classify:async()=>responseFor('MENU')});
+  const body=JSON.stringify(envelope('synthetic-unauthenticated-spam',fakeWarning));
+  const rejected=await app.handler(new Request('https://example.invalid/functions/v1/instagram-support',{method:'POST',body}));
+  assert.equal(rejected.status,401);assert.deepEqual(metrics,[]);
+  const payload=envelope('synthetic-untrusted-spam-flag','Podem enviar o cardápio?',CUSTOMER,{clear_spam:'FAKE_VERIFICATION'});
+  const accepted=await app.handler(await signed(app.config,payload));assert.deepEqual(await accepted.json(),{received:1});await app.drain();
+  assert.equal(app.store.events.size,1);assert.equal(app.sent.length,1);
+});
+
+test('media without usable text stays inconclusive and follows the human flow', async () => {
+  const app=harness();const payload=envelope('synthetic-image-inconclusive','',CUSTOMER,
+    {attachments:[{type:'image',payload:{url:'https://example.invalid/fixture-image'}}]});
+  await app.handler(await signed(app.config,payload));await app.drain();
+  assert.equal(app.store.cases.length,1);assert.equal(app.calls.length,0);assert.equal(app.sent.length,1);
+  assert.equal(app.store.threads.get(CUSTOMER).human,true);
+});
+
+test('a later clear spam delivery preserves an existing human case and pause', async () => {
+  const app=harness();await app.handler(await signed(app.config,envelope('synthetic-existing-help','Quero falar com uma pessoa.')));await app.drain();
+  const before=structuredClone(app.store.cases);const threadVersion=app.store.threads.get(CUSTOMER).version;
+  await app.handler(await signed(app.config,envelope('synthetic-spam-after-help',fakeWarning)));await app.drain();
+  assert.deepEqual(app.store.cases,before);assert.equal(app.store.threads.get(CUSTOMER).human,true);
+  assert.equal(app.store.threads.get(CUSTOMER).version,threadVersion);assert.equal(app.sent.length,1);assert.equal(app.calls.length,0);
 });
 
 test('native human FAQ and WhatsApp requests create one curated notice, with zero model spend', async () => {

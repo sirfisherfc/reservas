@@ -12,7 +12,8 @@ com clientes bloqueados. Horário, reserva por link, informação ausente,
 WhatsApp humano, pausa por resposta manual e recuperação em nuvem passaram
 no caminho real. A correção de mensagens canceladas passou em testes locais,
 foi publicada em OFF e o mesmo piloto foi retomado com recuperação em nuvem.
-O teste real de cancelamento ainda está pendente.
+O callback real de cancelamento passou em ensaio específico sob pausa global,
+com zero nova resposta ou IA. Races permanecem nos testes locais.
 A fila com perfis verificados está publicada no painel e exige login de
 administrador. Detalhes e estado operacional em
 [`docs/instagram-support.md`](docs/instagram-support.md).

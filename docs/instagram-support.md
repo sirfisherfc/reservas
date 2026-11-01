@@ -1,5 +1,14 @@
 # Atendimento do Instagram em nuvem
 
+Regra de spam em preparação local: padrões conservadores PT/EN antes da
+ingesta, caso, aviso e Gemini, com 76 testes Node aprovados (60 atendimento e
+16 dos helpers). Spam inequívoco gera 200 e contador agregado, sem guardar
+texto/MID ou chamar provedores. Nenhuma mensagem é excluída/bloqueada na Meta.
+Relatos de golpe, cobranças próprias, reclamações e pedidos de pessoa têm
+prioridade; links, cardápio, CV e propostas comuns seguem o atendimento.
+Echo e cancelamento de envio preservam o fluxo. Não há migration ou mudança de
+permissão. A publicação seguirá a revisão independente nesta janela autorizada.
+
 **Estado atual: TEST para a mesma conta controlada, com recuperação em nuvem
 ativa. O agente responde apenas à conta de teste.** Para corrigir mensagens canceladas,
 o cron e a flag foram desligados, o banco ficou pausado e o uso de dados/modelo
@@ -13,8 +22,8 @@ Outras mensagens e o controle humano permanecem preservados.
 
 Se o envio à Meta já começou, o sistema guarda o resultado/MID ou a incerteza
 e não tenta reenviar. O cancelamento não recolhe uma mensagem já enviada nem
-remove um prompt já recebido pelo fornecedor. A validação usa dados fictícios;
-o teste real de cancelar uma mensagem continua pendente de autorização própria.
+remove um prompt já recebido pelo fornecedor. Os contratos usam dados fictícios;
+o callback real passou no ensaio específico sob pausa descrito abaixo.
 O aviso WhatsApp permanece limitado a uma tentativa por caso, mesmo após
 cancelar sua fonte. Quando ainda não houve tentativa, outra fonte válida pode
 manter o aviso com a prioridade recalculada.
@@ -65,10 +74,16 @@ integração efetiva não foi confirmada nem assumida para este agente.
 A captura da aba Instagram retornou indisponibilidade do CDP enquanto o
 BrowserUse resolvia uma resposta de documento pausada, tanto na aba existente
 quanto na nova. A gravação não iniciou e nenhuma pergunta extra, caso, chamada
-de modelo ou gravação de clientes foi gerada. O ensaio real de cancelamento
-continua aguardando a autorização específica; o helper privado não executou
-pausa, cancelamento ou restauração. O piloto TEST exclusivo e seu cron permanecem
-no estado anterior, com seis envios/três chamadas acumulados.
+de modelo ou gravação de clientes foi gerada nessa tentativa de gravação.
+Depois, o proprietário autorizou uma única mensagem de teste e seu cancelamento
+definitivo. A coordenação enviou e cancelou somente esse alvo na interface.
+O ensaio colocou pausa global/cron OFF, capturou a entrada única e seu MID em RAM
+e confirmou a marca de retirada, texto já vazio pela pausa e derivados neutros.
+Zero novo caso/reserva/envio/modelo; seis envios/três chamadas históricas.
+Após sinal, o helper restaurou o mesmo TEST/cron e conferiu health200, uma conta
+e leitura fresca sem interferência. A sessão foi encerrada sem salvar o MID.
+O resultado cobre callback real sob pausa; races de fila ativa seguem os testes
+locais. Não houve exclusão de outra mensagem, Graph outbound ou chamada de IA.
 Vídeo, dependências, declarações legais e dados de fornecedores/países continuam
 pendentes; o pedido de Review não foi enviado. Logs/contribuição do AI Studio
 não foram conferidos porque a tela permaneceu carregando. Paid não substitui

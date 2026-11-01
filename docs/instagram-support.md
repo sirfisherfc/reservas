@@ -5,12 +5,61 @@ Os [termos Gemini](https://ai.google.dev/gemini-api/terms), vigentes desde
 23/03/2026 e consultados em 01/11, restringem API Clients provavelmente
 acessados por menores de 18. Paid e consentimento genérico não fornecem
 exceção nessa cláusula para o atendimento aberto do restaurante.
-A preferência perguntada é OpenAI API proposta com teto R$45, sem chave,
-configuração ou chamada de modelo, ou FAQ gratuita por regras, ainda não
-implementada. Nada será trocado antes dessa escolha e das validações de
-dados/menores correspondentes. O novo app Meta Empresa aguarda autorização
-específica após bloqueio da revisão automática; DeathStar permanece intacto.
-Runtime, segredos e gates públicos ficaram preservados nesta atualização.
+O proprietário escolheu preparar OpenAI API com teto de R$45/mês e autorizou
+criar o app Meta Empresa separado. O cadastro é conduzido pela coordenação;
+este código não muda o transporte Meta nem os identificadores do DeathStar.
+O adaptador OpenAI foi preparado e testado localmente. Nenhuma chave, chamada
+de modelo, cobrança, implantação ou envio de texto de clientes foi realizado
+nessa preparação. Runtime e gates públicos continuam preservados.
+
+## Preparação OpenAI de 01/11/2026
+
+Modelo preparado: `gpt-5.6-luna`, Responses API com `store:false`, raciocínio
+`none` e JSON Schema estrito com um único enum. A resposta ao cliente continua
+vindo dos textos revisados. Recusa, saída incompleta, ferramenta, texto livre,
+enum inválido ou uso inconsistente encaminham ao WhatsApp sem nova tentativa
+de modelo. Os limites e a reserva atômica do piloto foram preservados.
+
+A mensagem livre permanece no servidor. Antes da eventual chamada OpenAI,
+o código confere cada palavra contra um dicionário público fixo e produz
+somente uma lista ordenada de temas constantes. Não envia texto original,
+ordem das palavras, nomes, números, contatos, perfil, identificador técnico
+ou histórico da conversa. Palavra desconhecida, identificação redigida,
+combinação ambígua ou indicação explícita de dados pessoais/menor de 13
+anos fica sem chamada OpenAI e segue o atendimento local pelo WhatsApp.
+Referências como hoje/amanhã sobrevivem como temas constantes. Negações,
+relações antes/depois e assuntos múltiplos cujo escopo possa se perder
+ficam no atendimento local, sem chamada de modelo. Promoção genérica não
+herda terça em dobro; regras de bolo exigem menção explícita a levar bolo.
+Esse recorte reduz a cobertura das perguntas livres; ampliar o dicionário
+exige revisão e testes. Remover padrões por regex não é anonimização geral.
+
+Uma saudação simples, como “Oi”, passou a escolher a resposta revisada
+localmente, sem modelo ou reserva de orçamento. Essa mudança está preparada
+para os dois provedores e ainda depende de implantação para valer na nuvem.
+
+Novos controles: `INSTAGRAM_AI_PROVIDER=openai`, chave dedicada
+`INSTAGRAM_OPENAI_API_KEY` e `INSTAGRAM_OPENAI_DATA_APPROVED=true` somente
+depois da autorização de uso correspondente. A produção exige também
+`INSTAGRAM_OPENAI_PUBLIC_DATA_APPROVED=true`, além dos gates públicos
+anteriores no runtime e no banco. Esses controles começam fechados; a
+aprovação antiga do teste Gemini não aprova OpenAI. O modelo do banco
+precisa coincidir com o provedor, com tarifa vigente e faturamento conferido.
+O helper existente de ativação do piloto continua próprio do Gemini;
+não usar esse helper para trocar o provedor por inferência.
+
+Os 94 testes Node locais passaram: 77 do atendimento e 17 dos helpers.
+Incluem callbacks assinados com dados fictícios, projeção sem fala original,
+rejeição de identificadores/palavras fora do dicionário, saudação local,
+falhas de saída/uso e ausência de repetição após timeout. A chamada paga,
+o acesso ao modelo nesta conta e a entrega pública ainda não foram testados.
+
+`store:false` não é Zero Data Retention. A documentação OpenAI exige ZDR
+antes de processar dados pessoais de menores de 13 anos ou da idade local
+de consentimento digital. A preparação usa somente temas públicos fixos;
+não configura ZDR, não infere idade e não autoriza envio de mensagens de
+clientes. A escolha do provedor autoriza preparar; cobrança e tratamento
+de dados ainda serão apresentados antes de qualquer ativação.
 
 ## Atualização de 01/11/2026: próximas FAQs após WhatsApp
 
@@ -55,9 +104,9 @@ Cron único ativo/TEST1/gates públicos false preservados, sem replay. O
 observador fez somente leituras; o encerramento era de um caso de teste.
 
 A conexão Facebook permanece preservada. A opção oficial Instagram Login
-está em preparação pela coordenação: app Empresa separado depende de
-autorização específica. A escolha do provedor ou das regras, o tratamento
-de dados e a prova real fora dos papéis continuam pendentes e separados.
+está em preparação pela coordenação: a criação do app Empresa separado foi
+autorizada. A configuração efetiva, o tratamento de dados e a prova real
+fora dos papéis continuam pendentes e separados.
 Nenhuma IA pública ativada.
 O site `42a9ee6` foi publicado e conferido pela coordenação com esse fluxo
 futuro explícito. FAQs nativas e regra de reserva OFF estão sem horário humano.
@@ -436,7 +485,7 @@ de echo nem do protocolo legado de handover do Messenger.
 
 ## IA e respostas
 
-O Gemini **somente escolhe um enum**. O servidor recusa saída fora da lista,
+O modelo **somente escolhe um enum**. O servidor recusa saída fora da lista,
 resposta incompleta ou metadados de uso inválidos. Ele envia textos revisados
 do `policy.mjs`; não envia texto livre escrito pelo modelo.
 
@@ -450,9 +499,9 @@ de contatos do texto.
 Reservas, disponibilidade, pagamentos e cancelamentos **não são executados
 por esta função**. Ela orienta o portal e o link seguro de cancelamento.
 Não confirma vaga, reserva ou quitação sem resultado do sistema correspondente.
-Um assunto desconhecido informa que falta uma resposta confirmada e oferece
-detalhar a dúvida ou pedir uma pessoa; se continuar
-sem resposta, a conversa vai para a fila humana e fica pausada.
+Um assunto desconhecido informa que falta uma resposta confirmada e indica
+o WhatsApp. A próxima FAQ continua elegível; pausas manuais e envios incertos
+preservam seus controles.
 
 A automação respeita uma janela conservadora de 24h desde a mensagem
 recebida. Não usa Human Agent para prolongar IA e não responde ao histórico
@@ -463,16 +512,23 @@ eventos; a aprovação necessária deve ser verificada antes de usar clientes.
 
 ## Custo e privacidade
 
-Modelo fixo: `gemini-3.5-flash-lite`. Em 01/11/2026, o preço Standard
+Modelo do piloto em nuvem: `gemini-3.5-flash-lite`. Em 01/11/2026, o preço Standard
 publicado era US$0,30 por milhão de tokens de entrada e US$2,50 por milhão
 de saída. Limites por chamada: 4.096 tokens de entrada e 96 de saída. O
 servidor usa um limite conservador por bytes antes da chamada e não oferece
 ferramentas, busca, loops ou repetição automática da IA.
 
+Modelo OpenAI preparado: `gpt-5.6-luna`, US$0,20 por milhão de tokens de
+entrada e US$1,20 por milhão de saída, consultados em 01/11/2026.
+Com os mesmos limites e R$10/US$ como margem conservadora de câmbio,
+o máximo estimado é R$0,009344 por chamada, abaixo da reserva de R$0,02.
+Esses valores não são saldo disponível nem cotação de cobrança. O código
+não compra créditos, não verifica o acesso desta conta e não ativa o modelo.
+
 O banco reserva **2 centavos antes de chamar o modelo**, com limites
 independentes de R$45/mês, 2.000 gerações/mês, dez por minuto no agente e
 três por dez minutos na conversa. Uma cotação de R$10/US$ serve à estimativa
-conservadora desse preço. No padrão de duas parcelas por chamada, 2.000
+conservadora desse preço. Com a reserva de dois centavos por chamada, 2.000
 gerações reservam R$40. Erro, timeout e ausência de metadados conservam a
 reserva inteira. Um limite de tokens excedido pausa o agente para revisão.
 
@@ -564,7 +620,9 @@ Segredos usados, sem valores em documentação, frontend ou logs:
 | `INSTAGRAM_VERIFY_TOKEN` | Token de verificação com pelo menos 32 caracteres. |
 | `INSTAGRAM_PAGE_ACCESS_TOKEN` | Page token do ativo correto. |
 | `INSTAGRAM_DRAIN_SECRET` | Segredo do worker; a cópia do Vault se chama `instagram_support_drain_secret`. |
-| `GEMINI_API_KEY` | Chave existente, reutilizada somente no servidor. |
+| `GEMINI_API_KEY` | Chave existente do piloto adulto, reutilizada somente no servidor. |
+| `INSTAGRAM_OPENAI_API_KEY` | Chave dedicada à futura opção OpenAI, ainda não configurada nesta preparação. |
+| `INSTAGRAM_AI_PROVIDER` | `gemini` por padrão; `openai` exige os novos gates e modelo coincidente no banco. |
 | `RESEND_API_KEY`, `RESEND_FROM` | Configuração existente de e-mail, sem substituir os valores atuais. |
 
 Gates que começam fechados:
@@ -572,6 +630,7 @@ Gates que começam fechados:
 - `INSTAGRAM_SUPPORT_MODE=off`; banco com `mode=off` e `paused=true`.
 - `INSTAGRAM_AI_DATA_APPROVED=false`; banco com `model_usage_allowed=false`
   e `billing_verified=false`; a validade da tarifa também precisa ser definida.
+- `INSTAGRAM_OPENAI_DATA_APPROVED=false` e `INSTAGRAM_OPENAI_PUBLIC_DATA_APPROVED=false`.
 - `INSTAGRAM_ALERTS_ENABLED=false` e banco com `alerts_enabled=false`.
 - Cron inativo; `cron_enabled=false`.
 
@@ -687,6 +746,11 @@ e o worker permaneceram em off, sem Meta POST ou ativação do cron.
 - [Google: geração e enums](https://ai.google.dev/api/generate-content),
   [preços](https://ai.google.dev/gemini-api/docs/pricing) e
   [limites por projeto](https://ai.google.dev/gemini-api/docs/rate-limits).
+- [OpenAI: GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna),
+  [JSON Schema](https://developers.openai.com/api/docs/guides/structured-outputs),
+  [dados da API](https://developers.openai.com/api/docs/guides/your-data)
+  e [proteção de menores](https://developers.openai.com/api/docs/guides/safety-checks/under-18-api-guidance),
+  consultados em 01/11/2026. Chamada real e acesso desta conta ainda pendentes.
 - [Meta: webhooks](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/webhooks).
   O caminho desta integração usa Facebook Login e deve ser testado nele.
 - [Meta: User Profile API com Facebook Login](https://developers.facebook.com/docs/messenger-platform/instagram/features/user-profile/).

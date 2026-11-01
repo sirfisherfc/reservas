@@ -1,4 +1,4 @@
-import { ASSETS, MODEL } from './policy.mjs';
+import { ASSETS, MODEL, isReviewedOpenAIRequest } from './policy.mjs';
 import { limitedBody } from './core.mjs';
 
 async function requestJson(fetcher, url, options, timeout = 12_000) {
@@ -130,10 +130,20 @@ export function createTransports(config, fetcher = fetch) {
       return admin === true ? user.id : null;
     } catch { return null; }
   }
-  const classify = body => requestJson(fetcher,
-    'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent', {
+  const classify = body => {
+    if (config.provider === 'openai') {
+      if (!config.openaiDataApproved || config.openaiKey.length < 20 || !isReviewedOpenAIRequest(body)) {
+        throw new Error('openai_not_approved');
+      }
+      return requestJson(fetcher, 'https://api.openai.com/v1/responses', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + config.openaiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body) }, 20_000);
+    }
+    if (config.provider !== 'gemini') throw new Error('provider_not_supported');
+    return requestJson(fetcher, 'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent', {
       method: 'POST', headers: { 'x-goog-api-key': config.geminiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify(body) }, 20_000);
+  };
   const send = (recipient, text) => requestJson(fetcher,
     'https://graph.facebook.com/v26.0/' + ASSETS.pageId + '/messages', {
       method: 'POST', headers: { Authorization: 'Bearer ' + config.pageToken, 'Content-Type': 'application/json' },

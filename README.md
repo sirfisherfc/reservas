@@ -20,6 +20,12 @@ administrador. Detalhes e estado operacional em
 Indicar o WhatsApp mantém a próxima FAQ elegível e registra o caso sem
 pausa automática. Intervenções manuais e envios incertos preservam sua
 pausa. Consentimento e entrega públicos têm gates separados, fechados.
+O proprietário escolheu preparar OpenAI com teto de R$45/mês. O adaptador
+foi escrito e testado localmente; a nuvem continua no Gemini restrito ao
+proprietário adulto. OpenAI não recebeu mensagens nem chamadas de teste.
+O adaptador envia somente temas de um vocabulário público fixo, com
+encaminhamento local quando a frase não puder ser reduzida com segurança.
+Chave, cobrança, tratamento de dados e teste real continuam pendentes.
 
 ## Documentação
 

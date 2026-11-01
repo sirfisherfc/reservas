@@ -10,10 +10,11 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SLUG = 'instagram-support';
 const FILES = ['index.ts', 'core.mjs', 'policy.mjs', 'transport.mjs'];
 const SAFE_GATES = Object.freeze({ INSTAGRAM_SUPPORT_MODE: 'off', INSTAGRAM_AI_DATA_APPROVED: 'false', INSTAGRAM_ALERTS_ENABLED: 'false',
-  INSTAGRAM_PUBLIC_DATA_APPROVED: 'false', INSTAGRAM_PUBLIC_DELIVERY_VERIFIED: 'false' });
+  INSTAGRAM_PUBLIC_DATA_APPROVED: 'false', INSTAGRAM_PUBLIC_DELIVERY_VERIFIED: 'false',
+  INSTAGRAM_OPENAI_DATA_APPROVED: 'false', INSTAGRAM_OPENAI_PUBLIC_DATA_APPROVED: 'false' });
 const OWNED_SECRETS = new Set(['INSTAGRAM_APP_SECRET', 'INSTAGRAM_VERIFY_TOKEN',
   'INSTAGRAM_PAGE_ACCESS_TOKEN', 'INSTAGRAM_DRAIN_SECRET', 'INSTAGRAM_TEST_SENDER_IDS',
-  'GEMINI_API_KEY', ...Object.keys(SAFE_GATES)]);
+  'GEMINI_API_KEY', 'INSTAGRAM_OPENAI_API_KEY', 'INSTAGRAM_AI_PROVIDER', ...Object.keys(SAFE_GATES)]);
 
 function fail(code) { throw new Error(code); }
 export function secretPlan(input, existing = [], replaceOwned = false) {
@@ -22,6 +23,7 @@ export function secretPlan(input, existing = [], replaceOwned = false) {
   for (const [name, value] of Object.entries(input)) {
     if (!OWNED_SECRETS.has(name) || typeof value !== 'string' || !value || value.length > 20_000) fail('secret_not_allowed');
     if (Object.hasOwn(SAFE_GATES, name) && value !== SAFE_GATES[name]) fail('activation_not_supported');
+    if (name === 'INSTAGRAM_AI_PROVIDER' && !['gemini', 'openai'].includes(value)) fail('provider_not_supported');
   }
   const previous = new Set(existing);
   const updated = [], preserved = [];

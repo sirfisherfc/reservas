@@ -1,5 +1,5 @@
-import { ASSETS, LIMITS, MODEL, redactText, prepareIncomingText, incomingSafetyIntent, unconfirmedIntent, isSpam, inputTokenUpperBound,
-  parseClassification, reviewedReply, decisionFor } from './policy.mjs';
+import { ASSETS, LIMITS, MODEL, OPENAI_MODEL, redactText, prepareIncomingText, incomingSafetyIntent, unconfirmedIntent, isSpam, inputTokenUpperBound,
+  parseClassification, classificationUsage, requiresLocalPrivacyHandoff, isSimpleGreeting, reviewedReply, decisionFor } from './policy.mjs';
 
 const encoder = new TextEncoder();
 const VALID_ID = /^\d{5,30}$/;
@@ -28,6 +28,7 @@ export async function verifySignature(bytes, signature, secret) {
 export function loadConfig(read) {
   const mode = read('INSTAGRAM_SUPPORT_MODE') ?? 'off';
   const url = read('SUPABASE_URL') ?? '';
+  const provider = read('INSTAGRAM_AI_PROVIDER') ?? 'gemini';
   let projectValid = false;
   try { const parsed = new URL(url); projectValid = parsed.origin === 'https://' + ASSETS.projectHost
     && !parsed.search && !parsed.hash && !parsed.username && !parsed.password
@@ -36,7 +37,11 @@ export function loadConfig(read) {
     url, projectValid, serviceKey: read('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     appSecret: read('INSTAGRAM_APP_SECRET') ?? '', verifyToken: read('INSTAGRAM_VERIFY_TOKEN') ?? '',
     pageToken: read('INSTAGRAM_PAGE_ACCESS_TOKEN') ?? '', drainSecret: read('INSTAGRAM_DRAIN_SECRET') ?? '',
-    geminiKey: read('GEMINI_API_KEY') ?? '', dataApproved: read('INSTAGRAM_AI_DATA_APPROVED') === 'true',
+    provider, model: provider === 'openai' ? OPENAI_MODEL : provider === 'gemini' ? MODEL : null,
+    geminiKey: read('GEMINI_API_KEY') ?? '', openaiKey: read('INSTAGRAM_OPENAI_API_KEY') ?? '',
+    openaiDataApproved: read('INSTAGRAM_OPENAI_DATA_APPROVED') === 'true',
+    openaiPublicDataApproved: read('INSTAGRAM_OPENAI_PUBLIC_DATA_APPROVED') === 'true',
+    dataApproved: read('INSTAGRAM_AI_DATA_APPROVED') === 'true',
     publicDataApproved: read('INSTAGRAM_PUBLIC_DATA_APPROVED') === 'true',
     publicDeliveryVerified: read('INSTAGRAM_PUBLIC_DELIVERY_VERIFIED') === 'true',
     resendKey: read('RESEND_API_KEY') ?? '', resendFrom: read('RESEND_FROM') ?? '',
@@ -110,10 +115,12 @@ export function extractEvents(payload, now) {
 }
 
 export function effectiveMode(config, settings) {
+  if (!['gemini', 'openai'].includes(config.provider)) return 'off';
   if (config.mode === 'off' || settings?.mode === 'off' || settings?.paused === true) return 'off';
   if (!['test', 'live'].includes(settings?.mode)) return 'off';
   if (config.mode === 'test' || settings.mode === 'test') return 'test';
-  return config.publicDataApproved === true && config.publicDeliveryVerified === true
+  return (config.provider !== 'openai' || config.openaiPublicDataApproved === true)
+    && config.publicDataApproved === true && config.publicDeliveryVerified === true
     && settings.public_data_approved === true && settings.public_delivery_verified === true ? 'live' : 'off';
 }
 
@@ -186,16 +193,26 @@ export function createHandler({ config, store, classify, send, sendAlert = null,
     }
     let intent = incomingSafetyIntent(text);
     intent ??= unconfirmedIntent(text);
+    intent ??= isSimpleGreeting(text) ? 'GREETING' : null;
     let result;
     if (!text) {
       intent = 'HUMAN';
       result = { intent, reply_key: intent, handoff_reason: 'unsupported_message',
         summary: 'Mensagem sem texto utilizável; conferir mídia no Instagram.' };
+    } else if (!intent && config.provider === 'openai' && requiresLocalPrivacyHandoff(text)) {
+      result = { intent: 'HUMAN', reply_key: 'HUMAN', handoff_reason: 'privacy_local_only',
+        summary: 'Mensagem com indicação de dados pessoais; conferir no Instagram sem enviar ao modelo.' };
     } else if (!intent) {
-      const prepared = inputTokenUpperBound(text);
-      if (!config.dataApproved || !settings.model_usage_allowed || !settings.billing_verified
-          || config.geminiKey.length < 20 || config.pageToken.length < 20 || prepared.tokens > LIMITS.inputTokens
-          || settings.model !== MODEL || settings.max_input_tokens !== LIMITS.inputTokens
+      const prepared = inputTokenUpperBound(text, config.provider);
+      const providerReady = config.provider === 'openai'
+        ? config.openaiDataApproved === true && config.openaiKey.length >= 20
+        : config.provider === 'gemini' && config.geminiKey.length >= 20;
+      if (!prepared.body) {
+        result = { intent: 'HUMAN', reply_key: 'HUMAN', handoff_reason: 'privacy_projection_inconclusive',
+          summary: 'Mensagem fora do vocabulário público revisado; atendimento sem envio ao modelo.' };
+      } else if (!config.dataApproved || !settings.model_usage_allowed || !settings.billing_verified
+          || !providerReady || config.pageToken.length < 20 || prepared.tokens > LIMITS.inputTokens
+          || settings.model !== config.model || settings.max_input_tokens !== LIMITS.inputTokens
           || settings.max_output_tokens !== LIMITS.outputTokens) {
         result = { intent: 'HUMAN', reply_key: 'HUMAN', handoff_reason: 'ai_not_ready',
           summary: 'IA indisponível ou aguardando verificação de configuração e custo.' };
@@ -209,10 +226,8 @@ export function createHandler({ config, store, classify, send, sendAlert = null,
         } else {
           let response;
           try { response = await classify(prepared.body); } catch { /* no model retry */ }
-          const input = Number(response?.usageMetadata?.promptTokenCount);
-          const output = Number(response?.usageMetadata?.candidatesTokenCount ?? 0)
-            + Number(response?.usageMetadata?.thoughtsTokenCount ?? 0);
-          intent = parseClassification(response);
+          const { input, output } = classificationUsage(response, config.provider);
+          intent = parseClassification(response, config.provider);
           if (!intent || !Number.isSafeInteger(input) || input <= 0 || input > LIMITS.inputTokens
               || !Number.isSafeInteger(output) || output < 0 || output > LIMITS.outputTokens) {
             result = { intent: 'HUMAN', reply_key: 'HUMAN', handoff_reason: 'ai_failed',
@@ -323,7 +338,10 @@ export function createHandler({ config, store, classify, send, sendAlert = null,
         }
         return json({ data, runtime_mode: config.mode, runtime: {
           webhook_configured: webhookReady(config), send_configured: config.pageToken.length >= 20,
-          ai_key_configured: config.geminiKey.length >= 20, ai_data_approved: config.dataApproved,
+          ai_provider: config.provider, ai_model: config.model,
+          ai_key_configured: (config.provider === 'openai' ? config.openaiKey : config.geminiKey).length >= 20,
+          ai_data_approved: config.dataApproved && (config.provider !== 'openai' || config.openaiDataApproved),
+          openai_public_data_approved: config.openaiPublicDataApproved,
           public_data_approved: config.publicDataApproved, public_delivery_verified: config.publicDeliveryVerified,
           alerts_configured: config.alertsEnabled && config.resendKey.length >= 10 && Boolean(config.resendFrom),
         } }, 200, cors);
@@ -335,7 +353,9 @@ export function createHandler({ config, store, classify, send, sendAlert = null,
         const state = await store.settings();
         const allowed = new Set(Array.isArray(state.test_sender_ids) ? state.test_sender_ids : []);
         return json({ runtime_mode: config.mode, effective_mode: effectiveMode(config, state), paused: state.paused === true,
-          ai_data_approved: config.dataApproved, alerts_enabled: config.alertsEnabled,
+          ai_provider: config.provider, ai_model: config.model,
+          ai_data_approved: config.dataApproved && (config.provider !== 'openai' || config.openaiDataApproved),
+          openai_public_data_approved: config.openaiPublicDataApproved, alerts_enabled: config.alertsEnabled,
           public_data_approved: config.publicDataApproved && state.public_data_approved === true,
           public_delivery_verified: config.publicDeliveryVerified && state.public_delivery_verified === true,
           runtime_test_senders: config.testSenders.size, database_test_senders: allowed.size,

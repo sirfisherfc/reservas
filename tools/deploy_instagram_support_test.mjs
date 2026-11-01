@@ -37,6 +37,18 @@ test('secret dry run uses stdin object and prints names only', async () => {
   assert.equal(JSON.stringify(output).includes('SYNTHETIC_VALUE'), false);
 });
 
+test('OpenAI preparation uses a dedicated secret with both provider data gates forced off', () => {
+  const planned = secretPlan({ INSTAGRAM_OPENAI_API_KEY: 'synthetic-openai-secret', INSTAGRAM_AI_PROVIDER: 'openai' });
+  assert.equal(planned.updated.find(row => row.name === 'INSTAGRAM_OPENAI_API_KEY').value, 'synthetic-openai-secret');
+  assert.equal(planned.updated.find(row => row.name === 'INSTAGRAM_AI_PROVIDER').value, 'openai');
+  for (const name of ['INSTAGRAM_OPENAI_DATA_APPROVED', 'INSTAGRAM_OPENAI_PUBLIC_DATA_APPROVED']) {
+    assert.equal(planned.updated.find(row => row.name === name).value, 'false');
+    assert.throws(() => secretPlan({ [name]: 'true' }), /activation_not_supported/);
+  }
+  assert.throws(() => secretPlan({ INSTAGRAM_AI_PROVIDER: 'unreviewed' }), /provider_not_supported/);
+  assert.ok(secretPlan({ INSTAGRAM_OPENAI_API_KEY: 'new-synthetic' }, ['INSTAGRAM_OPENAI_API_KEY']).preserved.includes('INSTAGRAM_OPENAI_API_KEY'));
+});
+
 test('deployment forces off gates first, preserves all unrelated names and verifies remote metadata', async () => {
   const order = []; const names = ['RESEND_API_KEY', 'RESEND_FROM', 'UNRELATED_SERVICE_SETTING'];
   const output = [];

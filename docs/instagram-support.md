@@ -12,9 +12,14 @@ Passaram 35 testes do atendimento e oito do helper, incluindo falhas de perfil,
 limites de cache e preservação dos cartões após erro HTTP na atualização.
 Os seis cenários HTTP de autenticação e payload vazio foram repetidos após o
 deploy e passaram. Os 28 nomes de segredos existentes foram preservados.
-O GitHub Pages teve falha por uma implantação anterior em andamento; somente
-a etapa de publicação foi reenviada depois de confirmar a anterior concluída.
-A presença do novo painel no endereço público ainda aguarda confirmação.
+O GitHub Pages teve falha por uma implantação anterior em andamento. Em
+01/11/2026, o commit real `86a185a` foi publicado e houve uma única solicitação
+oficial `POST /pages/builds`, aceita com HTTP 201. A publicação automática e
+essa reconstrução terminaram com sucesso; o estado do site e do último build
+passou a `built`. O HTML do painel e seu módulo retornaram HTTP 200 com a
+interface de perfil verificado no domínio do portal. Branch `main`, pasta
+raiz, método `legacy` e domínio foram preservados. A repetição antiga de
+`368acf0` ainda aparecia na fila, sem impedir a nova publicação confirmada.
 
 Depois da configuração das credenciais existentes, seis cenários HTTP
 passaram: challenge correto 200; token incorreto 403; evento vazio assinado
@@ -86,8 +91,11 @@ Novos diagnósticos devem conservar os campos de erro sanitizados, incluindo
 
 O portfólio da Página retornou `verification_status=verified`. A consulta
 do vínculo empresarial do app pelo campo `business` retornou erro 100 de
-campo inexistente; a empresa proprietária do app continua a conferir no
-painel. Não foi atribuído o Timeout ao tipo exibido para o app.
+campo inexistente. Depois, a coordenação conferiu na interface oficial
+App Review → Verificação, com 100%, o DeathStar vinculado ao portfólio
+Sir Fisher verificado. Essa leitura confirmou o vínculo empresarial sem
+alterá-lo. O Timeout continua sem causa comprovada por esse campo ou pelo
+tipo exibido para o app.
 
 Após o teste controlado mais recente, a leitura às 09:49:30 UTC encontrou
 zero eventos e zero conversas no banco. Os logs oficiais de 09:29:30 a
@@ -373,3 +381,6 @@ e o worker permaneceram em off, sem Meta POST ou ativação do cron.
 - [Resend: idempotência](https://resend.com/docs/dashboard/emails/idempotency-keys)
   e [envio](https://resend.com/docs/api-reference/emails/send-email).
 - [Supabase Management API: deploy](https://supabase.com/docs/reference/api/v1-deploy-a-function).
+- [GitHub: solicitar build do Pages](https://docs.github.com/en/rest/pages/pages#request-a-github-pages-build).
+  Foi usada uma única solicitação na configuração existente, seguida de
+  leitura do build e conferência dos arquivos públicos.

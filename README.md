@@ -13,8 +13,8 @@ false e alertas false. Seis cenários HTTP de verificação e autenticação
 passaram, sem criar conversa de cliente ou enviar mensagens. Cron e
 atendimento por IA continuam desligados. O callback oficial e somente
 `messages` foram configurados para teste restrito; o recebimento real ainda
-aguarda validação. A fila com perfis verificados foi testada e depende da
-conclusão da publicação do painel. Detalhes em
+aguarda validação. A fila com perfis verificados foi testada e está publicada
+no painel administrativo; o acesso exige login de administrador. Detalhes em
 [`docs/instagram-support.md`](docs/instagram-support.md).
 
 ## Documentação

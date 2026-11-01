@@ -1,13 +1,20 @@
 # Atendimento do Instagram em nuvem
 
-Regra de spam em preparação local: padrões conservadores PT/EN antes da
+Regra de spam implantada no código `71c5a2d`, Edge 19 ACTIVE: padrões PT/EN antes da
 ingesta, caso, aviso e Gemini, com 76 testes Node aprovados (60 atendimento e
 16 dos helpers). Spam inequívoco gera 200 e contador agregado, sem guardar
 texto/MID ou chamar provedores. Nenhuma mensagem é excluída/bloqueada na Meta.
 Relatos de golpe, cobranças próprias, reclamações e pedidos de pessoa têm
 prioridade; links, cardápio, CV e propostas comuns seguem o atendimento.
 Echo e cancelamento de envio preservam o fluxo. Não há migration ou mudança de
-permissão. A publicação seguirá a revisão independente nesta janela autorizada.
+permissão. Revisão independente aprovada. A implantação começou em OFF e
+preservou os 29 nomes de segredos; testes HTTP de saúde/HMAC vazio passaram.
+Após `--check` com identidade exata, somente o TEST da mesma conta e o cron
+existente foram retomados. Health200/interseção1, zero pendências, seis envios
+e três chamadas anteriores; responsável NULL/e-mails desligados. Sem chamada
+nova de IA, Meta send ou ampliação de lista nessa implantação.
+O filtro foi exercitado com callbacks sintéticos locais, incluindo assinatura
+e persistência; não foi enviada mensagem real de spam a cliente para testá-lo.
 
 **Estado atual: TEST para a mesma conta controlada, com recuperação em nuvem
 ativa. O agente responde apenas à conta de teste.** Para corrigir mensagens canceladas,

@@ -1,8 +1,9 @@
 # Atendimento do Instagram em nuvem
 
-**Estado atual: OFF durante a validação de mensagens canceladas. Clientes
-continuam bloqueados.** O cron e a flag foram desligados, o banco ficou
-pausado e o uso de dados/modelo foi fechado, preservando histórico e custos.
+**Estado atual: TEST para a mesma conta controlada, com recuperação em nuvem
+ativa. Clientes continuam bloqueados.** Para corrigir mensagens canceladas,
+o cron e a flag foram desligados, o banco ficou pausado e o uso de dados/modelo
+foi fechado, preservando histórico e custos.
 A migration `20261101130005_instagram_support_withdrawal.sql`, no projeto
 gestao, acrescenta cancelamento por MID e remetente. Antes do processamento,
 o cancelamento impede IA e envio; quando a IA já começou, o resultado perde
@@ -24,6 +25,55 @@ Revisão independente sem P0/P1/P2 pendente. Fontes consultadas em 01/11/2026:
 [webhooks do Messenger Instagram, `is_deleted`](https://developers.facebook.com/documentation/business-messaging/instagram-messaging/webhooks),
 [revisão para apps da própria empresa](https://developers.facebook.com/documentation/business-messaging/instagram-messaging/app-review/apps-for-your-own-business)
 e [termos da plataforma Meta](https://developers.facebook.com/terms/).
+
+Publicação: reservas `85abd70`, gestao `5f6a80a`; migration aplicada com seu
+histórico na mesma transação e cópia privada prévia das funções. Definições e
+grants das outras funções públicas permaneceram iguais. Security Advisor:
+dez INFO do schema privado, zero WARN/ERROR do atendimento. Edge versão 15
+ACTIVE implantada em OFF, preservando 29 nomes de segredos. Health OFF 200,
+anônimo/segredo incorreto 403, vazio assinado 200/zero eventos, assinatura
+alterada 401, challenge correto e controle anônimo 403.
+
+Depois do `--check` real, o helper retomou somente o perfil privado já
+autorizado: identidade correspondente, runtime/banco/interseção com uma conta,
+dados/modelo aprovados nesse teste e bootstrap zero. O job existente único
+`sirfisher-instagram-support-drain`, owner postgres, voltou a ativo a cada minuto,
+com `cron_enabled=true` e Vault canônico único. Guard de fila vazia preservado.
+Conferência final: conversa de teste sem pausa, zero pendências, seis envios
+e três chamadas de IA acumulados; sem novo drain/envio/modelo nesta implantação.
+Manager NULL e e-mails desligados. Teto R$45/2.000 gerações/2 centavos preservado,
+com tarifa limitada a 30 dias. A recuperação já passou com mensagem real no
+ciclo anterior; essa retomada não repetiu o teste nem cancelou mensagem real.
+
+A sonda externa autorizada foi enviada e recebida no Instagram, na Primary
+aceita, mas as duas leituras do banco e os logs do webhook não encontraram
+evento/POST correspondente. Nenhuma consulta de perfil, IA ou resposta foi
+feita para esse perfil; ele permaneceu fora da lista. O resultado não isola
+Pedidos, Review ou outra causa de transporte. Produção continua pendente.
+
+Na Meta, configurações 100%, ícone, categoria, descrição, plataforma Website
+e instruções do analista foram salvos. A coordenação reabriu as instruções e
+confirmou persistência e campos de credenciais vazios. O rascunho declara
+piloto exclusivo do proprietário e acesso do analista ainda por compatibilizar.
+Vídeo, dependências, declarações legais e dados de fornecedores/países continuam
+pendentes; o pedido de Review não foi enviado. Logs/contribuição do AI Studio
+não foram conferidos porque a tela permaneceu carregando. Paid não substitui
+essa conferência. A política pública atual registra retenção Google de 55 dias
+para abuso, separada de logs opcionais do projeto, e DB em São Paulo sem afirmar
+que toda execução Edge ocorre no Brasil. Ver
+[políticas de uso Google](https://ai.google.dev/gemini-api/docs/usage-policies)
+e [política Sir Fisher](https://www.sirfisher.com.br/privacidade/).
+
+Auditoria nativa final sem alterações: resposta automática ativa somente no
+Messenger, Instagram desmarcado; ausência apenas como sugestão, nova reserva
+IG desligada. Quatro FAQs continuam ativas no Instagram durante o piloto.
+Desligar as respostas concorrentes antes de liberar o agente ao público.
+
+O CI de gestao inicialmente recusou o endereço interno do PostgreSQL no
+service Docker. O runner agora aceita esse destino só com flags explícitos
+do Actions/descartável, host loopback, banco dedicado, porta e rede privada
+conferidos. Os 37 contratos locais continuam verdes, com duas guardas de
+destino adicionais; o CI será conferido após o push dessa correção.
 
 Na etapa anterior, a conversa de teste foi
 retomada explicitamente após encerrar os dois casos de teste. Não há pendência

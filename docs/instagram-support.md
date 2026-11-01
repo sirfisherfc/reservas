@@ -18,9 +18,12 @@ App, Página e Instagram foram confirmados por GET oficial, incluindo a
 identidade dos tokens. Isso não presume Advanced Access. Verify Token e
 segredo do worker persistem no arquivo privado `reservas/.env.local`,
 ignorado pelo Git; seus valores não ficam neste documento. Os outros
-segredos existentes foram preservados. O callback oficial da Meta é
-configurado separadamente pela coordenação da tarefa, com o mesmo token
-canônico, sem ativar atendimento ou cron.
+segredos existentes foram preservados. Em 01/11/2026, a coordenação verificou
+e salvou o callback oficial na interface do Instagram, com o novo token
+canônico. O diálogo fechou após a validação; o campo oculto não permite
+comparar o valor pelo DOM e não foi usado como evidência de falha.
+A Página Sir Fisher permanecia com zero campos de evento assinados nesta
+etapa. O atendimento e o cron continuam desligados.
 
 ## Componentes
 

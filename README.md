@@ -11,7 +11,8 @@ Atendimento Instagram em nuvem: função `instagram-support` v1 publicada e
 credenciais conferidas em 01/11/2026, com modo off, uso de dados de clientes
 false e alertas false. Seis cenários HTTP de verificação e autenticação
 passaram, sem criar conversa de cliente ou enviar mensagens. Cron e
-atendimento por IA continuam desligados. Detalhes em
+atendimento por IA continuam desligados. O callback oficial foi salvo;
+a assinatura dos eventos continua pendente. Detalhes em
 [`docs/instagram-support.md`](docs/instagram-support.md).
 
 ## Documentação

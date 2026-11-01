@@ -1,10 +1,20 @@
 # Atendimento do Instagram em nuvem
 
-Implantado em 01/11/2026: **instagram-support versão 1, ACTIVE no portal,
-com atendimento desligado**. O commit de código é `104f007` em `reservas`.
+Implantado em 01/11/2026: **instagram-support versão 5, ACTIVE no portal,
+com atendimento desligado**. O código atual está no commit `368acf0` em
+`reservas`; a primeira implantação foi a versão 1, do commit `104f007`.
 Os três gates de runtime foram conferidos por digest: modo off, uso de dados
 de clientes false e alertas false. Nenhum cliente recebeu mensagem por esta
 função e o cron não foi ativado.
+
+A versão 5 acrescenta perfis verificados à fila administrativa, sem migration.
+Passaram 35 testes do atendimento e oito do helper, incluindo falhas de perfil,
+limites de cache e preservação dos cartões após erro HTTP na atualização.
+Os seis cenários HTTP de autenticação e payload vazio foram repetidos após o
+deploy e passaram. Os 28 nomes de segredos existentes foram preservados.
+O GitHub Pages teve falha por uma implantação anterior em andamento; somente
+a etapa de publicação foi reenviada depois de confirmar a anterior concluída.
+A presença do novo painel no endereço público ainda aguarda confirmação.
 
 Depois da configuração das credenciais existentes, seis cenários HTTP
 passaram: challenge correto 200; token incorreto 403; evento vazio assinado
@@ -22,8 +32,13 @@ segredos existentes foram preservados. Em 01/11/2026, a coordenação verificou
 e salvou o callback oficial na interface do Instagram, com o novo token
 canônico. O diálogo fechou após a validação; o campo oculto não permite
 comparar o valor pelo DOM e não foi usado como evidência de falha.
-A Página Sir Fisher permanecia com zero campos de evento assinados nesta
-etapa. O atendimento e o cron continuam desligados.
+A Página Sir Fisher permanecia com zero campos de evento assinados nessa
+etapa. Depois, a coordenação confirmou somente `messages` assinado na Página
+e no app para o teste restrito autorizado. A leitura da janela controlada
+08:10:23–08:15:23 UTC não encontrou inbound persistido. O teste do botão da
+Meta também não teve confirmação de entrega pelos filtros restritos de logs.
+App em desenvolvimento e assinatura configurada ainda dependem de um evento
+real para comprovar a conexão. O atendimento e o cron continuam desligados.
 
 ## Componentes
 

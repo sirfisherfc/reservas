@@ -40,11 +40,12 @@ test('deployment forces off gates first, preserves all unrelated names and verif
     async verify() { order.push('verify'); },
     async secretNames() { order.push('inventory'); return [...names]; },
     async putSecrets(rows) { order.push('put-off-gates'); assert.ok(rows.every(row => row.name.startsWith('INSTAGRAM_'))); for (const row of rows) if (!names.includes(row.name)) names.push(row.name); },
+    async verifySecrets() { order.push('verify-off-gates'); return true; },
     async deploy(form) { order.push('deploy'); assert.equal(form.getAll('file').length, 4); return { slug: 'instagram-support' }; },
     async getFunction() { order.push('readback'); return { slug: 'instagram-support', status: 'ACTIVE', verify_jwt: false, version: 1 }; },
   };
   await main(['deploy', '--apply'], { client, output: item => output.push(item) });
-  assert.deepEqual(order, ['verify', 'inventory', 'put-off-gates', 'inventory', 'deploy', 'readback']);
+  assert.deepEqual(order, ['verify', 'inventory', 'put-off-gates', 'inventory', 'verify-off-gates', 'deploy', 'readback']);
   assert.equal(output[0].action, 'deployed_off'); assert.ok(names.includes('UNRELATED_SERVICE_SETTING'));
 });
 
@@ -57,4 +58,13 @@ test('Management API rejects the wrong project and does not expose response body
 
 test('management token environment has precedence without echo or filesystem writes', async () => {
   assert.equal(await managementToken({ SUPABASE_ACCESS_TOKEN: 'synthetic-private-token' }), 'synthetic-private-token');
+});
+
+test('secret readback supports the Management API value field containing a SHA256 digest', async () => {
+  const { createHash } = await import('node:crypto');
+  const client = managementClient('synthetic-pat', async () => new Response(JSON.stringify([
+    { name: 'INSTAGRAM_SUPPORT_MODE', value: createHash('sha256').update('off').digest('hex') },
+  ])));
+  assert.equal(await client.verifySecrets([{ name: 'INSTAGRAM_SUPPORT_MODE', value: 'off' }]), true);
+  assert.equal(await client.verifySecrets([{ name: 'INSTAGRAM_SUPPORT_MODE', value: 'live' }]), false);
 });

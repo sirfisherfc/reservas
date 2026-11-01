@@ -1,9 +1,15 @@
 # Atendimento do Instagram em nuvem
 
-Preparado em 01/11/2026 para revisão. **O código instala em modo desligado.**
-Esta entrega local não implanta a função, não ativa respostas a clientes e
-não altera credenciais ou faturamento. O responsável pela implantação deve
-registrar separadamente o que foi publicado, testado e ativado.
+Implantado em 01/11/2026: **instagram-support versão 1, ACTIVE no portal,
+com atendimento desligado**. O commit de código é `104f007` em `reservas`.
+Os três gates de runtime foram conferidos por digest: modo off, uso de dados
+de clientes false e alertas false. Nenhum cliente recebeu mensagem por esta
+função e o cron não foi ativado.
+
+O HTTP público retornou 503 `not_configured`, esperado enquanto falta o App
+Secret; controle anônimo retornou 403 e worker sem segredo retornou 401.
+Página administrativa e módulo JavaScript responderam HTTP 200. Login,
+fila e callback com conta controlada continuam como testes separados.
 
 ## Componentes
 
@@ -207,7 +213,9 @@ node tools/deploy_instagram_support.mjs deploy
 A implantação exige `deploy --apply`, reservado ao responsável depois da
 revisão. Antes de enviar código, o helper grava somente os três gates próprios
 em off/false. Outros segredos existentes permanecem presentes. Depois, confere
-slug, status e configuração JWT na Management API. Esse readback de metadados
+slug, status e configuração JWT na Management API. O helper também confere os
+digests dos gates atualizados, inclusive o campo `value` que a API usa para
+representar o digest. Esse readback de metadados
 não substitui testar o comportamento HTTP da função publicada.
 
 O comando `secrets` recebe um objeto JSON **pelo stdin**; o responsável deve
@@ -219,7 +227,9 @@ Gemini já existente e recusa `RESEND_*`, chaves reservadas do Supabase e gates
 de ativação. Para Resend, a função reutiliza os segredos já configurados.
 
 O helper não habilita faturamento, cron, modo live, uso de dados de clientes
-ou alertas. Não foi executado com `--apply` nesta preparação. Os testes do
+ou alertas. A implantação de versão 1 foi feita com `deploy --apply` depois
+dos testes e do push; somente os gates próprios off/false foram gravados,
+e os 20 nomes de segredos existentes foram preservados. Os testes do
 helper simulam a API e comprovam ordem, preservação de nomes e ausência de
 valores no resultado.
 

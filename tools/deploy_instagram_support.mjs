@@ -86,6 +86,14 @@ export function managementClient(token, fetcher = fetch) {
       return true;
     },
     async secretNames() { const rows = await api('/secrets'); if (!Array.isArray(rows)) fail('secret_inventory_invalid'); return rows.map(row => row.name); },
+    async verifySecrets(entries) {
+      const rows = await api('/secrets');
+      if (!Array.isArray(rows)) return false;
+      return entries.every(entry => rows.some(row => row.name === entry.name && (
+        row.digest === createHash('sha256').update(entry.value).digest('hex')
+        || row.value === createHash('sha256').update(entry.value).digest('hex')
+        || row.value === entry.value)));
+    },
     putSecrets: entries => api('/secrets', 'POST', entries),
     deploy: form => api('/functions/deploy?slug=' + SLUG, 'POST', form),
     getFunction: () => api('/functions/' + SLUG),
@@ -124,13 +132,14 @@ export async function main(argv = process.argv.slice(2), dependencies = {}) {
   await client.putSecrets(planned.updated);
   const after = await client.secretNames();
   if (planned.updated.some(row => !after.includes(row.name)) || existing.some(name => !after.includes(name))) fail('secret_readback_failed');
+  if (!await client.verifySecrets(planned.updated)) fail('secret_digest_readback_failed');
   if (command === 'secrets') { output({ action: 'secrets_updated', names: planned.updated.map(row => row.name), preserved_names: planned.preserved, install_mode: 'off' }); return; }
   const deployed = await client.deploy(pack.form);
   if (deployed?.slug !== SLUG) fail('deploy_identity_mismatch');
   const verified = await client.getFunction();
   if (verified?.slug !== SLUG || verified?.status !== 'ACTIVE' || verified?.verify_jwt !== false) fail('deploy_readback_failed');
   output({ action: 'deployed_off', project: PROJECT, function: SLUG, version: verified.version,
-    status: verified.status, files: pack.manifest, other_secret_names_preserved: existing.length });
+    status: verified.status, files: pack.manifest, off_gates_verified: true, other_secret_names_preserved: existing.length });
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

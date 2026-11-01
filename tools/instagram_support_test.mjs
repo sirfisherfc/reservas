@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHandler, loadConfig, extractEvents, limitedBody } from '../supabase/functions/instagram-support/core.mjs';
 import { ASSETS, LIMITS, MODEL, redactText, inputTokenUpperBound, reviewedReply } from '../supabase/functions/instagram-support/policy.mjs';
-import { createTransports } from '../supabase/functions/instagram-support/transport.mjs';
+import { createTransports, createProfileEnricher } from '../supabase/functions/instagram-support/transport.mjs';
+import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
 
 const NOW = Date.parse('2026-11-01T15:00:00Z');
 const CUSTOMER = '200000000000001';
@@ -115,6 +117,7 @@ function harness(options = {}) {
     classify: options.classify ?? (async body => { calls.push(body); return responseFor('HOURS'); }),
     send: options.send ?? (async (sender, text) => { sent.push({ sender, text }); return { message_id: 'synthetic-output-' + sent.length }; }),
     authorizeAdmin: options.authorizeAdmin ?? (async () => null), sendAlert: options.sendAlert ?? null,
+    enrichCases: options.enrichCases ?? null,
     waitUntil: options.background ? promise => tasks.push(promise) : null,
   });
   return { ...app, store, sent, calls, tasks, config };
@@ -336,13 +339,15 @@ test('email transport sends only fixed topic and panel URL, with stable idempote
   const config = { ...fixtureConfig(), resendKey: 'synthetic-resend-key', resendFrom: 'Fixture <sender@example.invalid>' };
   const transport = createTransports(config, async (url, options) => { captured.push({ url, options }); return new Response('{"id":"synthetic-resend-id"}'); });
   const alert = { alert_id: uid(850), revision: 1, manager_email: 'fixture@example.invalid', reason: 'complaint',
-    sender_id: CUSTOMER, summary: 'SYNTHETIC_CUSTOMER_TEXT_SHOULD_NOT_BE_SENT' };
+    sender_id: CUSTOMER, verified_username: 'synthetic_person', profile_url: 'https://www.instagram.com/synthetic_person/',
+    summary: 'SYNTHETIC_CUSTOMER_TEXT_SHOULD_NOT_BE_SENT' };
   await transport.sendAlert(alert); await transport.sendAlert(alert);
   assert.equal(captured[0].url, 'https://api.resend.com/emails');
   assert.equal(captured[0].options.headers['Idempotency-Key'], captured[1].options.headers['Idempotency-Key']);
   const payload = JSON.parse(captured[0].options.body);
   assert.deepEqual(payload.to, ['fixture@example.invalid']);
   assert.equal(payload.text.includes(CUSTOMER), false); assert.equal(payload.text.includes(alert.summary), false);
+  assert.equal(payload.text.includes(alert.verified_username), false); assert.equal(payload.text.includes(alert.profile_url), false);
   assert.match(payload.text, /Reclamação/); assert.match(payload.text, /admin\/atendimento.html/);
   assert.equal(captured[0].url.includes(config.resendKey), false);
 });
@@ -384,4 +389,121 @@ test('spam vocabulary does not suppress a request for a person', async () => {
 test('callback-to-reply retains explicit Christmas date after redaction', async () => {
   const app = harness(); await app.handler(await signed(app.config, envelope('synthetic-christmas', 'Abre em 2026-12-25?')));
   await app.drain(); assert.equal(app.sent.length, 1); assert.match(app.sent[0].text, /fechada em 25\/12\/2026/);
+});
+
+test('case profile lookup requests only username from the official Graph host using a header token', async () => {
+  const seen = [];
+  const enrich = createProfileEnricher(fixtureConfig(), async (url, options) => {
+    seen.push({ url, options }); return new Response('{"username":"synthetic_person"}');
+  });
+  const data = await enrich({ cases: [{ thread_id: uid(1), sender_id: CUSTOMER, summary: 'Synthetic case.' }] });
+  assert.equal(data.cases[0].verified_username, 'synthetic_person');
+  assert.equal(data.cases[0].profile_url, 'https://www.instagram.com/synthetic_person/');
+  assert.equal(data.cases[0].profile_status, 'verified');
+  assert.equal(data.cases[0].summary, 'Synthetic case.');
+  assert.equal(seen[0].url, 'https://graph.facebook.com/v26.0/' + CUSTOMER + '?fields=username');
+  assert.equal(seen[0].options.method, 'GET');
+  assert.equal(seen[0].options.headers.Authorization, 'Bearer ' + fixtureConfig().pageToken);
+  assert.equal(seen[0].url.includes(fixtureConfig().pageToken), false);
+});
+
+test('missing, malformed and malicious profile usernames never become identity links', async () => {
+  for (const username of [null, '', '../direct', '..', '.', 'https://invalid.example/', '<script>', 'x'.repeat(31)]) {
+    const enrich = createProfileEnricher(fixtureConfig(), async () => new Response(JSON.stringify({ username })));
+    const rows = await enrich([{ sender_id: CUSTOMER, verified_username: 'stale', profile_url: 'https://stale.invalid/' }]);
+    assert.equal(rows[0].verified_username, null); assert.equal(rows[0].profile_url, null);
+    assert.equal(rows[0].profile_status, 'unavailable');
+  }
+});
+
+test('profile rejection and hard timeout preserve every case without exposing provider bodies', async () => {
+  const rows = [{ thread_id: uid(4), sender_id: CUSTOMER, summary: 'Synthetic pending case.' }];
+  for (const fetcher of [async () => new Response('SYNTHETIC_PRIVATE_BODY', { status: 403 }), async () => new Promise(() => {})]) {
+    const enrich = createProfileEnricher(fixtureConfig(), fetcher, { timeoutMs: 15 });
+    const data = await enrich({ cases: rows });
+    assert.equal(data.cases.length, 1); assert.equal(data.cases[0].summary, rows[0].summary);
+    assert.equal(data.cases[0].profile_status, 'unavailable');
+    assert.equal(JSON.stringify(data).includes('SYNTHETIC_PRIVATE_BODY'), false);
+  }
+});
+
+test('profile cache expires, evicts old entries and caches short-lived failures', async () => {
+  let time = 1000; let calls = 0;
+  const enrich = createProfileEnricher(fixtureConfig(), async () => { calls++; return new Response('{"username":"synthetic_person"}'); },
+    { now: () => time, ttlMs: 100, maxCache: 2 });
+  const row = sender_id => [{ sender_id }];
+  await enrich(row(CUSTOMER)); await enrich(row(CUSTOMER)); assert.equal(calls, 1);
+  await enrich(row(OTHER)); await enrich(row('200000000000003'));
+  await enrich(row(CUSTOMER)); assert.equal(calls, 4);
+  time += 101; await enrich(row(CUSTOMER)); assert.equal(calls, 5);
+  let failures = 0;
+  const denied = createProfileEnricher(fixtureConfig(), async () => { failures++; return new Response('{}', { status: 403 }); },
+    { now: () => time, negativeTtlMs: 20 });
+  await denied(row(CUSTOMER)); await denied(row(CUSTOMER)); assert.equal(failures, 1);
+  time += 21; await denied(row(CUSTOMER)); assert.equal(failures, 2);
+});
+
+test('profile enrichment limits new lookups and concurrency while preserving unqueried cases', async () => {
+  let active = 0, peak = 0, calls = 0;
+  const enrich = createProfileEnricher(fixtureConfig(), async () => {
+    calls++; active++; peak = Math.max(peak, active);
+    await new Promise(resolve => setTimeout(resolve, 5)); active--;
+    return new Response('{"username":"synthetic_person"}');
+  }, { maxLookups: 3, concurrency: 2 });
+  const rows = Array.from({ length: 10 }, (_, i) => ({ sender_id: String(200000000000010 + i), summary: 'Synthetic case ' + i }));
+  const result = await enrich(rows);
+  assert.equal(calls, 3); assert.ok(peak <= 2); assert.equal(result.length, 10);
+  assert.equal(result.filter(row => row.profile_status === 'verified').length, 3);
+  assert.equal(result[9].summary, rows[9].summary);
+});
+
+test('administrator validation precedes case lookup; enrichment failure keeps the authenticated queue readable', async () => {
+  let profiles = 0;
+  const unauthorized = harness({ enrichCases: async () => { profiles++; } });
+  const request = () => new Request('https://example.invalid/control', { method: 'POST', body: '{"action":"cases"}' });
+  assert.equal((await unauthorized.handler(request())).status, 403);
+  assert.equal(profiles, 0); assert.equal(unauthorized.store.controls.length, 0);
+  const store = new Store(); store.control = async () => ({ cases: [{ sender_id: CUSTOMER, summary: 'Synthetic pending case.' }] });
+  const admin = harness({ store, authorizeAdmin: async () => AUTH_USER,
+    enrichCases: async () => { profiles++; throw new Error('SYNTHETIC_PRIVATE_ERROR'); } });
+  const response = await admin.handler(request()); const payload = await response.json();
+  assert.equal(response.status, 200); assert.equal(profiles, 1);
+  assert.equal(payload.data.cases[0].summary, 'Synthetic pending case.');
+  assert.equal(JSON.stringify(payload).includes('SYNTHETIC_PRIVATE_ERROR'), false);
+});
+
+test('panel renders verified profile links with textContent and keeps failed profiles in the queue', async () => {
+  class Node {
+    constructor(tag) { this.tag = tag; this.children = []; this.textContent = ''; }
+    append(...nodes) { this.children.push(...nodes); }
+    replaceChildren(...nodes) { this.children = nodes; }
+    addEventListener() {}
+    set innerHTML(_) { throw new Error('HTML injection is forbidden'); }
+  }
+  const container = new Node('div');
+  const source = (await readFile(new URL('../assets/js/adminAtendimento.js', import.meta.url), 'utf8'))
+    .replace(/^import .*;\r?\n/gm, '').replace(/init\(\)\.catch\([\s\S]*$/, '');
+  const context = vm.createContext({ document: { createElement: tag => new Node(tag), getElementById: () => container }, SUPABASE_URL: 'https://example.invalid' });
+  vm.runInContext(source, context);
+  context.rows = [
+    { thread_id: uid(1), profile_status: 'verified', verified_username: 'synthetic_person', profile_url: 'https://www.instagram.com/synthetic_person/' },
+    { thread_id: uid(2), profile_status: 'unavailable', last_inbound_at: '2026-11-01T08:00:00Z' },
+    { thread_id: uid(3), profile_status: 'verified', verified_username: '<script>', profile_url: 'javascript:alert(1)' },
+  ];
+  vm.runInContext('renderCases(rows)', context);
+  const flatten = node => [node, ...node.children.flatMap(flatten)];
+  const nodes = flatten(container);
+  assert.equal(container.children.length, 3);
+  assert.equal(nodes.filter(node => node.textContent === 'Abrir perfil').length, 1);
+  assert.ok(nodes.some(node => node.textContent === '@synthetic_person'));
+  assert.equal(nodes.filter(node => node.textContent === 'Abrir Direct').length, 3);
+  assert.equal(nodes.filter(node => /Perfil indisponível/.test(node.textContent)).length, 2);
+  assert.ok(nodes.some(node => /01\/11\/(?:20)?26/.test(node.textContent)));
+  assert.ok(nodes.filter(node => node.href).every(node => /^https:\/\/www\.instagram\.com\//.test(node.href)));
+  context.supabase = { auth: { getSession: async () => ({ data: { session: { access_token: 'synthetic-jwt' } } }) } };
+  context.SUPABASE_ANON_KEY = 'synthetic-anon';
+  context.fetch = async () => new Response('{}', { status: 503 });
+  const previous = [...container.children];
+  await assert.rejects(() => vm.runInContext('refresh()', context), /Não foi possível concluir/);
+  assert.deepEqual(container.children, previous);
 });

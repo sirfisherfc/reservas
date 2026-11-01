@@ -147,8 +147,25 @@ A pausa bloqueia novos envios; uma resposta cujo envio já começou pode
 chegar depois da pausa. Uma operação de resultado incerto exige conferir o
 Direct antes de retomar. O painel relê a fila após as ações e informa quando
 a mudança não foi confirmada.
-O botão “Abrir Direct” abre a caixa oficial: ainda falta um link direto
-por conversa comprovado pela API; IDs numéricos de cliente não viram URLs.
+Após autenticar o administrador e ler os casos, o servidor pode consultar
+somente `username` pela User Profile API oficial com Facebook Login e Page
+token. A API exige consentimento da pessoa por mensagem recebida ou ação
+equivalente documentada, cinco permissões e token solicitado por pessoa com
+tarefa `MODERATE` na Página. Um perfil bloqueado ou sem acesso fica indisponível.
+
+A fila usa o `@username` retornado e validado pela Meta para “Abrir perfil”.
+No perfil, a equipe pode tocar em Mensagem para abrir a conversa existente.
+“Abrir Direct” continua disponível para conferir a caixa pelo horário do caso.
+Não existe um link de thread inventado a partir do identificador numérico.
+Falha, 403, timeout ou username inválido conservam o caso e mostram que o
+perfil está indisponível. Nenhum nome, foto ou campo extra é solicitado.
+
+Cada leitura consulta até 12 perfis novos com concorrência máxima de quatro
+e prazo total de 2,5 segundos. Um cache somente em memória guarda no máximo
+128 resultados: 120 segundos para perfil válido e 30 para indisponível.
+Atualizações seguintes podem consultar casos ainda sem cache. O username
+não é gravado no banco, nos alertas ou nos logs. Os testes simulados cobrem
+autorização antes da consulta, falha sem perder a fila e renderização segura.
 
 O Resend existente pode avisar sobre **caso novo**, quando os dois gates
 de alerta estiverem liberados. O destinatário é resolvido no banco pelo
@@ -267,6 +284,11 @@ e o worker permaneceram em off, sem Meta POST ou ativação do cron.
   [limites por projeto](https://ai.google.dev/gemini-api/docs/rate-limits).
 - [Meta: webhooks](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/webhooks).
   O caminho desta integração usa Facebook Login e deve ser testado nele.
+- [Meta: User Profile API com Facebook Login](https://developers.facebook.com/docs/messenger-platform/instagram/features/user-profile/).
+  Página atualizada em 01/04/2026; leitura pública HTTP 200 em 01/11/2026.
+  Documenta `GET graph.facebook.com/v26.0/{IGSID}?fields=username`, Page token,
+  tarefa `MODERATE` e as permissões `instagram_basic`, `instagram_manage_messages`,
+  `pages_manage_metadata`, `pages_read_engagement` e `pages_show_list`.
 - [Resend: idempotência](https://resend.com/docs/dashboard/emails/idempotency-keys)
   e [envio](https://resend.com/docs/api-reference/emails/send-email).
 - [Supabase Management API: deploy](https://supabase.com/docs/reference/api/v1-deploy-a-function).

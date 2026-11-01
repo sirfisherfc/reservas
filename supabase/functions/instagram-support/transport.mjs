@@ -16,6 +16,81 @@ async function requestJson(fetcher, url, options, timeout = 12_000) {
   } finally { clearTimeout(timer); }
 }
 
+const USERNAME = /^(?!\.{1,2}$)[A-Za-z0-9._]{1,30}$/;
+
+// Read-only, ephemeral profile cache. Called only after admin authorization.
+export function createProfileEnricher(config, fetcher = fetch, {
+  now = () => Date.now(), timeoutMs = 2_500, ttlMs = 120_000,
+  negativeTtlMs = 30_000, maxCache = 128, maxLookups = 12, concurrency = 4,
+} = {}) {
+  const cache = new Map();
+  const inFlight = new Map();
+  function cached(id) {
+    const entry = cache.get(id);
+    if (entry && entry.expires > now()) return entry;
+    cache.delete(id); return null;
+  }
+  function save(id, value) {
+    for (const [key, entry] of cache) if (entry.expires <= now()) cache.delete(key);
+    cache.delete(id);
+    while (cache.size >= maxCache) cache.delete(cache.keys().next().value);
+    cache.set(id, { value, expires: now() + (value ? ttlMs : negativeTtlMs) });
+    return value;
+  }
+  async function lookup(id, remaining) {
+    const previous = cached(id);
+    if (previous) return previous.value;
+    if (inFlight.has(id)) return await inFlight.get(id);
+    if (inFlight.size >= concurrency || remaining <= 0 || config.pageToken.length < 20) return null;
+    const controller = new AbortController();
+    let timer;
+    const request = (async () => {
+      try {
+        const response = await fetcher('https://graph.facebook.com/v26.0/' + id + '?fields=username', {
+          method: 'GET', headers: { Authorization: 'Bearer ' + config.pageToken },
+          redirect: 'error', signal: controller.signal,
+        });
+        if (!response.ok) return null;
+        const profile = JSON.parse(new TextDecoder().decode(await limitedBody(response, 4_096)));
+        return typeof profile?.username === 'string' && USERNAME.test(profile.username) ? profile.username : null;
+      } catch { return null; }
+    })();
+    // A hard deadline preserves the queue even if a transport ignores abort.
+    const pending = Promise.race([request, new Promise(resolve => {
+      timer = setTimeout(() => { controller.abort(); resolve(null); }, Math.min(timeoutMs, remaining));
+    })]);
+    inFlight.set(id, pending);
+    try { return save(id, await pending); }
+    finally { clearTimeout(timer); inFlight.delete(id); }
+  }
+  return async function enrichCases(data) {
+    const rows = Array.isArray(data) ? data : data?.cases;
+    if (!Array.isArray(rows)) return data;
+    const deadline = now() + timeoutMs;
+    const results = rows.map(row => ({ ...row, verified_username: null, profile_url: null, profile_status: 'unavailable' }));
+    const candidates = [...new Set(results.map(row => row.sender_id).filter(id => /^\d{5,30}$/.test(id ?? '')))];
+    const resolved = new Map(); const jobs = [];
+    for (const id of candidates) {
+      const previous = cached(id);
+      if (previous) resolved.set(id, previous.value);
+      else if (jobs.length < maxLookups) jobs.push(id);
+    }
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(concurrency, jobs.length) }, async () => {
+      while (next < jobs.length && now() < deadline) {
+        const id = jobs[next++];
+        resolved.set(id, await lookup(id, deadline - now()));
+      }
+    }));
+    for (const row of results) {
+      const username = resolved.get(row.sender_id);
+      if (username) Object.assign(row, { verified_username: username,
+        profile_url: 'https://www.instagram.com/' + username + '/', profile_status: 'verified' });
+    }
+    return Array.isArray(data) ? results : { ...data, cases: results };
+  };
+}
+
 export function createTransports(config, fetcher = fetch) {
   const base = config.url.replace(/\/$/, '');
   const serviceHeaders = { apikey: config.serviceKey, 'Content-Type': 'application/json',
@@ -80,5 +155,5 @@ export function createTransports(config, fetcher = fetch) {
           + '.\nAbra o painel: https://reservas.sirfisher.com.br/admin/atendimento.html'
           + '\nConfira o histórico no Direct antes de responder.' }) }, 15_000);
   };
-  return { store, authorizeAdmin, classify, send, sendAlert };
+  return { store, authorizeAdmin, classify, send, sendAlert, enrichCases: createProfileEnricher(config, fetcher) };
 }

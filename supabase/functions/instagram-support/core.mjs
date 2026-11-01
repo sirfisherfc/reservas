@@ -122,7 +122,7 @@ function json(value, status = 200, cors = false) {
       'Access-Control-Allow-Methods': 'POST, OPTIONS' } : {}) } });
 }
 
-export function createHandler({ config, store, classify, send, sendAlert = null, authorizeAdmin,
+export function createHandler({ config, store, classify, send, sendAlert = null, authorizeAdmin, enrichCases = null,
   waitUntil = null, now = () => Date.now(), randomUUID = () => crypto.randomUUID(), metric = () => {} }) {
   const safeMetric = (name, count = 1) => metric(name, count);
 
@@ -292,9 +292,13 @@ export function createHandler({ config, store, classify, send, sendAlert = null,
           || (['assume', 'close', 'resume'].includes(body.action) && !body.thread_id)
           || (body.action === 'pause_global' && typeof body.paused !== 'boolean')
           || (body.action === 'resume' && body.confirm !== true)) return json({ error: 'invalid_action' }, 400, cors);
-        const data = await store.control(body.action, body.thread_id ?? null,
+        let data = await store.control(body.action, body.thread_id ?? null,
           { actor_id: actor, ...(body.action === 'pause_global' ? { paused: body.paused } : {}),
             ...(body.action === 'resume' ? { confirm: true } : {}) });
+        if (body.action === 'cases' && enrichCases) {
+          try { data = await enrichCases(data); }
+          catch { safeMetric('profile_lookup_failed'); }
+        }
         return json({ data, runtime_mode: config.mode, runtime: {
           webhook_configured: webhookReady(config), send_configured: config.pageToken.length >= 20,
           ai_key_configured: config.geminiKey.length >= 20, ai_data_approved: config.dataApproved,

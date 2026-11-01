@@ -46,6 +46,13 @@ function requireChange(result) {
 function money(cents) { return Number.isFinite(Number(cents)) ? (Number(cents) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'indisponível'; }
 function date(value) { const parsed = new Date(value); return Number.isFinite(parsed.getTime())
   ? parsed.toLocaleString('pt-BR', { timeZone: 'America/Fortaleza', dateStyle: 'short', timeStyle: 'short' }) : 'Horário indisponível'; }
+function verifiedProfile(row) {
+  const username = row?.verified_username;
+  if (row?.profile_status !== 'verified' || typeof username !== 'string'
+    || !/^(?!\.{1,2}$)[A-Za-z0-9._]{1,30}$/.test(username)) return null;
+  const url = 'https://www.instagram.com/' + username + '/';
+  return row.profile_url === url ? { username, url } : null;
+}
 
 async function refresh() {
   const [statusResult, casesResult] = await Promise.all([control('status'), control('cases')]);
@@ -105,7 +112,8 @@ function renderCases(rows) {
     const meta = document.createElement('p'); meta.className = 'support-case-meta';
     const state = document.createElement('span'); state.textContent = 'Estado: ' + ({ open: 'Pendente', closed: 'Encerrado' }[row.status] ?? 'Pendente');
     const when = document.createElement('span'); when.textContent = date(row.last_inbound_at ?? row.created_at);
-    const identity = document.createElement('span'); identity.textContent = 'Conversa: …' + String(row.sender_id ?? '').slice(-6);
+    const profile = verifiedProfile(row);
+    const identity = document.createElement('span'); identity.textContent = profile ? '@' + profile.username : 'Perfil indisponível; confira o horário no Direct';
     const alert = document.createElement('span'); alert.textContent = 'Aviso por e-mail: ' + ({ pending: 'na fila', sending: 'enviando',
       sent: 'aceito pelo provedor', failed: 'falhou; confira a fila', uncertain: 'envio a conferir',
       suppressed: 'desligado para este caso', blocked: 'configuração a conferir' }[row.alert_status] ?? 'ainda não enviado');
@@ -113,6 +121,10 @@ function renderCases(rows) {
     const actions = document.createElement('div'); actions.className = 'support-actions';
     const direct = document.createElement('a'); direct.className = 'btn btn--outline btn--sm'; direct.href = 'https://www.instagram.com/direct/inbox/';
     direct.target = '_blank'; direct.rel = 'noopener noreferrer'; direct.textContent = 'Abrir Direct';
+    if (profile) {
+      const link = document.createElement('a'); link.className = 'btn btn--outline btn--sm'; link.href = profile.url;
+      link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = 'Abrir perfil'; actions.append(link);
+    }
     actions.append(direct, button('Assumir caso', 'assume', row.thread_id), button('Encerrar caso', 'close', row.thread_id), button('Retomar automação', 'resume', row.thread_id, true));
     card.append(title, summary, meta, actions); container.append(card);
   }

@@ -33,12 +33,69 @@ e salvou o callback oficial na interface do Instagram, com o novo token
 canônico. O diálogo fechou após a validação; o campo oculto não permite
 comparar o valor pelo DOM e não foi usado como evidência de falha.
 A Página Sir Fisher permanecia com zero campos de evento assinados nessa
-etapa. Depois, a coordenação confirmou somente `messages` assinado na Página
-e no app para o teste restrito autorizado. A leitura da janela controlada
-08:10:23–08:15:23 UTC não encontrou inbound persistido. O teste do botão da
-Meta também não teve confirmação de entrega pelos filtros restritos de logs.
-App em desenvolvimento e assinatura configurada ainda dependem de um evento
-real para comprovar a conexão. O atendimento e o cron continuam desligados.
+etapa. Depois, a interface mostrou somente `messages` para o teste restrito.
+A auditoria por Graph API, descrita abaixo, separou os registros do app e da
+Página. A coordenação publicou o app Meta para o teste restrito autorizado;
+a função de atendimento e o cron continuam desligados.
+
+Os filtros iniciais de logs usaram o campo de caminho do API Gateway.
+A consulta corrigida usa `source='function_edge_logs'`, o `function_id`
+consultado pelo slug e `request.pathname`. Os testes HTTP anteriores aparecem
+nessa fonte. Os dois POST 200 às 08:44 e 08:46 UTC foram reconhecidos pela
+coordenação como Test Dashboard da Meta; confirmam transporte e HMAC nesses
+testes. Até então, os DMs reais controlados ainda aguardavam recebimento.
+As consultas posteriores usam `received_at` e `now()` do banco para definir
+a janela, pois o relógio local estava cerca de 85 segundos atrasado.
+
+Uma auditoria posterior por GET oficial confirmou duas camadas: no app,
+objeto `instagram` ativo com `messages` e callback correspondente; na Página,
+DeathStar estava inscrito somente em `name`. O guia v26.0 de Webhooks,
+seção “Facebook credentials”, manda usar Page token no `subscribed_apps`
+da Página vinculada com os campos escolhidos no App Dashboard. A matriz
+identifica as permissões deste MVP no caminho Instagram Messaging API
+(Messenger Platform).
+
+Para o teste restrito autorizado, foi lido o conjunto atual `[name]` e
+aplicada uma única união `[messages, name]`. O POST retornou HTTP 200 e
+`success=true`; o GET posterior retornou HTTP 200 e os dois campos,
+preservando o campo anterior. Essa etapa manteve a assinatura global
+`instagram/messages`, os gates off/false e o cron inativo. A configuração
+por API foi conferida. A consulta após o novo DM controlado retornou zero
+candidatos; a validação de perfil e a preparação da lista de teste ainda
+dependem de um inbound persistido. Nenhum dado de cliente foi usado nessa
+alteração de assinatura.
+
+A credencial atual do atendimento foi confirmada como Page token do app
+correto, derivada do mesmo ator do token `SYSTEM_USER` já usado no Analytics.
+O token atual mantém os cinco escopos do fluxo de perfil, as tarefas
+`MODERATE` e `MESSAGING` e os ativos corretos. Um candidato gerado pela
+interface oficial ficou somente no arquivo privado local, sem substituir
+o token atual ou os segredos em nuvem. Ele tem outro ator e corresponde ao
+app, à Página e ao Instagram, mas falta `pages_read_engagement`. A comparação
+com um identificador direto da pessoa não comprovou identidade, pois o ID
+do token pode ter escopo de app.
+
+A leitura mínima de Conversations com os três escopos específicos dessa
+operação retornou HTTP 400, código `-2`, subcódigo `2534084`, tanto com o
+token atual quanto com o candidato. O `error.message` capturado foi
+`Timeout`. Esse retorno isolado não comprova falta de Advanced Access nem
+que uma nova concessão resolverá o recebimento. A referência v26.0 usa a
+Página nesse caminho e informa que paginação por tempo não está disponível.
+Novos diagnósticos devem conservar os campos de erro sanitizados, incluindo
+`error_user_msg`, para evitar interpretar apenas o código.
+
+O portfólio da Página retornou `verification_status=verified`. A consulta
+do vínculo empresarial do app pelo campo `business` retornou erro 100 de
+campo inexistente; a empresa proprietária do app continua a conferir no
+painel. Não foi atribuído o Timeout ao tipo exibido para o app.
+
+Após o teste controlado mais recente, a leitura às 09:49:30 UTC encontrou
+zero eventos e zero conversas no banco. Os logs oficiais de 09:29:30 a
+09:50:30 UTC também não mostraram requisições da função. Os gates em nuvem
+foram conferidos como off/false; o banco estava em off, pausado, com
+`model_usage_allowed=false`, `billing_verified=false`, alertas e cron
+desligados. A documentação consultada não fixou
+um prazo de propagação para presumir que aguardar 30 minutos resolverá.
 
 ## Componentes
 
@@ -304,6 +361,15 @@ e o worker permaneceram em off, sem Meta POST ou ativação do cron.
   Documenta `GET graph.facebook.com/v26.0/{IGSID}?fields=username`, Page token,
   tarefa `MODERATE` e as permissões `instagram_basic`, `instagram_manage_messages`,
   `pages_manage_metadata`, `pages_read_engagement` e `pages_show_list`.
+- [Meta: configuração de Webhooks](https://developers.facebook.com/documentation/instagram-platform/webhooks/setup)
+  e [matriz de campos e permissões](https://developers.facebook.com/documentation/instagram-platform/webhooks/fields).
+  A seção “Facebook credentials” documenta v26.0, Page token e assinatura
+  na Página. As rotas por conta Instagram pertencem aos fluxos de login
+  identificados separadamente nesse guia.
+- [Meta: assinatura da Página](https://developers.facebook.com/docs/graph-api/reference/page/subscribed_apps/)
+  e [assinatura do app](https://developers.facebook.com/docs/graph-api/reference/app/subscriptions/).
+- [Meta: Conversations da Página, v26.0](https://developers.facebook.com/docs/graph-api/reference/page/conversations/?version=v26.0)
+  e [estado de verificação do portfólio](https://developers.facebook.com/docs/marketing-api/reference/business/).
 - [Resend: idempotência](https://resend.com/docs/dashboard/emails/idempotency-keys)
   e [envio](https://resend.com/docs/api-reference/emails/send-email).
 - [Supabase Management API: deploy](https://supabase.com/docs/reference/api/v1-deploy-a-function).

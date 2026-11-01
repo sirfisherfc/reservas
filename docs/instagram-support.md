@@ -1,5 +1,17 @@
 # Atendimento do Instagram em nuvem
 
+**Expansão pendente:** Gemini continua só no TEST1 do proprietário adulto.
+Os [termos Gemini](https://ai.google.dev/gemini-api/terms), vigentes desde
+23/03/2026 e consultados em 01/11, restringem API Clients provavelmente
+acessados por menores de 18. Paid e consentimento genérico não fornecem
+exceção nessa cláusula para o atendimento aberto do restaurante.
+A preferência perguntada é OpenAI API proposta com teto R$45, sem chave,
+configuração ou chamada de modelo, ou FAQ gratuita por regras, ainda não
+implementada. Nada será trocado antes dessa escolha e das validações de
+dados/menores correspondentes. O novo app Meta Empresa aguarda autorização
+específica após bloqueio da revisão automática; DeathStar permanece intacto.
+Runtime, segredos e gates públicos ficaram preservados nesta atualização.
+
 ## Atualização de 01/11/2026: próximas FAQs após WhatsApp
 
 Gestao `629247e` e reservas `9cdae46` publicados; Actions e Pages passaram,
@@ -33,7 +45,8 @@ de endereço → novo pedido humano no mesmo caso produziu um aviso de WhatsApp,
 uma FAQ e nenhum segundo aviso. O caso permaneceu aberto e sem pausa até a
 coordenação encerrá-lo pelo painel autenticado. O aviso estava sem horário,
 prazo ou afirmação de pausa. A FAQ nativa Instagram ficou temporariamente
-desligada no ensaio, sob controle da coordenação.
+desligada no ensaio. Depois a coordenação restaurou o FC e conferiu
+Instagram e Messenger marcados nas FAQs nativas.
 Recebimento até conclusão no banco: aviso 4,620 s, FAQ 5,397 s. São duas
 observações, sem SLA. Só a FAQ usou modelo, com 297 tokens de entrada e um
 de saída. Leitura após encerrar: oito envios/quatro chamadas acumulados,
@@ -43,8 +56,9 @@ observador fez somente leituras; o encerramento era de um caso de teste.
 
 A conexão Facebook permanece preservada. A opção oficial Instagram Login
 está em preparação pela coordenação: app Empresa separado depende de
-autorização específica; consentimento público para Gemini Paid/Supabase e
-prova real fora dos papéis continuam separados. Nenhuma IA pública ativada.
+autorização específica. A escolha do provedor ou das regras, o tratamento
+de dados e a prova real fora dos papéis continuam pendentes e separados.
+Nenhuma IA pública ativada.
 O site `42a9ee6` foi publicado e conferido pela coordenação com esse fluxo
 futuro explícito. FAQs nativas e regra de reserva OFF estão sem horário humano.
 

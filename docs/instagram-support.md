@@ -1,12 +1,54 @@
 # Atendimento do Instagram em nuvem
 
-**Estado atual: OFF durante correção de precisão identificada no teste
-controlado. Clientes não foram liberados.** A aplicação anterior de TEST foi
+**Estado atual: TEST restrito reaberto após corrigir a precisão da pergunta
+sobre a cozinha. Clientes não foram liberados.** A conversa de teste foi
+retomada explicitamente após encerrar os dois casos de teste. Não há pendência
+ou aviso reservado. O modo global continua TEST exclusivo dela, com cron inativo.
+A aplicação anterior de TEST foi
 restrita a uma única conta com identidade confirmada pela Meta, após revisão
 e `--check` real. O banco/runtime foram novamente fechados e conferidos,
-preservando consumo e histórico.
+preservando consumo e histórico. Depois, o commit `9afafed` passou por revisão
+e 57 testes Node, foi implantado OFF na versão 11 e retornou ao teste de uma
+conta após novo `--check`. O reteste real retornou UNKNOWN e MID confirmado,
+sem nova IA: duas chamadas anteriores e três envios acumulados. Tempo do
+recebimento à conclusão no banco: 4,550s. A coordenação confirmou a cópia correta.
 
-Na etapa anterior de TEST,
+| Teste real com a conta controlada | Resultado |
+| --- | --- |
+| Horário da casa | HOURS; uma resposta virtual com horários corretos, confirmada na interface. Recebimento→fim: 5,066s. |
+| Horário da cozinha após correção | UNKNOWN; explica a falta de fonte e oferece detalhar/pedir pessoa. Zero nova IA; 4,550s. |
+| Reserva para quatro com pedido de confirmação | RESERVATION_LINK; portal, corte 15h30 e tolerância 15min. Não confirmou mesa/disponibilidade; 7,621s. |
+| Pedido de uma pessoa | Um caso e pausa antes do aviso único de WhatsApp. Sem IA, nome de gerente ou promessa de transferência; 4,700s. |
+| Reclamação durante a pausa | Mesmo caso mudou para complaint. Zero novo aviso ou IA; pausa mantida. |
+| Encerrar e retomar pelo painel | Encerrar manteve a pausa; retomar exigiu confirmação separada e liberou somente mensagens novas. Sem replay ou novo envio. |
+| Resposta manual da equipe pela Meta Suite | Novo echo recebido e caso manual criado; a conversa voltou a pausar sem aviso automático ou IA. |
+| Recuperação em nuvem | Mensagem nova retida no lease, claim genuíno expirado antes da IA e um único ciclo cron. UNKNOWN/sent/MID confirmado, HTTP200 no worker e zero nova IA. Job/flag desligados após o teste. |
+
+Acumulado real: seis envios e três chamadas de IA, incluindo o teste de
+cozinha inicialmente reprovado. Dois casos de teste fechados, sem caso aberto,
+e-mails ou cron ativo. Fechar esses casos não marca reclamação real como
+resolvida. A Meta
+confirmou MID nos envios; a coordenação conferiu na interface horário, cozinha,
+reserva, aviso humano e resposta manual.
+O registro de teste foi conferido no painel com motivo em português, perfil
+verificado e indicação do link enviado no Instagram. Duplicatas, falhas de
+provedor e concorrência também passam pelos testes locais documentados abaixo.
+
+O Vault guarda uma única cópia do segredo limitado já usado pelo worker,
+com correspondência conferida e sem token privilegiado no header. O job
+existente foi preservado, com owner `postgres` e intervalo de um minuto.
+Em fila vazia, o guard evita chamar a Edge Function. No teste de recuperação,
+o único POST `/drain` retornou 200 às 12:04:02,483 UTC, e o recebimento→fim foi
+65,413s, incluindo retenção e espera proposital do ciclo. Esse tempo não é
+a latência normal. Logs do pg_net são temporários; a fila e o outbox duráveis
+continuam no schema próprio. Não prometer SLA ou que cron evita pausa do Free.
+
+Uma leitura de metadados às 11:52:56 UTC não encontrou incoming fora do owner
+no banco. Nenhum cliente foi consultado no Profile API, enviado à IA ou
+incluído na lista por esse diagnóstico. O zero não prova aprovação de produção
+nem a causa de ausência de entrega.
+
+Na etapa inicial de TEST,
 Health confirmou runtime e banco TEST, pausa global false, dados aprovados
 somente nesse teste, listas e interseção com uma conta. Modelo/faturamento
 verificados, teto R$45, 2.000 gerações, reserva de 2 centavos e tarifa válida
@@ -22,7 +64,8 @@ antes do modelo para horário da cozinha/último pedido sem fonte confirmada;
 responde que falta informação e oferece detalhar ou pedir uma pessoa.
 Regras humanas/sensíveis mantêm prioridade. O teste de regressão usa um
 classificador que retornaria HOURS e exige zero chamada/reserva. São agora
-57 testes Node aprovados. Repetição real, reserva e WhatsApp seguem pendentes.
+57 testes Node aprovados. A repetição real passou como descrito acima;
+reserva e WhatsApp passaram nos testes descritos acima.
 
 Revisão de 01/11/2026 implantada em OFF: pedidos humanos vão ao WhatsApp
 oficial `https://wa.me/5585988544274`, conforme decisão do proprietário.
@@ -355,7 +398,7 @@ Gates que começam fechados:
 - `INSTAGRAM_ALERTS_ENABLED=false` e banco com `alerts_enabled=false`.
 - Cron inativo; `cron_enabled=false`.
 
-Teste futuro: `mode=test` nos dois lados e **interseção** entre
+Regras do teste restrito: `mode=test` nos dois lados e **interseção** entre
 `INSTAGRAM_TEST_SENDER_IDS` e `test_sender_ids` no banco. Usar somente conta
 controlada com identidade confirmada pela Profile API e mensagens sintéticas.
 E-mail e cron continuam desligados. O modo live depende de revisão, autenticação, custos

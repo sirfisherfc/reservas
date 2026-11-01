@@ -108,7 +108,7 @@ function renderCases(rows) {
   for (const row of rows) {
     const card = document.createElement('article'); card.className = 'card support-case';
     const title = document.createElement('h3'); title.textContent = reasons[row.reason] ?? 'Atendimento humano';
-    const summary = document.createElement('p'); summary.textContent = String(row.summary ?? 'Confira a conversa no Instagram.').slice(0, 400);
+    const summary = document.createElement('p'); summary.textContent = 'O atendimento humano segue pelo WhatsApp. O histórico permanece no Direct.';
     const meta = document.createElement('p'); meta.className = 'support-case-meta';
     const state = document.createElement('span'); state.textContent = 'Estado: ' + ({ open: 'Pendente', closed: 'Encerrado' }[row.status] ?? 'Pendente');
     const when = document.createElement('span'); when.textContent = date(row.last_inbound_at ?? row.created_at);

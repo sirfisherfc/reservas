@@ -18,6 +18,7 @@ Site de reservas para o restaurante Sir Fisher Praia. HTML/CSS/JS puro (sem buil
 - [`docs/medicao-google.md`](docs/medicao-google.md) — origem, reservas e comparecimentos no Google Analytics.
 - [`docs/privacidade-dados.md`](docs/privacidade-dados.md) — quais dados são salvos e por quê.
 - [`docs/security-checklist.md`](docs/security-checklist.md) — checklist de testes manuais.
+- [`docs/instagram-support.md`](docs/instagram-support.md) — backend do atendimento Instagram, fila humana e gates de ativação.
 - [`docs/reveillon.md`](docs/reveillon.md) — módulo de Réveillon (mesas numeradas, pré-reserva, sinal, portaria).
 - [`docs/future-roadmap.md`](docs/future-roadmap.md) — fase 2 (não implementada).
 

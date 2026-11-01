@@ -32,6 +32,16 @@ Ao criar uma tabela ou view, colocar no mesmo arquivo SQL os grants de cada pape
 
 **Duplicação do projeto:** `rls.sql` e `reveillon-rls.sql` concedem tabelas a `anon` e `authenticated`, mas ao `service_role` só `select` em `app_users`. No `portal`, a `event-quote` lê e altera a agenda com os grants das migrations `20260930000000` e `20260930010000` do repositório gestao. Num projeto novo, aplicar também essas migrations (ou grants equivalentes) antes de publicar as Edge Functions.
 
+## Atendimento Instagram
+
+O atendimento Instagram tem schema privado próprio `instagram_support` e
+RPCs exclusivos de `service_role`, criados pela migration
+`gestao/supabase/migrations/20261101071634_instagram_support_durable_queue.sql`.
+A Edge Function instala com modo desligado e autentica o webhook por HMAC;
+o controle administrativo valida o JWT e `fn_is_admin`. Nenhuma tabela de
+reservas ou financeira participa da fila. Implantação, segredos e testes
+estão descritos em [`instagram-support.md`](instagram-support.md).
+
 ## Extensões usadas
 
 - `pgcrypto` (schema `extensions`) — hash do token de cancelamento, geração de bytes aleatórios.

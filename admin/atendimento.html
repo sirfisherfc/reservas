@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Atendimento do Instagram — Painel Sir Fisher</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" type="image/png" href="https://www.sirfisher.com.br/assets/img/favicon.png" />
+  <link rel="stylesheet" href="../assets/css/admin.css" />
+  <link rel="stylesheet" href="../assets/css/admin-atendimento.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main">
+      <div class="page-header">
+        <h1>Atendimento do Instagram</h1>
+        <a class="btn btn--outline" href="https://www.instagram.com/direct/inbox/" target="_blank" rel="noopener noreferrer">Abrir Direct</a>
+      </div>
+      <div id="support-message" class="alert" role="status" aria-live="polite" hidden></div>
+      <section class="card mb-16" aria-labelledby="support-control-title">
+        <h2 class="section-title" id="support-control-title">Automação</h2>
+        <p id="support-status" class="text-soft">Conferindo o estado do agente…</p>
+        <p id="support-budget" class="text-soft"></p>
+        <div class="support-actions">
+          <button id="support-pause" class="btn btn--primary" type="button" disabled>Pausar automação</button>
+          <button id="support-refresh" class="btn btn--outline" type="button">Atualizar</button>
+        </div>
+        <p class="support-note">A pausa bloqueia novos envios. Uma resposta já em andamento ainda pode chegar. Encerrar um caso mantém a pausa daquela conversa. A retomada pede uma ação separada.</p>
+      </section>
+      <section aria-labelledby="support-cases-title">
+        <div class="page-header"><h2 class="section-title" id="support-cases-title">Casos e conversas pausadas</h2></div>
+        <p class="support-note">Abra o Direct para conferir o histórico e responder. Esta fila guarda o assunto e o estado do acompanhamento. O link abre a caixa de entrada; a integração ainda não fornece um link direto verificado por conversa.</p>
+        <div id="support-cases" class="support-cases" aria-live="polite"><p class="text-soft">Carregando…</p></div>
+      </section>
+      <dialog id="support-confirm" aria-labelledby="support-confirm-title">
+        <form method="dialog">
+          <h2 id="support-confirm-title">Retomar respostas automáticas?</h2>
+          <p id="support-confirm-text">Confira se o atendimento humano foi concluído antes de retomar.</p>
+          <div class="support-actions">
+            <button class="btn btn--outline" value="cancel">Voltar</button>
+            <button class="btn btn--primary" value="confirm">Retomar automação</button>
+          </div>
+        </form>
+      </dialog>
+    </main>
+  </div>
+  <script type="module" src="../assets/js/adminAtendimento.js"></script>
+</body>
+</html>

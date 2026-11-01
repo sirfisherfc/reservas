@@ -401,6 +401,11 @@ verify_jwt = false
 [functions.event-quote]
 verify_jwt = false
 
+# Webhook Meta: assinatura HMAC validada sobre o corpo original. /control
+# valida JWT + fn_is_admin; /drain exige segredo próprio. Padrão: modo off.
+[functions.instagram-support]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

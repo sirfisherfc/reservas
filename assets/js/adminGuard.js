@@ -6,6 +6,7 @@ import { supabase } from './supabaseClient.js';
 const NAV_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', href: './dashboard.html', adminOnly: false },
   { key: 'reservas', label: 'Reservas', href: './reservas.html', adminOnly: false },
+  { key: 'links-marketing', label: 'Links de marketing', href: './links-marketing.html', adminOnly: true },
   { key: 'reveillon', label: 'Réveillon', href: './reveillon.html', adminOnly: false },
   { key: 'atendimento', label: 'Atendimento Instagram', href: './atendimento.html', adminOnly: true },
   { key: 'configuracoes', label: 'Configurações', href: './configuracoes.html', adminOnly: true },

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Links de marketing — Sir Fisher Praia</title>
+  <link rel="stylesheet" href="../assets/css/admin.css" />
+  <style>
+    .marketing-card { max-width: 850px; padding: 24px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+    .marketing-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .marketing-fields label { display: grid; gap: 6px; }
+    .marketing-wide { grid-column: 1 / -1; }
+    .marketing-fields input, .marketing-fields select, #marketing-link { width: 100%; padding: 11px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font: inherit; }
+    #marketing-link { margin: 12px 0; min-height: 110px; overflow-wrap: anywhere; }
+    #marketing-error { color: var(--color-danger); }
+    .marketing-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+    @media (max-width: 600px) { .marketing-fields { grid-template-columns: minmax(0, 1fr); } .marketing-card { padding: 16px; } }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main" id="marketing-main" hidden>
+      <div class="page-header"><h1>Links de marketing</h1></div>
+      <p>Crie um link para um conteúdo já identificado. A reserva guarda esse identificador quando o visitante usa o link.</p>
+      <form id="marketing-form" class="marketing-card">
+        <div class="marketing-fields">
+          <label class="marketing-wide">Página de destino
+            <input name="destination" type="url" value="https://reservas.sirfisher.com.br/" required />
+          </label>
+          <label>Plataforma<select name="source"><option value="instagram">Instagram</option><option value="facebook">Facebook</option></select></label>
+          <label>Tipo<select name="medium"><option value="organic_social">Conteúdo orgânico</option><option value="paid_social">Anúncio</option></select></label>
+          <label>Campanha<input name="campaign" placeholder="ex.: novembro-2026" maxlength="120" pattern="[a-z0-9][a-z0-9_-]*" required /></label>
+          <label>ID da publicação<input name="contentId" inputmode="numeric" placeholder="ID exibido no painel de marketing" required /></label>
+          <p class="hint marketing-wide">Use o ID real da mídia ou publicação. Para Stories, aplique o link no adesivo. Um link compartilhado na bio identifica a bio ou a campanha; a relação com uma publicação exige seu link próprio.</p>
+          <fieldset id="ad-fields" class="marketing-wide" hidden disabled>
+            <legend>Identificadores do anúncio</legend>
+            <div class="marketing-fields">
+              <label>ID da campanha<input name="campaignId" inputmode="numeric" pattern="[0-9]+" required /></label>
+              <label>ID do conjunto de anúncios<input name="adGroupId" inputmode="numeric" pattern="[0-9]+" required /></label>
+              <label>ID do anúncio<input name="adId" inputmode="numeric" pattern="[0-9]+" required /></label>
+            </div>
+          </fieldset>
+        </div>
+        <p class="hint">Use nomes de campanha sem dados de clientes. O gerador prepara o link para revisão; a publicação segue a aprovação do proprietário.</p>
+        <button class="btn btn--primary" type="submit">Gerar link</button>
+        <p id="marketing-error" role="status" aria-live="polite"></p>
+        <section id="marketing-preview" hidden>
+          <label for="marketing-link">Link para revisar e copiar</label>
+          <textarea id="marketing-link" readonly></textarea>
+          <div class="marketing-actions"><button class="btn btn--outline" id="copy-link" type="button">Copiar link</button><a id="open-link" target="_blank" rel="noopener" class="btn btn--outline">Abrir prévia</a></div>
+          <p class="hint">O portal registra a origem do link. Google Analytics e Meta calculam seus próprios resultados conforme a cobertura e a atribuição de cada fonte. Comparecimento depende do registro da equipe.</p>
+        </section>
+      </form>
+    </main>
+  </div>
+  <script type="module" src="../assets/js/adminMarketingLinks.js?v=20261102"></script>
+</body>
+</html>

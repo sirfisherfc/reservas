@@ -1,5 +1,5 @@
 import { reservationAttribution, captureAttribution, measureReservationConfirmed,
-  measureReservationConfirmedGA4 } from '../assets/js/attribution.js';
+  measureReservationConfirmedGA4, measureReservationConfirmedMeta, metaScheduleEventId } from '../assets/js/attribution.js';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -193,4 +193,62 @@ test('campanha nova apos expirar recebe data atual sem herdar anuncio anterior',
   assert(result.utm_source === 'ig' && result.utm_content === 'bio', 'Perdeu nova campanha');
   assert(!result.oppref && !result.ad_id, 'Herdou identificadores expirados');
   assert(result.captured_at === new Date(FIXTURE_NOW).toISOString(), 'Nao registrou o novo toque');
+});
+
+test('utm_id chega ao contrato existente sem substituir campaign_id explicito', async () => {
+  for (const [query, expected] of [['?utm_source=instagram&utm_id=123', '123'],
+    ['?utm_source=instagram&utm_id=123&campaign_id=456', '456']]) {
+    campaignEnvironment({}, {}, query);
+    const result = await reservationAttribution();
+    assert(result.campaign_id === expected, 'ID da campanha nao chegou ao RPC');
+  }
+});
+
+test('novo conteudo na mesma campanha substitui o toque e nao herda anuncio anterior', async () => {
+  const stored = { utm_source: 'instagram', utm_campaign: 'novembro', utm_content: 'ig_100',
+    ad_id: 'old', captured_at: '2026-10-06T12:00:00Z' };
+  campaignEnvironment(stored, stored, '?utm_source=instagram&utm_campaign=novembro&utm_content=ig_200');
+  const result = await reservationAttribution();
+  assert(result.utm_content === 'ig_200' && result.ad_id === null, 'Misturou conteudo/anuncio anterior');
+  assert(result.captured_at === new Date(FIXTURE_NOW).toISOString(), 'Nao registrou novo toque');
+});
+
+test('referrer externo inicia novo toque com mesma fonte sem herdar conteudo antigo', () => {
+  const stored = { utm_source: 'instagram', utm_content: 'ig_100', ad_id: 'old',
+    captured_at: '2026-10-06T12:00:00Z' };
+  campaignEnvironment(stored, stored, '?utm_source=instagram');
+  document.referrer = 'https://l.instagram.com/';
+  const result = captureAttribution();
+  assert(result.utm_source === 'instagram' && !result.utm_content && !result.ad_id, 'Herdou conteudo de outro clique');
+  assert(result.captured_at === new Date(FIXTURE_NOW).toISOString(), 'Nao renovou chegada externa');
+});
+
+test('referrer interno preserva conteudo e data original entre subdominios', () => {
+  const stored = { utm_source: 'instagram', utm_content: 'ig_100',
+    captured_at: '2026-10-06T12:00:00Z' };
+  for (const referrer of ['https://sirfisher.com.br/', 'https://www.sirfisher.com.br/conheca/']) {
+    campaignEnvironment(stored, stored, '?utm_source=instagram');
+    document.referrer = referrer;
+    const result = captureAttribution();
+    assert(result.utm_content === 'ig_100' && result.captured_at === stored.captured_at, 'Perdeu toque interno');
+  }
+});
+
+test('segunda captura com referrer externo mantem a chegada ja registrada neste documento', () => {
+  campaignEnvironment({}, {}, '?utm_source=instagram&utm_content=ig_123');
+  document.referrer = 'https://l.instagram.com/';
+  const arrival = captureAttribution();
+  window.location.href += '#confirmacao';
+  const second = captureAttribution();
+  assert(second.landing_url === arrival.landing_url, 'Regravou chegada ao enviar formulario');
+  assert(second.captured_at === arrival.captured_at, 'Reiniciou data no mesmo documento');
+});
+
+test('Pixel Meta preserva Schedule e o ID usado pela CAPI', () => {
+  let call;
+  globalThis.window = { fbq(...args) { call = args; } };
+  measureReservationConfirmedMeta({ id: 'fixture-reservation', party_size: 2 });
+  assert(call[1] === 'Schedule', 'Mudou evento Meta existente');
+  assert(call[3].eventID === metaScheduleEventId('fixture-reservation')
+    && call[3].eventID === 'sf-sched-fixture-reservation', 'Mudou deduplicacao Meta');
 });

@@ -217,6 +217,26 @@ conversões reais.
 
 ## Validação da atribuição
 
+### Links de conteúdo e campanha em 02/11/2026
+
+O gerador privado em [`admin/links-marketing.html`](../admin/links-marketing.html)
+prepara links com `utm_content=ig_<id>` ou `fb_<id>`. Em anúncios, inclui
+`campaign_id`, `ad_group_id`, `ad_id` e `utm_id`, com os IDs informados pelo
+administrador. [Operação, contrato e cobertura](marketing-links.md).
+
+O site e o portal passaram a conservar `utm_id`. O portal usa esse valor
+como `campaign_id` quando o parâmetro explícito faltar. Uma chegada com
+parâmetros e referência externa inicia um toque novo e elimina os IDs do
+clique anterior. A navegação entre os subdomínios preserva o toque e seu
+prazo; capturar de novo no envio do formulário conserva a chegada já lida.
+Sem referência disponível e com parâmetros iguais, o histórico válido é
+preservado porque faltam dados para distinguir outro clique de navegação.
+
+O banco, os status e as filas existentes foram preservados. Os testes
+locais confirmaram o payload até o RPC simulado e o mesmo ID Meta
+`sf-sched-<reservation-id>`. Não se criou reserva, comparecimento ou evento
+de conversão em produção para essa validação.
+
 ```powershell
 deno test --allow-read reservas/tools/attribution_test.mjs
 ```

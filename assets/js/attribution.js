@@ -6,8 +6,9 @@ const COOKIE_KEY = 'sf_attribution_v1';
 const ATTRIBUTION_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const TRACKED_KEYS = [
   'oppref', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
-  'campaign_id', 'ad_group_id', 'ad_id', 'fbclid', 'gclid',
+  'utm_id', 'campaign_id', 'ad_group_id', 'ad_id', 'fbclid', 'gclid',
 ];
+let capturedDocument = null;
 
 function readCookie(name) {
   const prefix = `${name}=`;
@@ -134,15 +135,32 @@ function analyticsIdentifiers() {
 function metaFbp() { return readCookie('_fbp'); }
 function metaFbc() { return readCookie('_fbc'); }
 
+function hasExternalReferrer() {
+  if (!document.referrer) return false;
+  try {
+    const hostname = new URL(document.referrer).hostname;
+    return hostname !== 'sirfisher.com.br' && !hostname.endsWith('.sirfisher.com.br');
+  } catch {
+    return false;
+  }
+}
+
 export function captureAttribution() {
   const params = new URLSearchParams(window.location.search);
   const incoming = {};
+  // O referrer continua igual durante o formulário. A segunda captura,
+  // feita ao reservar, conserva o instante da chegada deste documento.
+  const externalArrival = capturedDocument !== document && hasExternalReferrer();
+  capturedDocument = document;
 
   TRACKED_KEYS.forEach((key) => {
     const max = key === 'oppref' ? 1024 : 255;
     const value = limitedValue(params.get(key), max);
     if (value) incoming[key] = value;
   });
+  // utm_id é o ID de campanha do GA4. O RPC já aceita campaign_id;
+  // o campo explícito prevalece quando um link traz os dois valores.
+  if (incoming.utm_id && !incoming.campaign_id) incoming.campaign_id = incoming.utm_id;
 
   const stored = loadStoredAttribution();
   if (stored.utm_source === 'site' && stored.utm_medium === 'organic') {
@@ -154,7 +172,8 @@ export function captureAttribution() {
   // Chegada com campanha: sobrescreve, porque e a origem mais recente e mais
   // especifica que temos.
   if (Object.keys(incoming).length) {
-    if (Object.keys(incoming).every((key) => incoming[key] === stored[key])) {
+    if (!externalArrival
+        && Object.keys(incoming).every((key) => incoming[key] === stored[key])) {
       // Navegacao entre dominios preserva o clique original e sua data.
       persistAttribution(stored);
       return stored;

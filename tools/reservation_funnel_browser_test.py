@@ -74,7 +74,7 @@ def run():
                     request.abort()
             context.route('**/*', route)
             page = context.new_page()
-            page.goto(base + '/?sf_cta=topo', wait_until='networkidle')
+            page.goto(base + '/?sf_cta=topo&utm_source=instagram&utm_medium=paid_social&utm_campaign=fixture-novembro&utm_content=ig_123&utm_id=111&ad_group_id=222&ad_id=333', wait_until='networkidle')
             page.wait_for_function("dataLayer.some(e => e[1] === 'reservation_form_view')")
             events = lambda: page.evaluate("dataLayer.filter(e => e[0] === 'event').map(e => [e[1],e[2]])")
             has_reason = lambda reason: page.wait_for_function(
@@ -125,6 +125,10 @@ def run():
             assert names.count('reservation_confirmed') == 1
             assert all(event[1]['cta_position']=='topo' for event in collected if event[0].startswith('reservation_'))
             assert not any('fixture@example.invalid' in str(event) or 'Fixture Guest' in str(event) for event in collected)
+            attribution = page.evaluate("fixtureCalls.filter(c => c.name==='fn_create_reservation').at(-1).args.p_attribution")
+            assert attribution['utm_content'] == 'ig_123' and attribution['utm_campaign'] == 'fixture-novembro'
+            assert attribution['campaign_id'] == '111' and attribution['ad_id'] == '333'
+            print('CONTENT_AND_CAMPAIGN_REACH_RESERVATION_RPC_OK')
             print('MOBILE_FUNNEL_AND_ERROR_FLOWS_OK')
             print('STALE_AVAILABILITY_FAILURE_IGNORED_OK')
             # Analytics defeituoso nao esconde sucesso nem impede nova reserva.

@@ -36,6 +36,7 @@ Chave, cobrança, tratamento de dados e teste real continuam pendentes.
 - [`docs/email.md`](docs/email.md) — e-mail de confirmação automático (Resend + Edge Function).
 - [`docs/openai-ads.md`](docs/openai-ads.md) — medição de reservas e comparecimentos do ChatGPT Ads.
 - [`docs/medicao-google.md`](docs/medicao-google.md) — origem, reservas e comparecimentos no Google Analytics.
+- [`docs/marketing-links.md`](docs/marketing-links.md) — links identificados por conteúdo/campanha e limites da relação com reservas.
 - [`docs/privacidade-dados.md`](docs/privacidade-dados.md) — quais dados são salvos e por quê.
 - [`docs/security-checklist.md`](docs/security-checklist.md) — checklist de testes manuais.
 - [`docs/instagram-support.md`](docs/instagram-support.md) — backend do atendimento Instagram, fila humana e gates de ativação.

@@ -195,6 +195,26 @@ python -X utf8 tools/reservation_funnel_browser_test.py
 npx --yes deno test --allow-read tools/reservation_funnel_test.mjs tools/attribution_test.mjs tools/openai_event_test.ts tools/openai_validation_test.mjs
 ```
 
+### Orientações do formulário em 02/11/2026
+
+O aviso de grupo acima do limite do portal encaminha grupos de até 29
+pessoas ao WhatsApp e eventos de 30 a 100 pessoas sentadas ao configurador.
+Acima de 100, o formulário orienta consultar a equipe para avaliar o pedido,
+sem indicar capacidade disponível. O limite do portal continua vindo das
+configurações públicas.
+
+Após o corte para confirmar uma reserva no mesmo dia, o formulário informa
+que a visita segue por ordem de chegada, conforme a disponibilidade de
+mesas. Exibe “Como chegar” e WhatsApp para dúvidas. Essa orientação também
+aparece quando o corte é retornado no envio da reserva. A regra limita o
+momento da confirmação, e o horário de corte continua vindo do painel.
+
+A conferência local cobre português e inglês em telas de 390 e 1440 pixels,
+os limites de grupo 11, 29, 30, 100 e 101, configurações diferentes das de
+apoio e o corte no envio. O navegador bloqueia a rede externa e simula os
+RPCs. A verificação preserva os eventos existentes e não cria reservas ou
+conversões reais.
+
 ## Validação da atribuição
 
 ```powershell

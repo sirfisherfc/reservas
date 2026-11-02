@@ -125,9 +125,11 @@
         </div>
 
         <div id="whatsapp-cta" class="alert alert--info hidden">
-          <span data-i18n="waCta">Para reservas acima de <span class="max-party-label">10</span> pessoas, fale com nossa equipe pelo WhatsApp para verificarmos disponibilidade.</span>
-          <div style="margin-top:10px;">
+          <p data-i18n="waCta">O portal aceita reservas de até <span class="max-party-label">10</span> pessoas.</p>
+          <p id="party-limit-help" aria-live="polite"></p>
+          <div class="stack" style="margin-top:10px;">
             <a id="whatsapp-cta-link" class="btn btn--whatsapp" href="#" target="_blank" rel="noopener" data-i18n="waButton">Falar no WhatsApp</a>
+            <a id="event-cta-link" class="btn btn--primary hidden" href="https://www.sirfisher.com.br/eventos/" target="_blank" rel="noopener" data-i18n="eventButton">Simular evento e pedir proposta</a>
           </div>
         </div>
 
@@ -146,7 +148,7 @@
             <li data-i18n="rule1">Temos <span class="tolerance-label">15</span> minutos de tolerância para chegada. Após esse prazo, a reserva poderá ser liberada.</li>
             <li data-i18n="rule2">A equipe define a posição da mesa conforme a disponibilidade no momento da chegada.</li>
             <li data-i18n="rule3">Reservamos apenas parte da nossa capacidade. O restante das mesas funciona por ordem de chegada.</li>
-            <li data-i18n="rule4">Reservas acima de <span class="max-party-label">10</span> pessoas devem ser feitas pelo WhatsApp.</li>
+            <li data-i18n="rule4">Pelo portal, até <span class="max-party-label">10</span> pessoas. Para grupos acima desse limite e até 29 pessoas, consulte a equipe pelo WhatsApp. Para eventos de 30 a 100 pessoas sentadas, <a href="https://www.sirfisher.com.br/eventos/" target="_blank" rel="noopener">simule o evento e peça uma proposta</a>. A equipe confere a data e a organização das mesas.</li>
             <li data-i18n="rule5">A equipe poderá liberar os lugares reservados para outros clientes após <span class="hold-release-label">1 hora</span> sem ocupação.</li>
             <li data-i18n="rule6" data-only-lang="en" class="hidden"></li>
           </ol>
@@ -187,6 +189,6 @@
     <p><a href="https://www.sirfisher.com.br/privacidade/" target="_blank" rel="noopener" data-i18n="privacy">Aviso de Privacidade</a></p>
   </footer>
 
-  <script type="module" src="./assets/js/reservations.js?v=20261025-ttl"></script>
+  <script type="module" src="./assets/js/reservations.js?v=20261102"></script>
 </body>
 </html>

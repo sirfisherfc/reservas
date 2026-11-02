@@ -12,14 +12,16 @@ STUB = """
 window.fixtureCalls = [];
 window.fixtureAvailability = 'available';
 window.fixtureBooking = 'success';
-window.fixtureSettings = new URLSearchParams(location.search).get('fixture_settings');
+window.fixtureParams = new URLSearchParams(location.search);
+window.fixtureSettings = fixtureParams.get('fixture_settings');
 export const supabase = {
   from() { return { select() { return { async eq() {
     if(window.fixtureSettings === 'network') throw new Error('fixture settings network');
     if(window.fixtureSettings === 'error') return { data:null,error:{message:'fixture settings error'} };
     return { data: [
-    {key:'min_party_size',value:1},{key:'max_party_size',value:10},
-    {key:'same_day_cutoff_time',value:'15:30'},{key:'advance_booking_days',value:60}
+    {key:'min_party_size',value:1},{key:'max_party_size',value:Number(fixtureParams.get('fixture_max')) || 10},
+    {key:'same_day_cutoff_time',value:fixtureParams.get('fixture_cutoff') || '15:30'},
+    {key:'advance_booking_days',value:60}
   ], error:null }; } }; } }; },
   async rpc(name, args) {
     window.fixtureCalls.push({name,args});
@@ -40,6 +42,7 @@ export const supabase = {
     }
     if(name !== 'fn_create_reservation') throw new Error('Unexpected RPC');
     if(window.fixtureBooking === 'network') throw new Error('fixture network');
+    if(window.fixtureBooking === 'cutoff') return { data:null,error:{message:'SAME_DAY_CUTOFF: fixture'} };
     if(window.fixtureBooking === 'full') return { data:null,error:{message:'SLOT_FULL_PEOPLE: fixture'} };
     return { data:[{id:'fixture',public_code:'FIXTURE',reservation_date:args.p_date,
       reservation_time:args.p_time,party_size:args.p_party_size,cancellation_token:'fixture-not-real'}],error:null };
@@ -177,6 +180,74 @@ def run():
                 expect(page.locator('#success-panel')).to_be_visible()
                 assert page.evaluate("fixtureCalls.filter(c => c.name==='fn_create_reservation').length") == 1
             print('SETTINGS_FAILURE_RECOVERY_PT_EN_AND_FRESH_SELECTION_OK')
+            # Os caminhos de grupos e visita respeitam limites, idioma e tela.
+            for lang in ['pt', 'en']:
+                for width in [390, 1440]:
+                    page.set_viewport_size({'width': width, 'height': 900})
+                    page.goto(base + f'/?lang={lang}', wait_until='networkidle')
+                    expect(page.locator('#party_size')).to_have_attribute('max', '10')
+                    for size in [11, 29, 30, 100, 101]:
+                        page.locator('#party_size').fill(str(size))
+                        expect(page.locator('#whatsapp-cta')).to_be_visible()
+                        expect(page.locator('#submit-btn')).to_be_disabled()
+                        if 30 <= size <= 100:
+                            expect(page.locator('#event-cta-link')).to_be_visible()
+                            expect(page.locator('#event-cta-link')).to_have_attribute(
+                                'href', 'https://www.sirfisher.com.br/eventos/')
+                            expect(page.locator('#whatsapp-cta-link')).to_be_hidden()
+                            expect(page.locator('#party-limit-help')).to_contain_text(
+                                '30 a 100' if lang == 'pt' else '30 to 100')
+                        else:
+                            expect(page.locator('#whatsapp-cta-link')).to_be_visible()
+                            expect(page.locator('#whatsapp-cta-link')).to_have_attribute(
+                                'href', re.compile(r'https://wa.me/5585988544274.*'))
+                            expect(page.locator('#event-cta-link')).to_be_hidden()
+                            expect(page.locator('#party-limit-help')).to_contain_text(
+                                '100' if size > 100 else '29')
+                        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                        if size == 30:
+                            page.screenshot(path=str(ROOT / 'output' / f'grupo-{lang}-{width}.png'), full_page=True)
+                    page.locator('#party_size').fill('10')
+                    expect(page.locator('#whatsapp-cta')).to_be_hidden()
+                    expect(page.locator('#submit-btn')).to_be_enabled()
+                    page.evaluate("fixtureAvailability='cutoff'")
+                    page.locator('#date').fill(page.locator('#date').get_attribute('min'))
+                    expect(page.locator('#slots-container')).to_contain_text(
+                        'disponibilidade de mesas' if lang == 'pt' else 'table availability')
+                    expect(page.locator('#slots-container .btn--outline')).to_have_attribute(
+                        'href', 'https://www.sirfisher.com.br/como-chegar/')
+                    expect(page.locator('#slots-container .btn--outline')).to_have_text(
+                        'Como chegar' if lang == 'pt' else 'How to get here')
+                    expect(page.locator('#slots-container .btn--whatsapp')).to_have_text(
+                        'Tirar dúvidas pelo WhatsApp' if lang == 'pt' else 'Ask a question on WhatsApp')
+                    assert page.evaluate("fixtureCalls.every(c => c.name==='get_available_time_slots')")
+                    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                    page.screenshot(path=str(ROOT / 'output' / f'corte-{lang}-{width}.png'), full_page=True)
+            print('GROUP_BOUNDARIES_AND_CUTOFF_GUIDANCE_PT_EN_MOBILE_DESKTOP_OK')
+            # A configuração recebida continua sendo a fonte do máximo e corte.
+            page.goto(base + '/?lang=pt&fixture_max=12&fixture_cutoff=16:00', wait_until='networkidle')
+            page.locator('#party_size').fill('12')
+            expect(page.locator('#whatsapp-cta')).to_be_hidden()
+            page.locator('#party_size').fill('13')
+            expect(page.locator('#whatsapp-cta')).to_be_visible()
+            expect(page.locator('#whatsapp-cta .max-party-label')).to_have_text('12')
+            page.locator('#party_size').fill('2')
+            page.locator('#date').fill(page.locator('#date').get_attribute('min'))
+            expect(page.locator('.slot-btn:not([disabled])')).to_have_count(1)
+            page.locator('.slot-btn').click()
+            page.locator('#name').fill('Fixture Guest')
+            page.locator('#email').fill('fixture@example.invalid')
+            page.locator('#phone').fill('85999999999')
+            page.locator('#accept_policy').check()
+            page.evaluate("fixtureBooking='cutoff'")
+            page.locator('#submit-btn').click()
+            expect(page.locator('#slots-container')).to_contain_text('16:00')
+            expect(page.locator('#slots-container .btn--outline')).to_be_visible()
+            expect(page.locator('.slot-btn')).to_have_count(0)
+            expect(page.locator('#form-alert-area')).to_be_empty()
+            assert page.evaluate("dataLayer.filter(e => e[2]?.reservation_reason==='same_day_cutoff').length") == 1
+            assert page.evaluate("fixtureCalls.filter(c => c.name==='fn_create_reservation').length") == 1
+            print('CONFIGURED_LIMITS_AND_CUTOFF_ON_SUBMIT_OK')
             page.set_viewport_size({'width':390, 'height':844})
             page.goto(base + '/cancelar.html?t=fixture-not-real&lang=en', wait_until='networkidle')
             for mode in ['network', 'error']:

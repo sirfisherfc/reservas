@@ -4,7 +4,7 @@ import {
   qs, qsa, todayISO, addDaysISO, maskPhone, waLink,
   setLoading, debounce, formatDateLong, formatTimeLocal,
 } from './utils.js?v=20261007';
-import { LANG, t, friendlyError, applyTranslations } from './i18n.js?v=20261007';
+import { LANG, t, friendlyError, applyTranslations } from './i18n.js?v=20261102';
 import { WHATSAPP_NUMBER, RESTAURANT_NAME } from './config.js';
 import {
   initOpenAIAdsPixel, measureReservationPageViewed, measureReservationConfirmed,
@@ -19,6 +19,7 @@ const dateInput = qs('#date');
 const slotsContainer = qs('#slots-container');
 const whatsappCta = qs('#whatsapp-cta');
 const whatsappCtaLink = qs('#whatsapp-cta-link');
+const eventCtaLink = qs('#event-cta-link');
 const phoneInput = qs('#phone');
 const submitBtn = qs('#submit-btn');
 const successPanel = qs('#success-panel');
@@ -135,6 +136,11 @@ function checkPartySizeOverflow() {
   const max = Number(partySizeInput.max);
   if (size > max) {
     funnel.unavailable('party_size_limit', String(size));
+    const eventSize = size >= 30 && size <= 100;
+    qs('#party-limit-help').textContent = t(eventSize ? 'partyEventHelp'
+      : size > 100 ? 'partyOtherHelp' : 'partyGroupHelp');
+    whatsappCtaLink.classList.toggle('hidden', eventSize);
+    eventCtaLink.classList.toggle('hidden', !eventSize);
     whatsappCta.classList.remove('hidden');
     slotsContainer.innerHTML = '';
     submitBtn.disabled = true;
@@ -238,9 +244,13 @@ function renderNoAvailability(date, size, errorCode) {
 
   if (errorCode === 'SAME_DAY_CUTOFF' && date === todayISO()) {
     const cutoff = String(settings?.same_day_cutoff_time || '15:30').slice(0, 5);
+    const questionsHref = buildWaLink(t('waVisitQuestions', RESTAURANT_NAME)) || '#';
     slotsContainer.innerHTML = `
       <p class="hint">${t('sameDayCutoff', formatTimeLocal(cutoff, LANG))}</p>
-      <a class="btn btn--whatsapp" style="margin-top:8px;" href="${waHref}" target="_blank" rel="noopener">${t('waButton')}</a>
+      <div class="stack" style="margin-top:8px;">
+        <a class="btn btn--outline" href="https://www.sirfisher.com.br/como-chegar/" target="_blank" rel="noopener">${t('directionsButton')}</a>
+        <a class="btn btn--whatsapp" href="${questionsHref}" target="_blank" rel="noopener">${t('waQuestionsButton')}</a>
+      </div>
     `;
     return;
   }
@@ -320,6 +330,12 @@ async function handleSubmit(evt) {
   const { data, error } = response;
 
   if (error) {
+    if (reservationFailure(error).reason === 'same_day_cutoff') {
+      selectedTime = null;
+      currentSlots = [];
+      renderNoAvailability(date, partySize, 'SAME_DAY_CUTOFF');
+      return;
+    }
     funnel.failure(error);
     showAlert(friendlyMessage(error));
     return;

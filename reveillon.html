@@ -73,15 +73,18 @@
   <link rel="stylesheet" href="./assets/css/reveillon.css?v=2026093008" />
   <!-- Mesmas tags base do index.html (medição de visita). As CONVERSÕES do
        réveillon só disparam se ligadas em rv_events.tracking (padrão: tudo off). -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-F40Z5Y9QT6"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
+    gtag('consent', 'default', {
+      ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', wait_for_update: 500
+    });
     gtag('js', new Date());
     gtag('config', 'G-F40Z5Y9QT6', {
       linker: { domains: ['sirfisher.com.br', 'www.sirfisher.com.br', 'reservas.sirfisher.com.br'] }
     });
   </script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-F40Z5Y9QT6"></script>
   <script>
     !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
     n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
@@ -418,5 +421,13 @@
   </footer>
 
   <script type="module" src="./assets/js/reveillon.js?v=20261102-marketing"></script>
+  <script>
+    (function () {
+      var s = document.createElement('script');
+      s.src = './assets/js/google-ads.js?v=3ca950b5fc';
+      s.async = false;
+      document.body.appendChild(s);
+    })();
+  </script>
 </body>
 </html>

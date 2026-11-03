@@ -243,3 +243,33 @@ deno test --allow-read reservas/tools/attribution_test.mjs
 
 Os testes cobrem cookies GS1/GS2, API da tag, valores inválidos, storage
 bloqueado e tag que nunca responde. Não fazem RPCs nem alteram o banco.
+
+## Publicidade Google e preferências (03/11/2026)
+
+As páginas públicas de reserva e Réveillon configuram `AW-10856025003`
+pelo mesmo gtag.js do GA4, usando `assets/js/google-ads.js`. A cópia desse
+módulo deve ser idêntica à de `site/assets/js/google-ads.js` no workspace.
+
+A escolha de publicidade Google aparece em uma janela pequena e pode ser
+alterada no rodapé. Antes de Permitir e após Recusar, os três sinais de
+publicidade ficam negados; os cookies anteriores de Analytics, Meta e
+atribuição seguem com seus controles existentes. A recusa elimina somente
+`_gcl_*`; não altera `analytics_storage`. A preferência fica no cookie
+compartilhado `sf_google_ads_v1` por 180 dias. Isso descreve a implementação,
+sem validar juridicamente todas as coletas anteriores.
+
+Os eventos existentes sem `send_to` explícito são encaminhados ao GA4,
+incluindo `reservation_confirmed`. A tag base Ads não envia uma conversão
+de reserva com rótulo Ads. A revisão/importação das ações existentes
+continua sendo uma etapa própria; o vínculo com GA4 já foi concluído.
+
+`cancelar.html` fica fora dos pixels de publicidade por conter um token no
+link privado. O GA4 dessa página recebe apenas origem e caminho, com query
+e hash removidos também do referrer. O SDK só é carregado após o padrão de
+consentimento ter sido enfileirado.
+
+Validação: 30 testes de funil/atribuição e fluxo completo de navegador
+com RPCs simulados, sem gravação de reservas ou envio real de conversões.
+A suíte `site/tools/analytics/google_ads_browser_test.py` confere o cookie
+entre os dois hosts, preservação dos cookies anteriores, revogação,
+destino dos eventos e exclusão do link privado.

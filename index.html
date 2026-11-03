@@ -37,15 +37,18 @@
   <!-- Google tag (gtag.js). Mesma propriedade do site institucional. O linker
        preserva a sessao quando o visitante salta de www.sirfisher.com.br para
        este subdominio, para que a reserva seja creditada ao canal de origem. -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-F40Z5Y9QT6"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
+    gtag('consent', 'default', {
+      ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', wait_for_update: 500
+    });
     gtag('js', new Date());
     gtag('config', 'G-F40Z5Y9QT6', {
       linker: { domains: ['sirfisher.com.br', 'www.sirfisher.com.br', 'reservas.sirfisher.com.br'] }
     });
   </script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-F40Z5Y9QT6"></script>
   <!-- Meta Pixel. O mesmo dataset da Conversions API: os eventos do navegador e
        os do servidor sao unidos pelo event_id, para a reserva nao contar duas
        vezes. Ver supabase/meta-capi.sql no repositorio de reservas. -->
@@ -190,5 +193,13 @@
   </footer>
 
   <script type="module" src="./assets/js/reservations.js?v=20261102-marketing"></script>
+  <script>
+    (function () {
+      var s = document.createElement('script');
+      s.src = './assets/js/google-ads.js?v=3ca950b5fc';
+      s.async = false;
+      document.body.appendChild(s);
+    })();
+  </script>
 </body>
 </html>

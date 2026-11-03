@@ -88,8 +88,8 @@
     var en = english();
     title.textContent = en ? 'Google advertising cookies' : 'Cookies de anúncios Google';
     description.textContent = en
-      ? 'Allow cookies to measure and personalise Sir Fisher ads? Site functionality and statistics cookies stay active.'
-      : 'Permitir cookies para medir e personalizar anúncios do Sir Fisher? Cookies de funcionamento e estatísticas continuam ativos.';
+      ? 'Allow cookies to measure and personalise ads? Other cookies stay active.'
+      : 'Permitir cookies para medir e personalizar anúncios? Os demais seguem ativos.';
     allow.textContent = en ? 'Allow' : 'Permitir';
     deny.textContent = en ? 'Decline' : 'Recusar';
     privacy.textContent = en ? 'Privacy notice' : 'Aviso de privacidade';

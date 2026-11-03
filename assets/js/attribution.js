@@ -9,6 +9,16 @@ const TRACKED_KEYS = [
   'utm_id', 'campaign_id', 'ad_group_id', 'ad_id', 'fbclid', 'gclid',
 ];
 let capturedDocument = null;
+let advertisingListener = false;
+let measuredPage = false;
+const confirmedGa4Ids = new Set();
+const ADVERTISING_KEYS = ['oppref', 'fbclid', 'gclid', 'campaign_id', 'ad_group_id', 'ad_id'];
+function advertisingAllowed() {
+  return Boolean(window.sfGoogleAds && window.sfGoogleAds.getChoice() === 'granted');
+}
+function safeUrl(value) {
+  try { const u = new URL(value); return u.origin + u.pathname; } catch { return null; }
+}
 
 function readCookie(name) {
   const prefix = `${name}=`;
@@ -154,15 +164,20 @@ export function captureAttribution() {
   capturedDocument = document;
 
   TRACKED_KEYS.forEach((key) => {
+    if (!advertisingAllowed() && ADVERTISING_KEYS.includes(key)) return;
     const max = key === 'oppref' ? 1024 : 255;
     const value = limitedValue(params.get(key), max);
     if (value) incoming[key] = value;
   });
   // utm_id é o ID de campanha do GA4. O RPC já aceita campaign_id;
   // o campo explícito prevalece quando um link traz os dois valores.
-  if (incoming.utm_id && !incoming.campaign_id) incoming.campaign_id = incoming.utm_id;
+  if (advertisingAllowed() && incoming.utm_id && !incoming.campaign_id) incoming.campaign_id = incoming.utm_id;
 
   const stored = loadStoredAttribution();
+  if (!advertisingAllowed()) ADVERTISING_KEYS.forEach((key) => { delete stored[key]; });
+  if (stored.landing_url) stored.landing_url = safeUrl(stored.landing_url);
+  if (stored.referrer) stored.referrer = safeUrl(stored.referrer);
+  if (stored.captured_at) persistAttribution(stored);
   if (stored.utm_source === 'site' && stored.utm_medium === 'organic') {
     // Remove apenas a campanha interna sintética; não inventa a origem perdida.
     for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) delete stored[key];
@@ -180,8 +195,8 @@ export function captureAttribution() {
     }
     const attribution = {
       ...incoming,
-      landing_url: window.location.href.slice(0, 2000),
-      referrer: (document.referrer || '').slice(0, 2000) || null,
+      landing_url: safeUrl(window.location.href),
+      referrer: safeUrl(document.referrer),
       captured_at: new Date().toISOString(),
     };
     persistAttribution(attribution);
@@ -193,8 +208,8 @@ export function captureAttribution() {
   // o anuncio que trouxe a pessoa da primeira vez.
   if (!stored.captured_at) {
     const firstTouch = {
-      landing_url: window.location.href.slice(0, 2000),
-      referrer: (document.referrer || '').slice(0, 2000) || null,
+      landing_url: safeUrl(window.location.href),
+      referrer: safeUrl(document.referrer),
       captured_at: new Date().toISOString(),
     };
     persistAttribution(firstTouch);
@@ -208,6 +223,7 @@ export async function reservationAttribution() {
   const a = captureAttribution();
   const identifiers = await analyticsIdentifiers();
   return {
+    ...(window.sfGoogleAds?.snapshot?.() || { advertising_consent: false }),
     oppref: limitedValue(a.oppref, 1024),
     utm_source: limitedValue(a.utm_source),
     utm_medium: limitedValue(a.utm_medium),
@@ -224,8 +240,8 @@ export async function reservationAttribution() {
     // cookies, e o que vale e a sessao em que a reserva realmente aconteceu.
     ga_client_id: limitedValue(identifiers.client_id, 64),
     ga_session_id: limitedValue(identifiers.session_id, 64),
-    meta_fbp: limitedValue(metaFbp(), 255),
-    meta_fbc: limitedValue(metaFbc(), 512),
+    meta_fbp: advertisingAllowed() ? limitedValue(metaFbp(), 255) : null,
+    meta_fbc: advertisingAllowed() ? limitedValue(metaFbc(), 512) : null,
   };
 }
 
@@ -282,18 +298,22 @@ async function openAiPixelUser({ email, phone, name } = {}) {
 }
 
 export function measureReservationConfirmedMeta(result) {
-  if (typeof window.fbq !== 'function' || !result || !result.id) return;
+  if (!advertisingAllowed() || typeof window.fbq !== 'function' || !result || !result.id) return;
 
   const partySize = Number(result.party_size) || 0;
   window.fbq('track', 'Schedule', {
-    value: partySize * REVENUE_PER_GUEST_BRL,
-    currency: 'BRL',
     num_guests: partySize,
   }, { eventID: metaScheduleEventId(result.id) });
 }
 
 export function initOpenAIAdsPixel() {
-  if (!OPENAI_ADS_PIXEL_ID || window.oaiq) return;
+  if (!advertisingListener && window.addEventListener) {
+    advertisingListener = true;
+    window.addEventListener('sf-advertising-consent', () => {
+      captureAttribution(); initOpenAIAdsPixel(); measureReservationPageViewed();
+    });
+  }
+  if (!advertisingAllowed() || !OPENAI_ADS_PIXEL_ID || window.oaiq) return;
 
   const queue = function queuePixelCall(...args) {
     queue.q.push(args);
@@ -305,11 +325,13 @@ export function initOpenAIAdsPixel() {
   script.async = true;
   script.src = 'https://bzrcdn.openai.com/sdk/oaiq.min.js';
   document.head.appendChild(script);
+  window.oaiq('consent', true);
   window.oaiq('init', { pixelId: OPENAI_ADS_PIXEL_ID });
 }
 
 export function measureReservationPageViewed() {
-  if (typeof window.oaiq !== 'function') return;
+  if (!advertisingAllowed() || measuredPage || typeof window.oaiq !== 'function') return;
+  measuredPage = true;
   window.oaiq('measure', 'page_viewed', {
     type: 'contents',
     contents: [{
@@ -320,14 +342,11 @@ export function measureReservationPageViewed() {
   });
 }
 
-// Estimativa legada usada apenas no evento Meta, fora desta recuperacao.
-// OpenAI e GA4 contam reservas; receita depende de consumo efetivamente pago.
-const REVENUE_PER_GUEST_BRL = 58;
-
 // Espelha a reserva no GA4. O pixel da OpenAI continua sendo tratado em
 // measureReservationConfirmed(); uma reserva ainda nao e receita realizada.
 export function measureReservationConfirmedGA4(result) {
   if (typeof window.gtag !== 'function' || !result) return;
+  if (result.id && confirmedGa4Ids.has(result.id)) return;
 
   const partySize = Number(result.party_size) || 0;
   window.gtag('event', 'reservation_confirmed', {
@@ -336,10 +355,11 @@ export function measureReservationConfirmedGA4(result) {
     party_size: partySize,
     reservation_code: result.public_code || null,
   });
+  if (result.id) confirmedGa4Ids.add(result.id);
 }
 
 export async function measureReservationConfirmed(result, customer) {
-  if (typeof window.oaiq !== 'function' || !result?.id) return;
+  if (!advertisingAllowed() || typeof window.oaiq !== 'function' || !result?.id) return;
 
   const user = await openAiPixelUser(customer);
   window.oaiq('init', { pixelId: OPENAI_ADS_PIXEL_ID, user });

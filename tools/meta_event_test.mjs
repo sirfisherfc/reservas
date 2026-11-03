@@ -33,7 +33,7 @@ Deno.test('Meta rejeita data invalida, futura ou expirada sem substituir por hoj
   }
 });
 
-Deno.test('worker Meta usa hash correto, preserva ID/valor e nao envia datas rejeitadas', async () => {
+Deno.test('worker Meta preserva hash e ID sem receita estimada nem datas rejeitadas', async () => {
   const original = { serve: Deno.serve, envGet: Deno.env.get, fetch: globalThis.fetch, now: Date.now };
   const finalized = [];
   const sent = [];
@@ -49,6 +49,7 @@ Deno.test('worker Meta usa hash correto, preserva ID/valor e nao envia datas rej
     { ...row, queue_id: 'invalid', event_id: 'sf-sched-fixture-invalid', occurred_at: 'invalid' },
   ];
   globalThis.__metaTest = { client: { async rpc(name, args) {
+    if (name === 'fn_advertising_event_allowed') return { data: true, error: null };
     if (name === 'fn_claim_pending_meta_conversions') return { data: rows, error: null };
     if (name === 'fn_finalize_openai_ads_conversion') { finalized.push(args); return { error: null }; }
     throw new Error('Unexpected RPC in offline Meta fixture');
@@ -79,8 +80,8 @@ Deno.test('worker Meta usa hash correto, preserva ID/valor e nao envia datas rej
     assert(sent[0].user_data.ph[0] === await hex('12025550123'), 'Hash Meta alterou o pais explicito');
     assert(sent[1].user_data.ph[0] === await hex('5585999999999'), 'Hash Meta perdeu o codigo BR');
     assert(sent[0].event_id === rows[0].event_id && sent[0].event_time === (NOW - 1000) / 1000, 'ID ou ocorrencia alterados');
-    assert(sent.every(event => event.event_name === 'Schedule' && event.custom_data.value === 116
-      && event.custom_data.currency === 'BRL'), 'Contrato ou estimativa legada alterados');
+    assert(sent.every(event => event.event_name === 'Schedule' && event.custom_data.num_guests === 2
+      && !('value' in event.custom_data) && !('currency' in event.custom_data)), 'Reserva virou receita presumida');
     assert(finalized.filter(row => row.p_status === 'failed').length === 3, 'Data rejeitada virou envio concluido');
   } finally {
     Deno.serve = original.serve; Deno.env.get = original.envGet; globalThis.fetch = original.fetch; Date.now = original.now;

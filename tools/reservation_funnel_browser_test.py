@@ -75,7 +75,7 @@ def run():
             context.route('**/*', route)
             # A escolha de publicidade tem suite propria; o funil usa uma visita
             # que recusou cookies Google, com SDKs externos bloqueados.
-            context.add_init_script("document.cookie='sf_google_ads_v1=denied; Path=/'")
+            context.add_init_script("document.cookie='sf_advertising_v2=granted.11111111-1111-4111-8111-111111111111.' + Math.floor(Date.now()/1000) + '; Path=/'")
             page = context.new_page()
             page.goto(base + '/?sf_cta=topo&utm_source=instagram&utm_medium=paid_social&utm_campaign=fixture-novembro&utm_content=ig_123&utm_id=111&ad_group_id=222&ad_id=333', wait_until='networkidle')
             page.wait_for_function("dataLayer.some(e => e[1] === 'reservation_form_view')")

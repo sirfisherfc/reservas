@@ -1,5 +1,36 @@
 # Supabase — banco de dados, autenticação e duplicação do projeto
 
+## Consentimento de publicidade por reserva (03/11/2026)
+
+Migration `20261103071209_publicidade_consentimento.sql` do gestao aplicada
+e registrada no projeto `lucpxoynpvogkvzepagi`. A assinatura de
+`fn_create_reservation` permanece igual. `p_attribution` recebe autorização,
+comprovante UUID, data e versão do aviso; a função aceita somente o contrato
+atual, datas válidas e comprovantes ainda autorizados. Grava três colunas
+`advertising_consent_*` na reserva. A falta de escolha impede publicidade;
+o cadastro e as mensagens operacionais seguem o fluxo existente.
+
+As funções de fila Meta/OpenAI conferem data e revogação; o worker versão 48
+confere novamente antes do envio. Registros antigos sem autorização ficam
+fora dos reenvios publicitários, com o motivo registrado na fila. GA4
+estatístico mantém sua fila e envia `ad_user_data`/`ad_personalization=DENIED`.
+
+`private.advertising_revocations` tem RLS, nenhuma policy pública e acesso
+direto revogado de anon/authenticated. `service_role` recebe SELECT explícito.
+`public.fn_revoke_advertising_consent(uuid)` é a nova RPC anônima intencional:
+revoga pelo comprovante imprevisível e retorna somente um booleano.
+`fn_advertising_event_allowed(uuid)` permite execução somente a service_role.
+Os avisos do Advisor sobre a RPC pública de revogação e sobre RLS sem policy
+nessa tabela privada correspondem a esse desenho. As funções fixam search_path.
+[Referência dos avisos](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable).
+
+Validação em transação desfeita confirmou reserva sem escolha, escolha
+válida, limpeza de URL e revogação, com zero reserva ou e-mail persistido.
+O CI executa `scripts/ci/test_publicidade_sql.py` do gestao em PostgreSQL
+descartável: escolha, validade, filas, revogação, privilégios e reaplicação.
+O endpoint público foi conferido com comprovante nulo (200/false) e o
+worker sem autenticação respondeu 401. Nenhuma fila real foi drenada no teste.
+
 ## Aplicando o schema (projeto novo / duplicação)
 
 Os quatro arquivos em `/supabase` são a fonte da verdade do banco e devem ser aplicados **nesta ordem** (via SQL Editor do Supabase, `supabase db push`, ou MCP `apply_migration`):

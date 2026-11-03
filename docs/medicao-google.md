@@ -244,19 +244,20 @@ deno test --allow-read reservas/tools/attribution_test.mjs
 Os testes cobrem cookies GS1/GS2, API da tag, valores inválidos, storage
 bloqueado e tag que nunca responde. Não fazem RPCs nem alteram o banco.
 
-## Publicidade Google e preferências (03/11/2026)
+## Publicidade e preferências (03/11/2026)
 
 As páginas públicas de reserva e Réveillon configuram `AW-10856025003`
 pelo mesmo gtag.js do GA4, usando `assets/js/google-ads.js`. A cópia desse
 módulo deve ser idêntica à de `site/assets/js/google-ads.js` no workspace.
 
-A escolha de publicidade Google aparece em uma janela pequena e pode ser
+A escolha de publicidade Google, Meta e OpenAI aparece em uma janela pequena e pode ser
 alterada no rodapé. Antes de Permitir e após Recusar, os três sinais de
-publicidade ficam negados; os cookies anteriores de Analytics, Meta e
-atribuição seguem com seus controles existentes. A recusa elimina somente
-`_gcl_*`; não altera `analytics_storage`. A preferência fica no cookie
-compartilhado `sf_google_ads_v1` por 180 dias. Isso descreve a implementação,
-sem validar juridicamente todas as coletas anteriores.
+publicidade Google ficam negados. Meta e OpenAI carregam somente depois da
+autorização. A recusa elimina os identificadores de publicidade e preserva
+os cookies estatísticos GA4 e a origem UTM. A preferência fica no cookie
+compartilhado `sf_advertising_v2` por até 180 dias, com data e comprovante.
+Uma escolha antiga que citava apenas Google exige nova autorização.
+O rodapé revoga também os próximos envios pelo servidor ligados ao comprovante.
 
 Os eventos existentes sem `send_to` explícito são encaminhados ao GA4,
 incluindo `reservation_confirmed`. A tag base Ads não envia uma conversão
@@ -266,10 +267,19 @@ continua sendo uma etapa própria; o vínculo com GA4 já foi concluído.
 `cancelar.html` fica fora dos pixels de publicidade por conter um token no
 link privado. O GA4 dessa página recebe apenas origem e caminho, com query
 e hash removidos também do referrer. O SDK só é carregado após o padrão de
-consentimento ter sido enfileirado.
+consentimento ter sido enfileirado. Metas de robôs e referência também
+impedem indexação e compartilhamento do token pelo referenciador.
 
-Validação: 30 testes de funil/atribuição e fluxo completo de navegador
+Validação: testes de funil/atribuição, consentimento do worker e fluxo completo de navegador
 com RPCs simulados, sem gravação de reservas ou envio real de conversões.
 A suíte `site/tools/analytics/google_ads_browser_test.py` confere o cookie
-entre os dois hosts, preservação dos cookies anteriores, revogação,
+entre os dois hosts, preservação das estatísticas, revogação,
 destino dos eventos e exclusão do link privado.
+
+O worker `send-openai-ads-conversions` versão 48 exige autorização Meta/OpenAI
+na reivindicação e antes do envio; o envio GA4 estatístico nega os dois sinais
+de publicidade do Measurement Protocol. O evento Meta `Schedule` mantém
+`num_guests` e o ID de deduplicação, com a estimativa legada de receita removida.
+O navegador envia uma confirmação GA4 por ID de reserva. A contagem da
+propriedade e os limites de acesso ao Ads ficam registrados na revisão de
+03/11 em `gestao/docs/REVISAO_SEGURANCA_MEDICAO_SEO_2026-11-03.md`.

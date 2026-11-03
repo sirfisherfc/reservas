@@ -24,10 +24,6 @@ const GA4_API_SECRET = Deno.env.get("GA4_API_SECRET") ?? "";
 const META_PIXEL_ID = Deno.env.get("META_PIXEL_ID") ?? "";
 const META_CAPI_TOKEN = Deno.env.get("META_CAPI_TOKEN") ?? "";
 
-// Estimativa legada exclusiva da integracao Meta, fora desta recuperacao.
-// OpenAI e GA4 contam reservas/visitas sem declarar faturamento.
-const REVENUE_PER_GUEST_BRL = 58;
-
 // A Measurement Protocol descarta eventos com mais de 72h. Quando o
 // comparecimento e marcado depois disso, e melhor mandar sem timestamp (o GA4
 // usa a hora da ingestao) do que perder o evento.
@@ -80,6 +76,11 @@ async function finalize(id: string, status: "sent" | "failed", error: string | n
 type QueueResult = { configured: boolean; processed: number; sent: number; failed: number; error?: string };
 
 const IDLE: QueueResult = { configured: false, processed: 0, sent: 0, failed: 0 };
+
+async function requireAdvertisingConsent(queueId: string) {
+  const { data, error } = await admin.rpc("fn_advertising_event_allowed", { p_queue_id: queueId });
+  if (error || data !== true) throw new Error("advertising_consent_required");
+}
 
 async function postOpenAiEvents(events: unknown[], validateOnly = false) {
   const response = await fetch(`https://bzr.openai.com/v1/events?pid=${encodeURIComponent(PIXEL_ID)}`, {
@@ -161,6 +162,7 @@ async function processOpenAiQueue(): Promise<QueueResult> {
   >;
 
   const { sent, failed } = await drain(rows, async (row) => {
+    await requireAdvertisingConsent(row.queue_id);
     const event = await buildOpenAiEvent(row);
 
     await postOpenAiEvents([event]);
@@ -205,7 +207,8 @@ async function processGa4Queue(): Promise<QueueResult> {
     const timestampMs = Date.parse(row.occurred_at);
     const body: Record<string, unknown> = {
       client_id: row.client_id,
-      non_personalized_ads: false,
+      non_personalized_ads: true,
+      consent: { ad_user_data: "DENIED", ad_personalization: "DENIED" },
       events: [{ name: "visit_realized", params }],
     };
     if (Number.isFinite(timestampMs) && timestampMs > Date.now() - MP_MAX_AGE_MS) {
@@ -267,6 +270,7 @@ async function processMetaQueue(): Promise<QueueResult> {
     + `?access_token=${encodeURIComponent(META_CAPI_TOKEN)}`;
 
   const { sent, failed } = await drain(rows, async (row) => {
+    await requireAdvertisingConsent(row.queue_id);
     const userData: Record<string, unknown> = {};
     const email = normalizeEmail(row.email);
     const phone = normalizeMetaPhone(row.phone);
@@ -298,7 +302,7 @@ async function processMetaQueue(): Promise<QueueResult> {
           action_source: "website",
           event_source_url: row.landing_url ?? "https://reservas.sirfisher.com.br/",
           user_data: userData,
-          custom_data: { value: guests * REVENUE_PER_GUEST_BRL, currency: "BRL", num_guests: guests },
+          custom_data: { num_guests: guests },
         }],
       }),
     });

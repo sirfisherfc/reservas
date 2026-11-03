@@ -216,6 +216,10 @@ export function langUrl(lang) {
 export function applyTranslations(page = 'reserva') {
   const root = document.documentElement;
   root.lang = LANG === 'en' ? 'en' : 'pt-BR';
+  if (page === 'reserva') {
+    document.querySelector('link[rel="canonical"]')?.setAttribute('href',
+      'https://reservas.sirfisher.com.br/' + (LANG === 'en' ? '?lang=en' : ''));
+  }
   try { localStorage.setItem(STORAGE_KEY, LANG); } catch (e) { /* ok */ }
 
   if (LANG === 'en') {

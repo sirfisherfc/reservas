@@ -18,10 +18,20 @@ function test(name, run) {
   });
 }
 
+function cookieJar(doc) {
+  const jar = new Map(doc.cookie.split('; ').filter(Boolean).map(x => [x.split('=')[0], x.slice(x.indexOf('=')+1)]));
+  Object.defineProperty(doc, 'cookie', { configurable: true,
+    get() { return [...jar].map(([k,v]) => `${k}=${v}`).join('; '); },
+    set(value) { doc.__cookieWrite=value; const pair=value.split(';')[0]; const at=pair.indexOf('='); jar.set(pair.slice(0,at),pair.slice(at+1)); }
+  });
+}
+
 function environment(cookie, { blockedStorage = false, gtag } = {}) {
   const saved = JSON.stringify({ utm_source: 'google_maps', captured_at: '2026-10-06T12:00:00Z' });
   globalThis.document = { cookie: cookie + '; sf_attribution_v1=' + encodeURIComponent(saved), referrer: '' };
+  cookieJar(document);
   globalThis.window = {
+    sfGoogleAds: { getChoice: () => 'granted' },
     location: { search: '', href: 'https://reservas.sirfisher.com.br/', hostname: 'reservas.sirfisher.com.br', protocol: 'https:' },
     localStorage: { getItem() { if (blockedStorage) throw new Error('blocked'); return saved; }, setItem() {} },
     gtag,
@@ -65,7 +75,9 @@ test('nao aceita valores arbitrarios da tag', async () => {
 
 function campaignEnvironment(stored, cookieStored = stored, search = '', { blockedStorage = false } = {}) {
   globalThis.document = { cookie: 'sf_attribution_v1=' + encodeURIComponent(JSON.stringify(cookieStored)), referrer: '' };
+  cookieJar(document);
   globalThis.window = {
+    sfGoogleAds: { getChoice: () => 'granted' },
     location: { search, href: 'https://reservas.sirfisher.com.br/' + search,
       hostname: 'reservas.sirfisher.com.br', protocol: 'https:' },
     localStorage: {
@@ -100,7 +112,7 @@ test('navegacao interna com a mesma origem preserva data e pagina do clique', ()
 
 test('Pixel envia reserva com hashes reais, deduplicacao e sem receita ou cidade presumidas', async () => {
   const calls = [];
-  globalThis.window = { oaiq(...args) { calls.push(args); } };
+  globalThis.window = { sfGoogleAds: { getChoice: () => 'granted' }, oaiq(...args) { calls.push(args); } };
   await measureReservationConfirmed({ id: 'test-reservation', party_size: 2 },
     { email: ' VISITOR@example.invalid ', phone: '+441234567890', name: 'Test Visitor' });
   const user = calls[0][1].user;
@@ -174,7 +186,7 @@ test('clique interno preserva data e cookie recebe somente o prazo restante', ()
   campaignEnvironment(valid, valid, '?utm_source=ig');
   const result = captureAttribution();
   assert(result.captured_at === valid.captured_at, 'Reiniciou a data no clique interno');
-  assert(document.cookie.includes('Max-Age=' + 80 * DAY / 1000 + ';'), 'Renovou 90 dias a partir da navegacao');
+  assert(document.__cookieWrite.includes('Max-Age=' + 80 * DAY / 1000 + ';'), 'Renovou 90 dias a partir da navegacao');
 });
 
 test('cookie valido mantem origem e prazo quando storage esta bloqueado', () => {
@@ -182,7 +194,7 @@ test('cookie valido mantem origem e prazo quando storage esta bloqueado', () => 
   campaignEnvironment(null, valid, '?utm_source=ig', { blockedStorage: true });
   const result = captureAttribution();
   assert(result.utm_source === 'ig' && result.captured_at === valid.captured_at, 'Perdeu cookie valido');
-  assert(document.cookie.includes('Max-Age=' + 80 * DAY / 1000 + ';'), 'Prazo mudou com storage bloqueado');
+  assert(document.__cookieWrite.includes('Max-Age=' + 80 * DAY / 1000 + ';'), 'Prazo mudou com storage bloqueado');
 });
 
 test('campanha nova apos expirar recebe data atual sem herdar anuncio anterior', () => {
@@ -246,9 +258,33 @@ test('segunda captura com referrer externo mantem a chegada ja registrada neste 
 
 test('Pixel Meta preserva Schedule e o ID usado pela CAPI', () => {
   let call;
-  globalThis.window = { fbq(...args) { call = args; } };
+  globalThis.window = { sfGoogleAds: { getChoice: () => 'granted' }, fbq(...args) { call = args; } };
   measureReservationConfirmedMeta({ id: 'fixture-reservation', party_size: 2 });
   assert(call[1] === 'Schedule', 'Mudou evento Meta existente');
   assert(call[3].eventID === metaScheduleEventId('fixture-reservation')
     && call[3].eventID === 'sf-sched-fixture-reservation', 'Mudou deduplicacao Meta');
+});
+
+test('recusa preserva GA4 e UTM sem enviar identificadores ou conversoes publicitarias', async () => {
+  environment('_ga=GA1.1.123456.1788738227; _ga_F40Z5Y9QT6=GS1.1.1788738226.1.1.1788738250.0.0.0; _fbp=private');
+  window.sfGoogleAds = { getChoice: () => 'denied', snapshot: () => ({ advertising_consent: false }) };
+  window.location.search='?utm_source=google&gclid=private&oppref=private';
+  window.location.href += window.location.search;
+  const result=await reservationAttribution();
+  assert(result.utm_source==='google' && result.ga_client_id==='123456.1788738227','Perdeu estatistica');
+  assert(!result.advertising_consent && !result.oppref && !result.meta_fbp,'Identificador sem consentimento');
+  assert(!result.landing_url.includes('?'),'URL com parametros');
+  window.fbq=()=>{throw new Error('Meta sem consentimento');};
+  window.oaiq=()=>{throw new Error('OpenAI sem consentimento');};
+  measureReservationConfirmedMeta({id:'fixture'});
+  await measureReservationConfirmed({id:'fixture'}, {email:'fixture@example.invalid'});
+});
+
+test('GA4 conta duas reservas diferentes e ignora repeticao da mesma confirmacao', () => {
+  const calls=[];
+  globalThis.window={gtag(...args){calls.push(args);}};
+  measureReservationConfirmedGA4({id:'unique-a',party_size:2});
+  measureReservationConfirmedGA4({id:'unique-a',party_size:2});
+  measureReservationConfirmedGA4({id:'unique-b',party_size:2});
+  assert(calls.length===2,'Contou repeticao ou perdeu outra reserva');
 });

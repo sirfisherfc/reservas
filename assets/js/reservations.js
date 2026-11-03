@@ -4,12 +4,12 @@ import {
   qs, qsa, todayISO, addDaysISO, maskPhone, waLink,
   setLoading, debounce, formatDateLong, formatTimeLocal,
 } from './utils.js?v=20261007';
-import { LANG, t, friendlyError, applyTranslations } from './i18n.js?v=20261102';
+import { LANG, t, friendlyError, applyTranslations } from './i18n.js?v=b9b0b7f227';
 import { WHATSAPP_NUMBER, RESTAURANT_NAME } from './config.js';
 import {
   initOpenAIAdsPixel, measureReservationPageViewed, measureReservationConfirmed,
   measureReservationConfirmedGA4, measureReservationConfirmedMeta, reservationAttribution,
-} from './attribution.js?v=20261102';
+} from './attribution.js?v=eec7b0648f';
 import { createReservationFunnel, reservationFailure } from './reservation-funnel.js?v=20261022';
 
 const form = qs('#reservation-form');

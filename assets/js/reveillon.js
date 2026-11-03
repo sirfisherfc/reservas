@@ -3,7 +3,7 @@
 // e rv_simulate; o cálculo é sempre do banco (rv_calc_price), nunca daqui.
 import { supabase } from './supabaseClient.js';
 import { qs, qsa, maskPhone, setLoading, showToast, debounce } from './utils.js?v=20261007';
-import { captureAttribution, reservationAttribution, initOpenAIAdsPixel } from './attribution.js?v=20261102';
+import { captureAttribution, reservationAttribution, initOpenAIAdsPixel } from './attribution.js?v=eec7b0648f';
 import {
   esc, money, pct, dateBR, dateTimeBR, timeBR, longDateBR, fillTemplate, eventTextVars,
   bookingMessageVars, waHref, formatPixKey, parseDbError, renderMap, stateLabel, centerMapScroll,
@@ -615,13 +615,13 @@ async function trackPrebooking(r, customer) {
         currency: 'BRL', value, reservation_code: r.public_code, table_type: r.table_type,
       });
     }
-    if (tr.meta && typeof window.fbq === 'function') {
+    if (tr.meta && window.sfGoogleAds?.getChoice() === 'granted' && typeof window.fbq === 'function') {
       window.fbq('track', 'Lead', { currency: 'BRL', value, content_name: data.event.name },
         { eventID: `sf-rv-${r.id}` });
     }
     if (tr.openai_ads) {
       initOpenAIAdsPixel();
-      if (typeof window.oaiq === 'function') {
+      if (window.sfGoogleAds?.getChoice() === 'granted' && typeof window.oaiq === 'function') {
         window.oaiq('measure', 'lead_submitted', {
           type: 'customer_action', amount: Math.round(value * 100), currency: 'BRL',
         }, { event_id: `sf-oai-rv-${r.id}` });

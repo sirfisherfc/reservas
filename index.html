@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sir Fisher — Reservas</title>
+  <title>Reservar mesa no Sir Fisher Praia | Beira-Mar, Fortaleza</title>
   <meta name="description" content="Reserve sua mesa no Sir Fisher, na Beira-Mar de Fortaleza. Confirmação automática e imediata." />
-  <link rel="alternate" hreflang="pt-BR" href="https://reservas.sirfisher.com.br/?lang=pt" />
+  <link rel="canonical" href="https://reservas.sirfisher.com.br/" />
+  <link rel="alternate" hreflang="pt-BR" href="https://reservas.sirfisher.com.br/" />
   <link rel="alternate" hreflang="en" href="https://reservas.sirfisher.com.br/?lang=en" />
   <link rel="alternate" hreflang="x-default" href="https://reservas.sirfisher.com.br/" />
   <!-- Idioma: ?lang=en|pt, depois a escolha salva, depois o navegador. Em
@@ -43,6 +44,9 @@
     gtag('consent', 'default', {
       ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', wait_for_update: 500
     });
+    gtag('set', 'ads_data_redaction', true);
+    gtag('set', 'allow_ad_personalization_signals', false);
+    gtag('set', 'allow_google_signals', false);
     gtag('js', new Date());
     gtag('config', 'G-F40Z5Y9QT6', {
       linker: { domains: ['sirfisher.com.br', 'www.sirfisher.com.br', 'reservas.sirfisher.com.br'] }
@@ -52,15 +56,7 @@
   <!-- Meta Pixel. O mesmo dataset da Conversions API: os eventos do navegador e
        os do servidor sao unidos pelo event_id, para a reserva nao contar duas
        vezes. Ver supabase/meta-capi.sql no repositorio de reservas. -->
-  <script>
-    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-    document,'script','https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '948509834960152');
-    fbq('track', 'PageView');
-  </script>
+  <!-- Meta Pixel: carregado apenas com publicidade permitida em google-ads.js. -->
 </head>
 <body>
 
@@ -73,7 +69,7 @@
 
   <header class="hero">
     <div class="container">
-      <h1 data-i18n="heroTitle">Reserve sua experiência no Sir Fisher</h1>
+      <h1 data-i18n="heroTitle">Reserve sua mesa no Sir Fisher Praia</h1>
       <p data-i18n="heroText">Garanta sua reserva e aproveite nosso clima à beira-mar. A posição das mesas é organizada conforme disponibilidade no momento da chegada.</p>
     </div>
   </header>
@@ -192,11 +188,15 @@
     <p><a href="https://www.sirfisher.com.br/privacidade/" target="_blank" rel="noopener" data-i18n="privacy">Aviso de Privacidade</a></p>
   </footer>
 
-  <script type="module" src="./assets/js/reservations.js?v=20261102-marketing"></script>
+  <script type="module">
+    import { applyTranslations } from './assets/js/i18n.js?v=b9b0b7f227';
+    applyTranslations('reserva');
+  </script>
+  <script type="module" src="./assets/js/reservations.js?v=79d9422ee0"></script>
   <script>
     (function () {
       var s = document.createElement('script');
-      s.src = './assets/js/google-ads.js?v=b25d5c1153';
+      s.src = './assets/js/google-ads.js?v=8993b0e4f2';
       s.async = false;
       document.body.appendChild(s);
     })();

@@ -1,13 +1,19 @@
-/* Publicidade Google: mesma tag gtag.js do GA4, com escolha por navegador.
+/* Publicidade opcional Google/Meta/OpenAI, com escolha por navegador.
    Manter idêntico a reservas/assets/js/google-ads.js. */
 (function (w, d) {
   'use strict';
   if (w.sfGoogleAds) return;
   var GA = 'G-F40Z5Y9QT6';
   var ADS = 'AW-10856025003';
-  var COOKIE = 'sf_google_ads_v1';
+  var COOKIE = 'sf_advertising_v2';
+  var PENDING = 'sf_ads_revoke_pending_v1';
+  var receipt = null;
+  var acceptedAt = null;
+  var POLICY = '2026-11-03';
+  var UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
   var ROOT = 'sirfisher.com.br';
   var originalTag = typeof w.gtag === 'function' ? w.gtag : null;
+  var metaScript = null;
   var state = null;
   var banner, title, description, allow, deny, privacy, preferences;
   var previousPadding = '', basePadding = 0, previousFocus = null;
@@ -27,8 +33,13 @@
 
   function readChoice() {
     try {
-      var match = d.cookie.match(/(?:^|;\s*)sf_google_ads_v1=(granted|denied)(?:;|$)/);
-      return match ? match[1] : null;
+      var match = d.cookie.match(/(?:^|;\s*)sf_advertising_v2=(denied|granted\.([a-f0-9-]{36})\.(\d{10}))(?:;|$)/i);
+      receipt = match && UUID.test(match[2] || '') ? match[2] : null;
+      acceptedAt = receipt ? Number(match[3]) * 1000 : null;
+      if (acceptedAt && (acceptedAt > Date.now() + 300000 || acceptedAt <= Date.now() - 15552000000)) {
+        receipt = null; acceptedAt = null;
+      }
+      return match ? (receipt ? 'granted' : 'denied') : null;
     } catch (e) { return null; }
   }
 
@@ -36,13 +47,67 @@
     try {
       d.cookie.split(';').forEach(function (part) {
         var name = part.split('=')[0].trim();
-        if (!/^_gcl_/.test(name)) return;
+        if (!/^(?:_gcl_|_fb[pc]$|__obref$|__oppref$|sf_google_ads_v1$)/.test(name)) return;
         var expired = name + '=; Max-Age=0; Path=/; SameSite=Lax';
         d.cookie = expired;
         if (rootDomain()) d.cookie = expired + '; Domain=' + ROOT;
         d.cookie = expired + '; Domain=' + w.location.hostname;
       });
     } catch (e) { /* Bloqueio de cookies nao impede a navegacao. */ }
+  }
+
+  function pendingRevocations() {
+    try {
+      var match = d.cookie.match(/(?:^|;\s*)sf_ads_revoke_pending_v1=([^;]*)/);
+      return match ? match[1].split(',').filter(function (id) { return UUID.test(id); }) : [];
+    } catch (e) { return []; }
+  }
+
+  function savePending(ids) {
+    try { d.cookie = PENDING + '=' + ids.slice(-20).join(',') + '; Max-Age=' +
+      (ids.length ? '15552000' : '0') + cookieOptions(); } catch (e) {}
+  }
+
+  function revoke(id) {
+    if (!UUID.test(id || '')) return;
+    var ids = pendingRevocations();
+    if (ids.indexOf(id) === -1) ids.push(id);
+    savePending(ids);
+    fetch('https://lucpxoynpvogkvzepagi.supabase.co/rest/v1/rpc/fn_revoke_advertising_consent', {
+      method: 'POST', credentials: 'omit', keepalive: true,
+      headers: { 'Content-Type': 'application/json', apikey: 'sb_publishable_MrmIRQL5aE7yI_0Tu1jnmQ_CJKyDelF' },
+      body: JSON.stringify({ p_receipt: id })
+    }).then(function (response) {
+      if (!response.ok) throw new Error('Revogacao pendente');
+      return response.json();
+    }).then(function (ok) {
+      if (ok === true) savePending(pendingRevocations().filter(function (item) { return item !== id; }));
+    }).catch(function () { /* A recusa local vale agora; a revogacao sera reenviada. */ });
+  }
+
+  function providers() {
+    var granted = state === 'granted';
+    if (originalTag && granted && !w.fbq) {
+      var pixel = w.fbq = function () {
+        if (/^track/.test(arguments[0]) && state !== 'granted') return;
+        if (pixel.callMethod) pixel.callMethod.apply(pixel, arguments);
+        else pixel.queue.push(arguments);
+      };
+      w._fbq = pixel;
+      pixel.queue = []; pixel.loaded = true; pixel.version = '2.0';
+      pixel('consent', 'grant');
+      pixel('set', 'autoConfig', false, '948509834960152');
+      pixel('init', '948509834960152');
+      pixel('track', 'PageView');
+      metaScript = d.createElement('script'); metaScript.async = true;
+      metaScript.src = 'https://connect.facebook.net/en_US/fbevents.js';
+    } else if (typeof w.fbq === 'function') w.fbq('consent', granted ? 'grant' : 'revoke');
+    if (granted && metaScript && !metaScript.isConnected) {
+      var load = function () { if (state === 'granted' && !metaScript.isConnected) d.head.appendChild(metaScript); };
+      if (w.sfAfterFirstPaint) w.sfAfterFirstPaint(load); else load();
+    }
+    if (typeof w.oaiq === 'function') w.oaiq('consent', granted);
+    w.dispatchEvent(new CustomEvent('sf-advertising-consent', { detail: { granted: granted } }));
   }
 
   // Novos destinos gtag recebem eventos sem send_to por padrao. Eventos
@@ -75,6 +140,7 @@
     tag('set', 'ads_data_redaction', true);
     if (state) tag('consent', 'update', consent(state));
     tag('set', 'allow_ad_personalization_signals', state === 'granted');
+    tag('set', 'allow_google_signals', state === 'granted');
     tag('config', ADS, {
       allow_enhanced_conversions: false,
       page_location: safeUrl(w.location.href),
@@ -86,14 +152,14 @@
 
   function text() {
     var en = english();
-    title.textContent = en ? 'Google advertising cookies' : 'Cookies de anúncios Google';
+    title.textContent = en ? 'Advertising cookies' : 'Cookies de publicidade';
     description.textContent = en
       ? 'Allow cookies to measure and personalise ads? Other cookies stay active.'
       : 'Permitir cookies para medir e personalizar anúncios? Os demais seguem ativos.';
     allow.textContent = en ? 'Allow' : 'Permitir';
     deny.textContent = en ? 'Decline' : 'Recusar';
     privacy.textContent = en ? 'Privacy notice' : 'Aviso de privacidade';
-    preferences.textContent = en ? 'Google ads preferences' : 'Preferências de anúncios Google';
+    preferences.textContent = en ? 'Cookie preferences' : 'Preferências de cookies';
     size();
   }
 
@@ -112,11 +178,19 @@
   }
 
   function choose(value) {
+    var oldReceipt = receipt;
+    if (value === 'granted' && !receipt) {
+      try { receipt = w.crypto.randomUUID(); acceptedAt = Date.now(); } catch (e) { value = 'denied'; }
+    }
     state = value;
-    try { d.cookie = COOKIE + '=' + value + '; Max-Age=15552000' + cookieOptions(); } catch (e) {}
+    try { d.cookie = COOKIE + '=' + value + (value === 'granted' ? '.' + receipt + '.' + Math.floor(acceptedAt / 1000) : '') +
+      '; Max-Age=' + (value === 'granted' ? Math.max(1, Math.floor((acceptedAt + 15552000000 - Date.now()) / 1000)) : 15552000) + cookieOptions(); } catch (e) {}
+    if (value !== 'granted') { receipt = null; acceptedAt = null; if (oldReceipt) revoke(oldReceipt); }
     if (value !== 'granted') clearAdsCookies();
     tag('consent', 'update', consent(value));
     tag('set', 'allow_ad_personalization_signals', value === 'granted');
+    tag('set', 'allow_google_signals', value === 'granted');
+    providers();
     banner.hidden = true;
     d.body.style.paddingBottom = previousPadding;
     preferences.setAttribute('aria-expanded', 'false');
@@ -165,7 +239,31 @@
     if (w.MutationObserver) new w.MutationObserver(text).observe(d.documentElement, { attributes: true, attributeFilter: ['lang'] });
   }
 
-  w.sfGoogleAds = { show: function () { if (banner) show(true); }, getChoice: function () { return state; } };
+  w.sfGoogleAds = {
+    show: function () { if (banner) show(true); },
+    getChoice: function () { return state; },
+    snapshot: function () { return {
+      advertising_consent: state === 'granted' && UUID.test(receipt || ''),
+      advertising_consent_receipt: state === 'granted' ? receipt : null,
+      advertising_consent_at: state === 'granted' && acceptedAt ? new Date(acceptedAt).toISOString() : null,
+      advertising_consent_version: POLICY
+    }; }
+  };
+  providers();
+  pendingRevocations().forEach(revoke);
+  w.addEventListener('online', function () { pendingRevocations().forEach(revoke); });
+  w.addEventListener('focus', function () {
+    var previous = state;
+    state = readChoice();
+    if (previous !== state) {
+      tag('consent', 'update', consent(state === 'granted' ? 'granted' : 'denied'));
+      tag('set', 'allow_ad_personalization_signals', state === 'granted');
+    tag('set', 'allow_google_signals', state === 'granted');
+      if (state !== 'granted') clearAdsCookies();
+      providers();
+    }
+    pendingRevocations().forEach(revoke);
+  });
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', render, { once: true });
   else render();
 })(window, document);

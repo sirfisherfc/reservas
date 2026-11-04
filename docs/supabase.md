@@ -1,5 +1,78 @@
 # Supabase — banco de dados, autenticação e duplicação do projeto
 
+## Vouchers de benefício
+
+A página `admin/vouchers.html`, acessível pelo menu **Vouchers** e pelo
+atalho **Consultar voucher** no dashboard, consulta e registra o uso dos
+vouchers emitidos pelos sócios no portal de gestão. Esse módulo é separado
+das reservas, códigos de pré-reserva, pagamentos e consumação do Réveillon.
+Não altera `reservations`, `customers` nem as tabelas `rv_*`.
+
+O acesso reutiliza a sessão Google e o cadastro ativo em `app_users`, com
+os perfis existentes `admin` e `operator`. A guarda da interface apenas
+organiza a navegação: as RPCs conferem a autorização no servidor. O código
+identifica o voucher e não libera acesso público nem concede permissão de
+utilização. O formulário não coloca códigos na URL, no armazenamento local
+ou em ferramentas de análise.
+O código usa o alfabeto Crockford de 32 símbolos, incluindo `0` e `1`.
+A consulta aceita prefixo `SF` opcional e interpreta `O` como `0` e `I`/`L`
+como `1`, seguindo a normalização do servidor.
+
+O backend é versionado no repositório `gestao`, na migration
+`supabase/migrations/20261104200024_benefit_vouchers.sql`, aplicada e
+confirmada no projeto `portal` em 04/11/2026. O ensaio transacional dos
+perfis reais passou com reversão dos dados de teste. As RPCs autenticadas
+deste fluxo usam o prefixo `benefit_voucher_`:
+
+- `benefit_voucher_lookup(p_code text)` consulta o código e devolve
+  `{ok, reason, voucher}`. Ausência, código inválido e limite de consultas
+  aparecem respectivamente como `not_found`, `invalid_code` e `rate_limited`.
+- `benefit_voucher_redeem(p_id uuid, p_confirm boolean)` exige confirmação
+  explícita e faz o resgate único no servidor. A página envia `p_confirm = true`
+  somente depois do diálogo e da conferência marcada pelo gerente. O UUID
+  vem da consulta autenticada, não de parâmetros livres da URL.
+
+O objeto de consulta contém código, beneficiário, tipo e valor do benefício,
+validade, unidade, condições, situação e os dados necessários à conferência
+da utilização/cancelamento. Telefone, motivo da emissão e observação interna
+ficam restritos à gestão e não são exibidos nesta consulta.
+O módulo da interface mantém somente os campos permitidos da resposta e
+escreve textos do servidor com `textContent`.
+
+As situações são `available`, `used`, `expired` e `cancelled`. A data final
+vale inclusive até o fim do dia em `America/Fortaleza`; a página mostra
+**até 23h59, horário de Fortaleza**. Datas puras não passam por conversão de
+fuso. Horários de utilização/cancelamento são convertidos explicitamente
+para Fortaleza. O navegador não decide se um voucher está vencido.
+
+As condições vêm do servidor: uso único sem saldo remanescente, sem acúmulo
+com promoções ou outro voucher na mesma conta; percentual sobre a conta
+inteira, sem teto, com taxa de serviço opcional; unidade Sir Fisher.
+A validade padrão é de 30 dias, ajustável pelo emissor no portal de gestão.
+Percentuais são exibidos como percentuais, valores fixos como reais.
+
+Durante uma operação a página bloqueia ações concorrentes. Uma recusa ou
+erro no resgate provoca somente uma nova **consulta**, nunca reenvio
+automático da utilização. Se a resposta for incerta, o gerente deve conferir
+a situação, data e responsável e consultar novamente antes de aplicar o
+benefício. A ação fica bloqueada até uma nova consulta manual bem-sucedida.
+Vouchers utilizados, vencidos e cancelados não exibem ação de utilização.
+
+Validação local do fluxo da interface, sem banco nem cliente real:
+
+```text
+node --test tools/benefit_vouchers_test.mjs
+```
+
+Com Deno, o mesmo teste roda com
+`deno test --allow-read tools/benefit_vouchers_test.mjs`.
+
+Os testes exercitam confirmação, clique simultâneo, recusa por concorrência,
+resposta perdida após gravação, reconsulta indisponível, perfil sem permissão,
+campos privados, situações terminais, códigos e formatos de benefício/data.
+Não substituem os testes transacionais das RPCs nem a conferência visual em
+celular. A página não usa câmera nem biblioteca externa de QR Code.
+
 ## Consentimento de publicidade por reserva (03/11/2026)
 
 Migration `20261103071209_publicidade_consentimento.sql` do gestao aplicada

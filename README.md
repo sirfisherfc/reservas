@@ -33,6 +33,7 @@ Chave, cobrança, tratamento de dados e teste real continuam pendentes.
 - [`docs/supabase.md`](docs/supabase.md) — banco de dados, RLS, Google OAuth, primeiro admin.
 - [`docs/github-pages.md`](docs/github-pages.md) — publicação.
 - [`docs/admin-guide.md`](docs/admin-guide.md) — manual do painel.
+- [`docs/supabase.md#vouchers-de-benefício`](docs/supabase.md#vouchers-de-benefício) — consulta e utilização dos vouchers emitidos pelos sócios.
 - [`docs/email.md`](docs/email.md) — e-mail de confirmação automático (Resend + Edge Function).
 - [`docs/openai-ads.md`](docs/openai-ads.md) — medição de reservas e comparecimentos do ChatGPT Ads.
 - [`docs/medicao-google.md`](docs/medicao-google.md) — origem, reservas e comparecimentos no Google Analytics.

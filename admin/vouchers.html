@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="no-referrer" />
+  <title>Vouchers — Painel Sir Fisher Praia</title>
+  <link rel="icon" type="image/png" href="https://www.sirfisher.com.br/assets/img/favicon.png" />
+  <link rel="stylesheet" href="../assets/css/admin.css" />
+  <link rel="stylesheet" href="../assets/css/admin-vouchers.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar" aria-label="Painel administrativo"></nav>
+    <main class="main voucher-main" id="vouchers-main" hidden>
+      <div class="page-header"><h1>Vouchers</h1><a href="./dashboard.html" class="btn btn--outline">Voltar ao dashboard</a></div>
+      <p class="voucher-intro">Confira o voucher apresentado pelo cliente e registre o uso ao aplicar o benefício.</p>
+      <form class="card voucher-search" id="voucher-search-form">
+        <label for="voucher-code">Código do voucher</label>
+        <p class="hint" id="voucher-code-hint">Digite as 12 letras ou números. Pode colar com ou sem SF, espaços e traços.</p>
+        <div class="voucher-search__row">
+          <input id="voucher-code" name="code" type="text" placeholder="SF-XXXX-XXXX-XXXX" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="voucher-code-hint" required />
+          <button class="btn btn--primary" id="voucher-search-button" type="submit">Consultar voucher</button>
+        </div>
+      </form>
+      <p id="voucher-feedback" class="voucher-feedback" role="status" aria-live="polite" aria-atomic="true"></p>
+      <section class="card voucher-result" id="voucher-result" aria-labelledby="voucher-beneficiary" hidden>
+        <div class="voucher-result__top"><span class="voucher-eyebrow">Voucher de benefício</span><span class="voucher-status" id="voucher-status"></span></div>
+        <p class="voucher-benefit" id="voucher-benefit"></p>
+        <h2 id="voucher-beneficiary" class="voucher-beneficiary" tabindex="-1"></h2>
+        <p id="voucher-status-description" class="voucher-status-description"></p>
+        <dl class="voucher-details">
+          <div><dt>Código</dt><dd id="voucher-result-code" class="voucher-code"></dd></div>
+          <div><dt>Válido até</dt><dd id="voucher-expires"></dd><dd class="hint">Até 23h59, horário de Fortaleza</dd></div>
+          <div><dt>Unidade</dt><dd id="voucher-unit"></dd></div>
+          <div id="voucher-used-detail" hidden><dt>Utilização registrada</dt><dd id="voucher-used-at"></dd><dd id="voucher-used-by" class="hint"></dd></div>
+          <div id="voucher-cancelled-detail" hidden><dt>Cancelamento registrado</dt><dd id="voucher-cancelled-at"></dd></div>
+        </dl>
+        <div class="voucher-conditions"><h3>Condições do benefício</h3><ul id="voucher-conditions"></ul></div>
+        <div class="voucher-actions">
+          <button class="btn btn--primary" id="voucher-use-button" type="button" hidden>Registrar utilização</button>
+          <button class="btn btn--outline" id="voucher-refresh-button" type="button">Consultar novamente</button>
+        </div>
+      </section>
+      <p class="voucher-footnote">Este fluxo é exclusivo dos vouchers de benefício emitidos pelos sócios. Reservas e pagamentos do Réveillon são consultados na área Réveillon.</p>
+    </main>
+  </div>
+  <dialog id="voucher-confirm-dialog" class="voucher-dialog" aria-labelledby="voucher-confirm-title" aria-describedby="voucher-confirm-description">
+    <form id="voucher-confirm-form">
+      <p class="voucher-eyebrow">Confirmação de utilização</p>
+      <h2 id="voucher-confirm-title">Aplicar este benefício agora?</h2>
+      <p id="voucher-confirm-description"></p>
+      <p class="voucher-dialog__warning">O uso é único. Depois de confirmar, o voucher fica utilizado e não poderá ser usado novamente.</p>
+      <label class="voucher-check"><input id="voucher-confirm-check" type="checkbox" required /><span>Conferi o voucher e vou aplicar o benefício nesta conta.</span></label>
+      <div class="voucher-dialog__actions">
+        <button class="btn btn--outline" id="voucher-confirm-cancel" type="button" autofocus>Voltar</button>
+        <button class="btn btn--primary" id="voucher-confirm-submit" type="submit">Confirmar utilização</button>
+      </div>
+    </form>
+  </dialog>
+  <script type="module" src="../assets/js/adminVouchers.js?v=20261104"></script>
+</body>
+</html>

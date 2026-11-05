@@ -44,7 +44,7 @@ export function voucherStatus(status) {
   return {
     available: { label: 'Disponível', description: 'Confira as condições e confirme a utilização somente ao aplicar o benefício na conta.' },
     used: { label: 'Utilizado', description: 'Este voucher já foi utilizado e não pode ser usado novamente.' },
-    expired: { label: 'Vencido', description: 'A validade terminou. Este voucher não pode ser utilizado.' },
+    expired: { label: 'Vencido', description: 'Voucher vencido. Este voucher não pode ser utilizado. Consulte o emissor do voucher.' },
     cancelled: { label: 'Cancelado', description: 'Este voucher foi cancelado e não pode ser utilizado.' },
   }[status] || { label: 'Situação indisponível', description: 'Consulte novamente antes de aplicar o benefício.' };
 }

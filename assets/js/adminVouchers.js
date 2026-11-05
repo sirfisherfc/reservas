@@ -2,13 +2,14 @@ import { supabase } from './supabaseClient.js';
 import { requireStaff, mountLayout } from './adminGuard.js';
 import {
   createVoucherSession, createRecentVoucherList, RECENT_VOUCHERS_PAGE_SIZE, voucherBenefit, voucherDate, voucherEventTime, voucherStatus,
-} from './benefit-vouchers.mjs?v=20261105-recent';
+} from './benefit-vouchers.mjs?v=20261105-expired';
 
 const byId = (id) => document.getElementById(id);
 const session = createVoucherSession((name, args) => supabase.rpc(name, args));
 const recent = createRecentVoucherList((name, args) => supabase.rpc(name, args));
 const feedback = byId('voucher-feedback');
 const dialog = byId('voucher-confirm-dialog');
+const expiredDialog = byId('voucher-expired-dialog');
 let operation = false;
 
 const messages = {
@@ -24,6 +25,15 @@ const messages = {
 function setFeedback(message = '', type = '') {
   feedback.textContent = message;
   feedback.className = `voucher-feedback${type ? ` voucher-feedback--${type}` : ''}`;
+}
+
+function showExpiredNotice(voucher) {
+  byId('voucher-expired-details').textContent = voucher ? `Código ${voucher.code} · Vencimento ${voucherDate(voucher.expires_on)}` : '';
+  if (typeof expiredDialog.showModal === 'function') {
+    if (!expiredDialog.open) expiredDialog.showModal();
+  } else {
+    window.alert(voucherStatus('expired').description);
+  }
 }
 
 function recentControls() {
@@ -70,7 +80,6 @@ function setBusy(busy, label = 'Consultando…') {
   byId('voucher-search-button').disabled = busy;
   byId('voucher-search-button').textContent = busy ? label : 'Consultar voucher';
   byId('voucher-code').disabled = busy;
-  byId('voucher-refresh-button').disabled = busy;
   byId('voucher-use-button').disabled = busy;
   byId('voucher-confirm-submit').disabled = busy;
   byId('voucher-result').setAttribute('aria-busy', String(busy));
@@ -79,6 +88,8 @@ function setBusy(busy, label = 'Consultando…') {
 function renderVoucher({ focus = false } = {}) {
   const voucher = session.state.voucher;
   byId('voucher-result').hidden = !voucher;
+  byId('voucher-result').classList.toggle('voucher-result--expired', voucher?.status === 'expired');
+  if (voucher?.status !== 'expired' && expiredDialog.open) expiredDialog.close();
   if (!voucher) return;
   const status = voucherStatus(voucher.status);
   byId('voucher-status').textContent = status.label;
@@ -88,7 +99,6 @@ function renderVoucher({ focus = false } = {}) {
   byId('voucher-beneficiary').textContent = voucher.beneficiary_name;
   byId('voucher-result-code').textContent = voucher.code;
   byId('voucher-expires').textContent = voucherDate(voucher.expires_on);
-  byId('voucher-unit').textContent = voucher.unit_name;
   byId('voucher-used-detail').hidden = voucher.status !== 'used';
   byId('voucher-used-at').textContent = `${voucherEventTime(voucher.used_at)} (Fortaleza)`;
   byId('voucher-used-by').textContent = voucher.used_by_name ? `Responsável: ${voucher.used_by_name}` : 'Responsável registrado no histórico interno.';
@@ -107,6 +117,7 @@ function renderVoucher({ focus = false } = {}) {
     conditions.appendChild(item);
   }
   byId('voucher-use-button').hidden = voucher.status !== 'available' || session.state.needsRefresh || !voucher.conditions.length;
+  byId('voucher-actions').hidden = byId('voucher-use-button').hidden;
   if (focus) byId('voucher-beneficiary').focus();
 }
 
@@ -119,7 +130,12 @@ async function lookup() {
     renderVoucher({ focus: result.kind === 'found' });
     if (result.kind === 'found') {
       byId('voucher-code').value = session.state.voucher.code;
-      setFeedback(session.state.voucher.status === 'available' ? 'Voucher localizado. Confira os dados e as condições abaixo.' : 'Voucher localizado. Confira a situação registrada abaixo.');
+      if (session.state.voucher.status === 'expired') {
+        setFeedback();
+        showExpiredNotice(session.state.voucher);
+      } else {
+        setFeedback(session.state.voucher.status === 'available' ? 'Voucher localizado. Confira os dados e as condições abaixo.' : 'Voucher localizado. Confira a situação registrada abaixo.');
+      }
     } else {
       setFeedback(messages[result.kind] || 'Não foi possível consultar. Tente novamente.', 'danger');
     }
@@ -143,6 +159,7 @@ function openConfirmation() {
 async function confirmUse(event) {
   event.preventDefault();
   if (operation || !dialog.open || !byId('voucher-confirm-check').checked) return;
+  const presentedVoucher = session.state.voucher;
   byId('voucher-confirm-check').checked = false;
   dialog.close();
   setBusy(true, 'Registrando utilização…');
@@ -158,13 +175,15 @@ async function confirmUse(event) {
         : 'O voucher foi alterado. Confira os dados atualizados e confirme novamente.', 'danger');
     } else if (result.kind === 'refused') {
       const reason = {
-        used: 'Este voucher já foi utilizado.', expired: 'Este voucher venceu.',
+        used: 'Este voucher já foi utilizado.', expired: 'Este voucher venceu. Consulte o emissor do voucher.',
         cancelled: 'Este voucher foi cancelado.', not_found: 'O voucher não foi localizado.',
         rate_limited: 'Aguarde um minuto antes de consultar novamente.',
       }[result.reason] || 'A utilização não foi autorizada.';
       setFeedback(`${reason} A utilização solicitada não foi registrada. Confira a situação atual abaixo ou consulte novamente.`, 'danger');
+      if (result.reason === 'expired') showExpiredNotice(session.state.voucher || presentedVoucher);
     } else {
       setFeedback(messages[result.kind] || messages.uncertain, 'danger');
+      if (session.state.voucher?.status === 'expired') showExpiredNotice(session.state.voucher);
     }
   } finally {
     setBusy(false);
@@ -187,10 +206,11 @@ async function init() {
     renderVoucher();
     setFeedback();
   });
-  byId('voucher-refresh-button').addEventListener('click', lookup);
   byId('voucher-use-button').addEventListener('click', openConfirmation);
   byId('voucher-confirm-form').addEventListener('submit', confirmUse);
   byId('voucher-confirm-cancel').addEventListener('click', () => dialog.close());
+  byId('voucher-expired-close').addEventListener('click', () => expiredDialog.close());
+  expiredDialog.addEventListener('close', () => byId('voucher-code').focus());
   byId('voucher-recent-refresh').addEventListener('click', () => loadRecent());
   byId('voucher-recent-prev').addEventListener('click', () => loadRecent(Math.max(0, recent.state.offset - RECENT_VOUCHERS_PAGE_SIZE)));
   byId('voucher-recent-next').addEventListener('click', () => loadRecent(recent.state.offset + RECENT_VOUCHERS_PAGE_SIZE));

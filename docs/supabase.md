@@ -88,13 +88,24 @@ a situação, data e responsável e consultar novamente antes de aplicar o
 benefício. A ação fica bloqueada até uma nova consulta manual bem-sucedida.
 Vouchers utilizados, vencidos e cancelados não exibem ação de utilização.
 
+Ao consultar voucher vencido, a página abre um `alertdialog` com título
+**Voucher vencido**, bloqueio de utilização e **Consulte o emissor do voucher**.
+Mostra código e vencimento, com botão Entendi e retorno do foco ao campo de
+código. A mesma orientação fica destacada no card. Também abre o aviso se o
+servidor recusar a utilização por vencimento entre consulta e confirmação,
+mesmo se a reconsulta seguinte falhar. Sem suporte a dialog nativo, usa alerta
+do navegador. Nenhuma ação no aviso registra utilização ou prorroga validade.
+O card não exibe o campo Unidade nem o botão Consultar novamente; a consulta
+manual continua pelo formulário de código no topo. Card sem ação de utilização
+não reserva espaço para botões.
+
 Validação local do fluxo da interface, sem banco nem cliente real:
 
 ```text
-node --test tools/benefit_vouchers_test.mjs
+node --test tools/benefit_vouchers_test.mjs tools/admin_vouchers_ui_test.mjs
 ```
 
-Com Deno, o mesmo teste roda com
+Com Deno, o teste de estado roda com
 `deno test --allow-read tools/benefit_vouchers_test.mjs`.
 
 Os testes exercitam confirmação, clique simultâneo, recusa por concorrência,
@@ -103,6 +114,9 @@ gravação, reconsulta indisponível, perfil sem permissão,
 campos privados, situações terminais, códigos e formatos de benefício/data.
 Não substituem os testes transacionais das RPCs nem a conferência visual em
 celular. A página não usa câmera nem biblioteca externa de QR Code.
+Os testes do controlador usam um adaptador de DOM para exercitar consulta,
+aviso, fechamento/foco, nova consulta disponível, recusa e fallback, sem
+rede nem utilização real. Não são uma conferência visual em navegador.
 
 ## Consentimento de publicidade por reserva (03/11/2026)
 

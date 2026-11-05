@@ -8,7 +8,7 @@
   <title>Vouchers — Painel Sir Fisher Praia</title>
   <link rel="icon" type="image/png" href="https://www.sirfisher.com.br/assets/img/favicon.png" />
   <link rel="stylesheet" href="../assets/css/admin.css" />
-  <link rel="stylesheet" href="../assets/css/admin-vouchers.css?v=20261105-recent" />
+  <link rel="stylesheet" href="../assets/css/admin-vouchers.css?v=20261105-expired" />
 </head>
 <body>
   <div class="app-shell">
@@ -33,14 +33,12 @@
         <dl class="voucher-details">
           <div><dt>Código</dt><dd id="voucher-result-code" class="voucher-code"></dd></div>
           <div><dt>Válido até</dt><dd id="voucher-expires"></dd><dd class="hint">Até 23h59, horário de Fortaleza</dd></div>
-          <div><dt>Unidade</dt><dd id="voucher-unit"></dd></div>
           <div id="voucher-used-detail" hidden><dt>Utilização registrada</dt><dd id="voucher-used-at"></dd><dd id="voucher-used-by" class="hint"></dd></div>
           <div id="voucher-cancelled-detail" hidden><dt>Cancelamento registrado</dt><dd id="voucher-cancelled-at"></dd></div>
         </dl>
         <div class="voucher-conditions"><h3>Condições do benefício</h3><ul id="voucher-conditions"></ul></div>
-        <div class="voucher-actions">
+        <div class="voucher-actions" id="voucher-actions" hidden>
           <button class="btn btn--primary" id="voucher-use-button" type="button" hidden>Registrar utilização</button>
-          <button class="btn btn--outline" id="voucher-refresh-button" type="button">Consultar novamente</button>
         </div>
       </section>
       <section class="card voucher-recent" id="voucher-recent" aria-labelledby="voucher-recent-title" aria-busy="true">
@@ -68,6 +66,14 @@
       </div>
     </form>
   </dialog>
-  <script type="module" src="../assets/js/adminVouchers.js?v=20261105-recent"></script>
+  <dialog id="voucher-expired-dialog" class="voucher-dialog voucher-expired-dialog" role="alertdialog" aria-labelledby="voucher-expired-title" aria-describedby="voucher-expired-description voucher-expired-guidance voucher-expired-details">
+    <div class="voucher-expired-icon" aria-hidden="true">!</div>
+    <h2 id="voucher-expired-title">Voucher vencido</h2>
+    <p id="voucher-expired-description">Este voucher não pode ser utilizado.</p>
+    <p id="voucher-expired-guidance" class="voucher-expired-guidance">Consulte o emissor do voucher.</p>
+    <p id="voucher-expired-details" class="hint"></p>
+    <button class="btn btn--primary" id="voucher-expired-close" type="button" autofocus>Entendi</button>
+  </dialog>
+  <script type="module" src="../assets/js/adminVouchers.js?v=20261105-expired"></script>
 </body>
 </html>

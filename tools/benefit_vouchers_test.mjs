@@ -9,7 +9,7 @@ const base = {
   id: '11111111-1111-4111-8111-111111111111', code: 'SF-0123-ABCD-WXYZ',
   beneficiary_name: 'Beneficiário de teste com nome bastante longo para conferência',
   benefit_type: 'fixed', benefit_value: 250.5, expires_on: '2026-12-04',
-  status: 'available', unit_name: 'Sir Fisher', conditions: ['Uso único.'],
+  status: 'available', revision: 1, unit_name: 'Sir Fisher', conditions: ['Uso único.'],
 };
 const found = (overrides = {}) => ({ data: { ok: true, voucher: { ...base, ...overrides } }, error: null });
 const nextResult = (queue, calls) => async (name, args) => {
@@ -25,7 +25,7 @@ test('aceita código legível colado e rejeita dados incompletos/URL', () => {
   assert.equal(normalizeVoucherCode('0123ABCDWXYZ'), base.code);
   assert.equal(normalizeVoucherCode('SF-0000-1111-2222'), 'SF-0000-1111-2222');
   assert.equal(normalizeVoucherCode('SF-OIL0-ABCD-WXYZ'), 'SF-0110-ABCD-WXYZ');
-  for (const bad of ['', 'SF-ABCD', 'SF-0123-ABCD-WXYZ-Z', 'SF-0123-ABCD-WXYU', `https://example.test/#${base.code}`]) {
+  for (const bad of ['', 'SF-ABC', 'SF-0123-ABCD-WXYZ-Z', 'SF-0123-ABCD-WXYU', `https://example.test/#${base.code}`]) {
     assert.equal(normalizeVoucherCode(bad), null);
   }
 });
@@ -36,6 +36,19 @@ test('formata percentuais separadamente de reais, valores altos e centavos', () 
   assert.equal(voucherBenefit({ benefit_type: 'percent', benefit_value: 100 }), '100% de desconto');
   assert.match(voucherBenefit({ benefit_type: 'fixed', benefit_value: 12345.67 }), /12\.345,67/);
   assert.equal(voucherBenefit({ benefit_type: 'fixed', benefit_value: 0 }), 'Benefício indisponível');
+});
+test('aceita seis caracteres sem prefixo e normaliza letras ambíguas',()=>{
+  assert.equal(normalizeVoucherCode(' a1b2c3 '),'A1B2C3');
+  assert.equal(normalizeVoucherCode('oIl-ab2'),'011AB2');
+  assert.equal(normalizeVoucherCode('U12345'),null);
+});
+test('consulta seis caracteres e aceita o alias antigo do mesmo voucher',async()=>{
+  const short='A1B2C3',legacy=base.code;
+  const session=createVoucherSession(async()=>found({code:short,legacy_code:legacy}));
+  assert.equal((await session.lookup(short)).kind,'found');assert.equal(session.state.voucher.code,short);
+  assert.equal((await session.lookup(legacy)).kind,'found');assert.equal(session.state.voucher.code,short);
+  const compatible=createVoucherSession(async()=>found({code:legacy,short_code:short,legacy_code:legacy}));
+  assert.equal((await compatible.lookup(legacy)).kind,'found');assert.equal(compatible.state.voucher.code,short);
 });
 
 test('datas puras e eventos usam convenção inequívoca de Fortaleza', () => {
@@ -52,10 +65,11 @@ test('código inválido não consulta servidor; consulta mantém apenas campos n
   const session = createVoucherSession(nextResult([found({
     phone: 'privado', internal_notes: 'privado', issue_reason: 'privado', issue_reason_detail: 'privado',
   })], calls));
-  assert.equal((await session.lookup('SF-ABCD')).kind, 'invalid_code');
+  assert.equal((await session.lookup('SF-ABC')).kind, 'invalid_code');
   assert.equal(calls.length, 0);
   assert.equal((await session.lookup('sf-oi23-abcd-wxyz')).kind, 'found');
   assert.equal(session.state.voucher.beneficiary_name, base.beneficiary_name);
+  assert.equal(session.state.voucher.revision, 1);
   assert.equal(Object.hasOwn(session.state.voucher, 'phone'), false);
   assert.equal(Object.hasOwn(session.state.voucher, 'internal_notes'), false);
   assert.equal(Object.hasOwn(session.state.voucher, 'issue_reason'), false);
@@ -70,7 +84,7 @@ test('resgate exige confirmação explícita, usa UUID e não pode ser repetido'
   assert.equal((await session.redeem()).kind, 'confirmation_required');
   assert.equal(calls.length, 1);
   assert.equal((await session.redeem(true)).kind, 'redeemed');
-  assert.deepEqual(calls[1], { name: 'benefit_voucher_redeem', args: { p_id: base.id, p_confirm: true } });
+  assert.deepEqual(calls[1], { name: 'benefit_voucher_redeem', args: { p_id: base.id, p_confirm: true, p_expected_revision: 1 } });
   assert.equal(session.state.voucher.status, 'used');
   assert.equal((await session.redeem(true)).kind, 'refresh_required');
   assert.equal(calls.length, 2);
@@ -92,6 +106,77 @@ test('dois cliques concorrentes geram somente uma chamada de resgate', async () 
   assert.equal((await first).kind, 'redeemed');
   assert.equal(calls.filter(({ name }) => name === 'benefit_voucher_redeem').length, 1);
   assert.equal(session.state.busy, false);
+});
+
+test('edição após consulta recusa a confirmação antiga e exige conferir a nova revisão', async () => {
+  const calls = [];
+  const edited = { revision: 2, benefit_value: 100, beneficiary_name: 'Nome corrigido' };
+  const session = createVoucherSession(nextResult([
+    found(), { data: { ok: false, reason: 'changed', voucher: { ...base, ...edited } }, error: null },
+    found(edited), found({ ...edited, status: 'used' }),
+  ], calls));
+  await session.lookup(base.code);
+  assert.deepEqual(await session.redeem(true), { kind: 'refused', reason: 'changed' });
+  assert.equal(session.state.voucher.revision, 2);
+  assert.equal(session.state.voucher.benefit_value, 100);
+  assert.equal(session.state.voucher.beneficiary_name, 'Nome corrigido');
+  assert.equal(session.state.needsRefresh, false);
+  assert.deepEqual(calls.map(({ name }) => name), ['benefit_voucher_lookup', 'benefit_voucher_redeem', 'benefit_voucher_lookup']);
+  assert.equal(calls[1].args.p_expected_revision, 1);
+  assert.equal((await session.redeem()).kind, 'confirmation_required');
+  assert.equal(calls.length, 3);
+  assert.equal((await session.redeem(true)).kind, 'redeemed');
+  assert.equal(calls[3].args.p_expected_revision, 2);
+});
+
+test('alteração com reconsulta indisponível bloqueia outro resgate', async () => {
+  const calls = [];
+  const session = createVoucherSession(nextResult([
+    found(), { data: { ok: false, reason: 'changed' }, error: null },
+    { data: { ok: false, reason: 'rate_limited' }, error: null },
+  ], calls));
+  await session.lookup(base.code);
+  assert.deepEqual(await session.redeem(true), { kind: 'refused', reason: 'changed' });
+  assert.equal(session.state.voucher, null);
+  assert.equal(session.state.needsRefresh, true);
+  assert.equal((await session.redeem(true)).kind, 'refresh_required');
+  assert.equal(calls.filter(({ name }) => name === 'benefit_voucher_redeem').length, 1);
+});
+
+test('falha de rede ao atualizar voucher alterado preserva recusa e remove dados antigos', async () => {
+  const calls = [];
+  const session = createVoucherSession(nextResult([
+    found(), { data: { ok: false, reason: 'changed' }, error: null }, new Error('network'),
+  ], calls));
+  await session.lookup(base.code);
+  assert.deepEqual(await session.redeem(true), { kind: 'refused', reason: 'changed' });
+  assert.equal(session.state.voucher, null);
+  assert.equal(session.state.needsRefresh, true);
+  assert.equal((await session.redeem(true)).kind, 'refresh_required');
+  assert.deepEqual(calls.map(({ name }) => name), ['benefit_voucher_lookup', 'benefit_voucher_redeem', 'benefit_voucher_lookup']);
+});
+
+test('revisão ausente ou inválida impede consultar e resgatar', async () => {
+  for (const revision of [undefined, null, 0, -1, 1.5, '1', Number.MAX_SAFE_INTEGER + 1]) {
+    const calls = [];
+    const session = createVoucherSession(nextResult([found({ revision })], calls));
+    assert.equal((await session.lookup(base.code)).kind, 'lookup_failed');
+    assert.equal(session.state.voucher, null);
+    assert.equal((await session.redeem(true)).kind, 'refresh_required');
+    assert.deepEqual(calls.map(({ name }) => name), ['benefit_voucher_lookup']);
+  }
+});
+
+test('resposta de uso com outra revisão não confirma o benefício como aplicado', async () => {
+  const calls = [];
+  const session = createVoucherSession(nextResult([
+    found(), found({ revision: 2, status: 'used' }), found({ revision: 2, status: 'used' }),
+  ], calls));
+  await session.lookup(base.code);
+  assert.equal((await session.redeem(true)).kind, 'uncertain');
+  assert.equal(session.state.voucher.revision, 2);
+  assert.equal(session.state.needsRefresh, true);
+  assert.equal(calls.filter(({ name }) => name === 'benefit_voucher_redeem').length, 1);
 });
 
 for (const status of ['used', 'expired', 'cancelled']) {

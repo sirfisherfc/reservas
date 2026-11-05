@@ -14,9 +14,11 @@ organiza a navegação: as RPCs conferem a autorização no servidor. O código
 identifica o voucher e não libera acesso público nem concede permissão de
 utilização. O formulário não coloca códigos na URL, no armazenamento local
 ou em ferramentas de análise.
-O código usa o alfabeto Crockford de 32 símbolos, incluindo `0` e `1`.
-A consulta aceita prefixo `SF` opcional e interpreta `O` como `0` e `I`/`L`
-como `1`, seguindo a normalização do servidor.
+O código tem seis caracteres do alfabeto Crockford de 32 símbolos, incluindo
+`0` e `1`, sem prefixo. A consulta também aceita o código antigo de doze
+caracteres, com prefixo `SF` opcional, e interpreta `O` como `0` e `I`/`L`
+como `1`, seguindo a normalização do servidor. Os códigos antigos permanecem
+como aliases; a interface atual apresenta o código curto.
 
 O backend é versionado no repositório `gestao`, na migration
 `supabase/migrations/20261104200024_benefit_vouchers.sql`, aplicada e
@@ -27,17 +29,30 @@ deste fluxo usam o prefixo `benefit_voucher_`:
 - `benefit_voucher_lookup(p_code text)` consulta o código e devolve
   `{ok, reason, voucher}`. Ausência, código inválido e limite de consultas
   aparecem respectivamente como `not_found`, `invalid_code` e `rate_limited`.
-- `benefit_voucher_redeem(p_id uuid, p_confirm boolean)` exige confirmação
-  explícita e faz o resgate único no servidor. A página envia `p_confirm = true`
-  somente depois do diálogo e da conferência marcada pelo gerente. O UUID
-  vem da consulta autenticada, não de parâmetros livres da URL.
+- `benefit_voucher_redeem(p_id uuid, p_confirm boolean, p_expected_revision integer)`
+  exige confirmação explícita e faz o resgate único no servidor. A página envia
+  `p_confirm = true` somente depois do diálogo e da conferência marcada pelo
+  gerente. O UUID e a revisão vêm da consulta autenticada, não de parâmetros
+  livres da URL. Se o sócio editar antes do uso, retorna `changed` sem registrar
+  utilização: a página consulta os dados atualizados e exige nova confirmação.
+  O cliente antigo de dois argumentos só pode usar vouchers nunca editados.
+
+A edição e a conferência de revisão são versionadas em
+`gestao/supabase/migrations/20261104205451_benefit_voucher_edit.sql`.
+Os códigos curtos e a compatibilidade com os antigos são versionados em
+`gestao/supabase/migrations/20261105130459_benefit_voucher_short_codes.sql`.
+As duas migrations foram aplicadas e conferidas no `portal` em 05/11/2026.
 
 O objeto de consulta contém código, beneficiário, tipo e valor do benefício,
-validade, unidade, condições, situação e os dados necessários à conferência
+validade, unidade, condições, situação, revisão e os dados necessários à conferência
 da utilização/cancelamento. Telefone, motivo da emissão e observação interna
 ficam restritos à gestão e não são exibidos nesta consulta.
 O módulo da interface mantém somente os campos permitidos da resposta e
 escreve textos do servidor com `textContent`.
+A revisão deve ser um inteiro positivo; resposta sem revisão válida bloqueia
+a utilização. O resgate envia a revisão que o gerente conferiu e só confirma
+sucesso com a mesma revisão na resposta. Uma edição não reaproveita a
+confirmação anterior.
 
 As situações são `available`, `used`, `expired` e `cancelled`. A data final
 vale inclusive até o fim do dia em `America/Fortaleza`; a página mostra
@@ -68,7 +83,8 @@ Com Deno, o mesmo teste roda com
 `deno test --allow-read tools/benefit_vouchers_test.mjs`.
 
 Os testes exercitam confirmação, clique simultâneo, recusa por concorrência,
-resposta perdida após gravação, reconsulta indisponível, perfil sem permissão,
+edição entre consulta e confirmação, revisão inválida, resposta perdida após
+gravação, reconsulta indisponível, perfil sem permissão,
 campos privados, situações terminais, códigos e formatos de benefício/data.
 Não substituem os testes transacionais das RPCs nem a conferência visual em
 celular. A página não usa câmera nem biblioteca externa de QR Code.

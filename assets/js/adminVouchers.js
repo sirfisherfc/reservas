@@ -2,7 +2,7 @@ import { supabase } from './supabaseClient.js';
 import { requireStaff, mountLayout } from './adminGuard.js';
 import {
   createVoucherSession, voucherBenefit, voucherDate, voucherEventTime, voucherStatus,
-} from './benefit-vouchers.mjs?v=20261104';
+} from './benefit-vouchers.mjs?v=20261105-short';
 
 const byId = (id) => document.getElementById(id);
 const session = createVoucherSession((name, args) => supabase.rpc(name, args));
@@ -11,7 +11,7 @@ const dialog = byId('voucher-confirm-dialog');
 let operation = false;
 
 const messages = {
-  invalid_code: 'Confira o código completo: SF seguido de 12 letras ou números. Não foi feita nenhuma utilização.',
+  invalid_code: 'Confira os 6 caracteres do código. Os códigos antigos também podem ser consultados. Não foi feita nenhuma utilização.',
   not_found: 'Voucher não encontrado. Confira o código apresentado pelo cliente.',
   rate_limited: 'Muitas consultas em pouco tempo. Aguarde um minuto antes de consultar novamente.',
   denied: 'Seu acesso não permite esta operação. Entre novamente ou fale com um administrador.',
@@ -102,7 +102,8 @@ function openConfirmation() {
 
 async function confirmUse(event) {
   event.preventDefault();
-  if (operation || !byId('voucher-confirm-check').checked) return;
+  if (operation || !dialog.open || !byId('voucher-confirm-check').checked) return;
+  byId('voucher-confirm-check').checked = false;
   dialog.close();
   setBusy(true, 'Registrando utilização…');
   setFeedback('Registrando a utilização. Aguarde a confirmação do sistema.');
@@ -111,6 +112,10 @@ async function confirmUse(event) {
     renderVoucher({ focus: true });
     if (result.kind === 'redeemed') {
       setFeedback('Utilização registrada. O voucher não poderá ser utilizado novamente.', 'success');
+    } else if (result.kind === 'refused' && result.reason === 'changed') {
+      setFeedback(session.state.needsRefresh
+        ? 'O voucher foi alterado. Consulte novamente para conferir os dados atualizados antes de confirmar a utilização.'
+        : 'O voucher foi alterado. Confira os dados atualizados e confirme novamente.', 'danger');
     } else if (result.kind === 'refused') {
       const reason = {
         used: 'Este voucher já foi utilizado.', expired: 'Este voucher venceu.',

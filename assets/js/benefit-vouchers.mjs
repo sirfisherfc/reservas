@@ -1,6 +1,7 @@
 // Vouchers de benefício: formatação e estado de consulta/resgate.
 // A disponibilidade e as permissões são sempre determinadas pelas RPCs.
 const STATUSES = new Set(['available', 'used', 'expired', 'cancelled']);
+const SHORT_CODE_PATTERN = /^[0-9A-HJKMNP-TV-Z]{6}$/;
 const CODE_PATTERN = /^SF-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$/;
 
 export function normalizeVoucherCode(value) {
@@ -9,6 +10,7 @@ export function normalizeVoucherCode(value) {
   let compact = raw.trim().toUpperCase().replace(/[\s-]/g, '');
   if (compact.startsWith('SF') && compact.length === 14) compact = compact.slice(2);
   compact = compact.replace(/O/g, '0').replace(/[IL]/g, '1');
+  if (SHORT_CODE_PATTERN.test(compact)) return compact;
   if (!/^[0-9A-HJKMNP-TV-Z]{12}$/.test(compact)) return null;
   const code = `SF-${compact.slice(0, 4)}-${compact.slice(4, 8)}-${compact.slice(8, 12)}`;
   return CODE_PATTERN.test(code) ? code : null;
@@ -50,13 +52,18 @@ export function voucherStatus(status) {
 function readVoucher(payload) {
   const value = payload?.voucher;
   if (!value || typeof value.id !== 'string' || !normalizeVoucherCode(value.code)
+    || !Number.isSafeInteger(value.revision) || value.revision < 1
     || !STATUSES.has(value.status) || !['fixed', 'percent'].includes(value.benefit_type)
     || !Number.isFinite(Number(value.benefit_value)) || Number(value.benefit_value) <= 0
     || typeof value.beneficiary_name !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.expires_on)) return null;
   // Whitelist: não manter telefone nem observação interna, mesmo se uma resposta
   // futura adicionar esses campos por engano.
+  const code=normalizeVoucherCode(value.short_code || value.code);
+  if(!code)return null;
+  const legacy=normalizeVoucherCode(value.legacy_code || (CODE_PATTERN.test(value.code) ? value.code : ''));
   return {
-    id: value.id, code: normalizeVoucherCode(value.code), beneficiary_name: value.beneficiary_name,
+    id: value.id, code, legacy_code: legacy && CODE_PATTERN.test(legacy) ? legacy : null, revision: value.revision,
+    beneficiary_name: value.beneficiary_name,
     benefit_type: value.benefit_type, benefit_value: Number(value.benefit_value),
     expires_on: value.expires_on, status: value.status,
     conditions: Array.isArray(value.conditions) ? value.conditions.filter((item) => typeof item === 'string') : [],
@@ -75,7 +82,7 @@ export function createVoucherSession(rpc) {
     if (error) throw error;
     if (data?.ok === true) {
       const voucher = readVoucher(data);
-      if (!voucher || voucher.code !== code) throw new Error('Invalid voucher response');
+      if (!voucher || voucher.code !== code && voucher.legacy_code !== code) throw new Error('Invalid voucher response');
       return { kind: 'found', voucher };
     }
     if (['not_found', 'rate_limited', 'invalid_code'].includes(data?.reason)) return { kind: data.reason };
@@ -111,23 +118,34 @@ export function createVoucherSession(rpc) {
       if (state.busy) return { kind: 'busy' };
       if (confirmed !== true) return { kind: 'confirmation_required' };
       const voucher = state.voucher;
-      if (!voucher || voucher.status !== 'available' || state.needsRefresh) return { kind: 'refresh_required' };
+      if (!voucher || voucher.status !== 'available' || state.needsRefresh
+        || !Number.isSafeInteger(voucher.revision) || voucher.revision < 1) return { kind: 'refresh_required' };
       state.busy = true;
       try {
-        const { data, error } = await rpc('benefit_voucher_redeem', { p_id: voucher.id, p_confirm: true });
+        const { data, error } = await rpc('benefit_voucher_redeem', {
+          p_id: voucher.id, p_confirm: true, p_expected_revision: voucher.revision,
+        });
         if (error) throw error;
         const updated = readVoucher(data);
-        if (data?.ok === true && updated?.status === 'used' && updated.id === voucher.id && updated.code === voucher.code) {
+        if (data?.ok === true && updated?.status === 'used' && updated.id === voucher.id
+          && updated.code === voucher.code && updated.revision === voucher.revision) {
           state.voucher = updated;
           return { kind: 'redeemed' };
         }
-        if (!['used', 'expired', 'cancelled', 'not_found', 'rate_limited'].includes(data?.reason)) {
+        if (!['used', 'expired', 'cancelled', 'not_found', 'rate_limited', 'changed'].includes(data?.reason)) {
           throw new Error('Invalid redeem response');
         }
         // Mesmo numa recusa conhecida, atualizar antes de permitir outra ação.
-        const result = await query(voucher.code);
-        state.voucher = result.voucher || null;
-        state.needsRefresh = result.kind !== 'found';
+        state.voucher = null;
+        state.needsRefresh = true;
+        try {
+          const result = await query(voucher.code);
+          state.voucher = result.voucher || null;
+          state.needsRefresh = result.kind !== 'found';
+        } catch {
+          // A recusa já foi confirmada. Falha na consulta seguinte não autoriza
+          // reaproveitar os dados anteriores nem precisa repetir a operação.
+        }
         return { kind: 'refused', reason: data.reason };
       } catch (error) {
         state.needsRefresh = true;

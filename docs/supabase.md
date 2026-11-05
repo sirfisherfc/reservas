@@ -88,16 +88,21 @@ a situação, data e responsável e consultar novamente antes de aplicar o
 benefício. A ação fica bloqueada até uma nova consulta manual bem-sucedida.
 Vouchers utilizados, vencidos e cancelados não exibem ação de utilização.
 
-Ao consultar voucher vencido, a página abre um `alertdialog` com título
-**Voucher vencido**, bloqueio de utilização e **Consulte o emissor do voucher**.
-Mostra código e vencimento, com botão Entendi e retorno do foco ao campo de
-código. A mesma orientação fica destacada no card. Também abre o aviso se o
-servidor recusar a utilização por vencimento entre consulta e confirmação,
+Ao consultar voucher vencido, já utilizado ou cancelado, a página abre um
+`alertdialog` com título específico da situação, bloqueio de utilização e
+**Consulte o emissor do voucher**. Mostra código e data de vencimento,
+utilização ou cancelamento; para utilizado também o responsável disponível.
+Botão Entendi e retorno do foco ao código. A mesma orientação fica destacada
+no card: âmbar para vencido, azul para utilizado e vermelho para cancelado.
+Também abre o aviso se o servidor recusar o uso por uma dessas situações,
 mesmo se a reconsulta seguinte falhar. Sem suporte a dialog nativo, usa alerta
 do navegador. Nenhuma ação no aviso registra utilização ou prorroga validade.
 O card não exibe o campo Unidade nem o botão Consultar novamente; a consulta
 manual continua pelo formulário de código no topo. Card sem ação de utilização
 não reserva espaço para botões.
+Uma utilização concluída com sucesso mantém a mensagem de sucesso e não
+dispara o popup de voucher já utilizado. A renovação, exclusiva da gestão,
+exige uma consulta atualizada antes de utilizar a nova revisão.
 
 Validação local do fluxo da interface, sem banco nem cliente real:
 

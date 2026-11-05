@@ -8,7 +8,7 @@
   <title>Vouchers — Painel Sir Fisher Praia</title>
   <link rel="icon" type="image/png" href="https://www.sirfisher.com.br/assets/img/favicon.png" />
   <link rel="stylesheet" href="../assets/css/admin.css" />
-  <link rel="stylesheet" href="../assets/css/admin-vouchers.css?v=20261105-expired" />
+  <link rel="stylesheet" href="../assets/css/admin-vouchers.css?v=20261105-status" />
 </head>
 <body>
   <div class="app-shell">
@@ -43,7 +43,6 @@
       </section>
       <section class="card voucher-recent" id="voucher-recent" aria-labelledby="voucher-recent-title" aria-busy="true">
         <div class="voucher-recent__header"><h2 id="voucher-recent-title">Validados nos últimos 3 dias</h2><button class="btn btn--outline" id="voucher-recent-refresh" type="button">Atualizar lista</button></div>
-        <p class="hint">Hoje e os dois dias anteriores, no horário de Fortaleza.</p>
         <p id="voucher-recent-message" role="status" aria-live="polite">Carregando validações…</p>
         <div id="voucher-recent-list" class="voucher-recent__list"></div>
         <nav class="voucher-recent__pager" id="voucher-recent-pager" aria-label="Paginação de vouchers validados" hidden>
@@ -66,14 +65,14 @@
       </div>
     </form>
   </dialog>
-  <dialog id="voucher-expired-dialog" class="voucher-dialog voucher-expired-dialog" role="alertdialog" aria-labelledby="voucher-expired-title" aria-describedby="voucher-expired-description voucher-expired-guidance voucher-expired-details">
-    <div class="voucher-expired-icon" aria-hidden="true">!</div>
-    <h2 id="voucher-expired-title">Voucher vencido</h2>
-    <p id="voucher-expired-description">Este voucher não pode ser utilizado.</p>
-    <p id="voucher-expired-guidance" class="voucher-expired-guidance">Consulte o emissor do voucher.</p>
-    <p id="voucher-expired-details" class="hint"></p>
-    <button class="btn btn--primary" id="voucher-expired-close" type="button" autofocus>Entendi</button>
+  <dialog id="voucher-blocked-dialog" class="voucher-dialog voucher-blocked-dialog" role="alertdialog" aria-labelledby="voucher-blocked-title" aria-describedby="voucher-blocked-description voucher-blocked-guidance voucher-blocked-details">
+    <div class="voucher-blocked-icon" aria-hidden="true">!</div>
+    <h2 id="voucher-blocked-title">Voucher indisponível</h2>
+    <p id="voucher-blocked-description">Este voucher não pode ser utilizado.</p>
+    <p id="voucher-blocked-guidance" class="voucher-blocked-guidance">Consulte o emissor do voucher.</p>
+    <p id="voucher-blocked-details" class="hint"></p>
+    <button class="btn btn--primary" id="voucher-blocked-close" type="button" autofocus>Entendi</button>
   </dialog>
-  <script type="module" src="../assets/js/adminVouchers.js?v=20261105-expired"></script>
+  <script type="module" src="../assets/js/adminVouchers.js?v=20261105-status"></script>
 </body>
 </html>

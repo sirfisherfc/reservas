@@ -23,8 +23,11 @@
 .voucher-benefit { color: var(--color-secondary); font-size: clamp(1.8rem, 5vw, 2.7rem); line-height: 1.15; font-weight: 800; margin: 24px 0 12px; overflow-wrap: anywhere; }
 .voucher-beneficiary { font-size: 1.3rem; line-height: 1.4; margin: 0; overflow-wrap: anywhere; }
 .voucher-status-description { max-width: 620px; color: var(--color-text-soft); }
-.voucher-result--expired { border-top-color: #b45309; }
-.voucher-result--expired .voucher-status-description { padding: 16px; border-left: 4px solid #b45309; border-radius: var(--radius-sm); background: #fff1de; color: #78350f; font-weight: 700; }
+.voucher-result--expired, .voucher-blocked-dialog--expired { --voucher-block-color: #b45309; --voucher-block-bg: #fff1de; --voucher-block-ink: #78350f; }
+.voucher-result--used, .voucher-blocked-dialog--used { --voucher-block-color: #1d4f91; --voucher-block-bg: #e3edfb; --voucher-block-ink: #153e72; }
+.voucher-result--cancelled, .voucher-blocked-dialog--cancelled { --voucher-block-color: #b91c1c; --voucher-block-bg: #fef2f2; --voucher-block-ink: #7f1d1d; }
+.voucher-result:is(.voucher-result--expired, .voucher-result--used, .voucher-result--cancelled) { border-top-color: var(--voucher-block-color); }
+.voucher-result:is(.voucher-result--expired, .voucher-result--used, .voucher-result--cancelled) .voucher-status-description { padding: 16px; border-left: 4px solid var(--voucher-block-color); border-radius: var(--radius-sm); background: var(--voucher-block-bg); color: var(--voucher-block-ink); font-weight: 700; }
 .voucher-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 24px; margin: 24px 0; padding: 22px 0; border-block: 1px solid var(--color-border); }
 .voucher-details dt { font-size: .78rem; color: var(--color-text-soft); margin-bottom: 4px; }
 .voucher-details dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
@@ -53,11 +56,11 @@
 .voucher-check { display: flex; align-items: start; gap: 10px; padding: 10px 0; font-size: .9rem; }
 .voucher-check input { flex: none; width: 20px; height: 20px; margin-top: 1px; accent-color: var(--color-secondary); }
 .voucher-dialog__actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
-.voucher-expired-dialog { border-top: 6px solid #b45309; text-align: center; }
-.voucher-expired-dialog h2 { color: #78350f; font-size: 1.6rem; }
-.voucher-expired-icon { display: grid; place-items: center; width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 50%; background: #fff1de; color: #92400e; font-size: 2rem; font-weight: 800; }
-.voucher-expired-guidance { font-size: 1.1rem; font-weight: 800; color: #78350f; }
-.voucher-expired-dialog > .btn { width: 100%; margin-top: 20px; min-height: 46px; }
+.voucher-blocked-dialog { border-top: 6px solid var(--voucher-block-color); text-align: center; }
+.voucher-blocked-dialog h2 { color: var(--voucher-block-ink); font-size: 1.6rem; }
+.voucher-blocked-icon { display: grid; place-items: center; width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 50%; background: var(--voucher-block-bg); color: var(--voucher-block-ink); font-size: 2rem; font-weight: 800; }
+.voucher-blocked-guidance { font-size: 1.1rem; font-weight: 800; color: var(--voucher-block-ink); }
+.voucher-blocked-dialog > .btn { width: 100%; margin-top: 20px; min-height: 46px; }
 @media (max-width: 600px) {
   .voucher-recent__item { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .voucher-search__row { flex-direction: column; }

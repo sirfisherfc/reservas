@@ -49,39 +49,60 @@ async function mount(results, redeem = { ok: false, reason: 'expired' }) {
 
 test('consulta vencida abre alerta com orientação e mantém a utilização bloqueada', async () => {
   const app = await mount([{}]); await app.ui.lookup();
-  assert.equal(app.nodes.get('voucher-expired-dialog').open, true);
-  assert.match(app.nodes.get('voucher-expired-details').textContent, /A1B2C3.*03\/11\/2026/);
+  assert.equal(app.nodes.get('voucher-blocked-dialog').open, true);
+  assert.match(app.nodes.get('voucher-blocked-details').textContent, /A1B2C3.*03\/11\/2026/);
   assert.match(app.nodes.get('voucher-status-description').textContent, /Consulte o emissor/);
   assert.equal(app.nodes.get('voucher-actions').hidden, true);
   assert.equal(app.nodes.get('voucher-use-button').hidden, true);
   assert.equal(app.calls.filter(c => c.name === 'benefit_voucher_redeem').length, 0);
   assert.equal(app.nodes.has('voucher-unit'), false); assert.equal(app.nodes.has('voucher-refresh-button'), false);
-  app.nodes.get('voucher-expired-close').click();
-  assert.equal(app.nodes.get('voucher-expired-dialog').open, false);
+  app.nodes.get('voucher-blocked-close').click();
+  assert.equal(app.nodes.get('voucher-blocked-dialog').open, false);
   assert.equal(app.active(), app.nodes.get('voucher-code'));
 });
 
 test('nova consulta disponível remove o destaque de vencimento e não abre alerta', async () => {
   const app = await mount([{}, { status: 'available', expires_on: '2099-12-31' }]);
-  await app.ui.lookup(); app.nodes.get('voucher-expired-close').click(); await app.ui.lookup();
-  assert.equal(app.nodes.get('voucher-expired-dialog').open, false);
+  await app.ui.lookup(); app.nodes.get('voucher-blocked-close').click(); await app.ui.lookup();
+  assert.equal(app.nodes.get('voucher-blocked-dialog').open, false);
   assert.equal(app.nodes.get('voucher-result').classes.has('voucher-result--expired'), false);
   assert.equal(app.nodes.get('voucher-actions').hidden, false);
 });
 
-for (const refresh of [{}, new Error('offline')]) test(`recusa por vencimento abre alerta mesmo com reconsulta ${refresh instanceof Error ? 'indisponível' : 'disponível'}`, async () => {
-  const app = await mount([{ status: 'available', expires_on: '2026-11-03' }, refresh]);
+for (const status of ['expired', 'used', 'cancelled']) for (const refresh of [{ status }, new Error('offline')]) test(`recusa ${status} abre alerta mesmo com reconsulta ${refresh instanceof Error ? 'indisponível' : 'disponível'}`, async () => {
+  const app = await mount([{ status: 'available', expires_on: '2026-11-03' }, refresh], { ok: false, reason: status });
   await app.ui.lookup(); app.nodes.get('voucher-use-button').click();
   app.nodes.get('voucher-confirm-check').checked = true;
   await app.ui.confirmUse({ preventDefault() {} });
-  assert.equal(app.nodes.get('voucher-expired-dialog').open, true);
+  assert.equal(app.nodes.get('voucher-blocked-dialog').open, true);
   assert.match(app.nodes.get('voucher-feedback').textContent, /Consulte o emissor/);
   assert.equal(app.calls.filter(c => c.name === 'benefit_voucher_redeem').length, 1);
   assert.equal(app.nodes.get('voucher-result').hidden || app.nodes.get('voucher-use-button').hidden, true);
 });
 
+for (const [status, title, extra] of [
+  ['used', 'Voucher já utilizado', { used_at: '2026-11-05T14:00:00Z', used_by_name: 'Equipe de teste' }],
+  ['cancelled', 'Voucher cancelado', { cancelled_at: '2026-11-05T14:00:00Z' }],
+]) test(`consulta ${status} destaca card e abre o aviso específico`, async () => {
+  const app = await mount([{ status, ...extra }]); await app.ui.lookup();
+  assert.equal(app.nodes.get('voucher-blocked-dialog').open, true);
+  assert.equal(app.nodes.get('voucher-blocked-title').textContent, title);
+  assert.equal(app.nodes.get('voucher-result').classes.has(`voucher-result--${status}`), true);
+  assert.match(app.nodes.get('voucher-blocked-details').textContent, /A1B2C3.*05\/11\/2026/);
+  assert.equal(app.nodes.get('voucher-actions').hidden, true);
+  assert.equal(app.calls.filter(c => c.name === 'benefit_voucher_redeem').length, 0);
+});
+
+test('utilização confirmada com sucesso não dispara aviso de voucher já utilizado', async () => {
+  const app = await mount([{ status: 'available' }], { ok: true, voucher: { ...base, status: 'used' } });
+  await app.ui.lookup(); app.nodes.get('voucher-use-button').click(); app.nodes.get('voucher-confirm-check').checked = true;
+  await app.ui.confirmUse({ preventDefault() {} });
+  assert.equal(app.nodes.get('voucher-blocked-dialog').open, false);
+  assert.match(app.nodes.get('voucher-feedback').textContent, /Utilização registrada/);
+});
+
 test('sem dialog nativo, alerta do navegador e destaque persistente informam o vencimento', async () => {
-  const app = await mount([{}]); app.nodes.get('voucher-expired-dialog').showModal = undefined;
+  const app = await mount([{}]); app.nodes.get('voucher-blocked-dialog').showModal = undefined;
   await app.ui.lookup(); assert.equal(app.alerts.length, 1);
   assert.match(app.alerts[0], /Consulte o emissor/);
   assert.equal(app.nodes.get('voucher-result').classes.has('voucher-result--expired'), true);

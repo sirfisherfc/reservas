@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createVoucherSession, normalizeVoucherCode, voucherBenefit, voucherDate,
-  voucherEventTime, voucherStatus,
+  voucherEventTime, voucherStatus, createRecentVoucherList, RECENT_VOUCHERS_PAGE_SIZE,
 } from '../assets/js/benefit-vouchers.mjs';
 
 const base = {
@@ -18,6 +18,50 @@ const nextResult = (queue, calls) => async (name, args) => {
   if (result instanceof Error) throw result;
   return result;
 };
+
+const recentItem = { code: 'A1B2C3', beneficiary_name: 'Cliente de teste', benefit_type: 'fixed', benefit_value: 100,
+  used_at: '2026-11-05T14:00:00Z', used_by_name: 'Equipe de teste' };
+const recentResponse = (items = [], total = items.length) => ({ data: { ok: true, items, total }, error: null });
+
+test('lista recente pagina pela RPC própria e mantém somente os campos da conferência', async () => {
+  const calls = [];
+  const list = createRecentVoucherList(nextResult([recentResponse([{ ...recentItem, phone: 'privado', internal_note: 'privado', issue_reason: 'friend' }], 21)], calls));
+  assert.equal((await list.load(20)).kind, 'loaded');
+  assert.deepEqual(calls, [{ name: 'benefit_voucher_recent', args: { p_offset: 20, p_limit: RECENT_VOUCHERS_PAGE_SIZE } }]);
+  assert.equal(list.state.total, 21); assert.equal(list.state.offset, 20);
+  assert.deepEqual(list.state.items, [recentItem]); assert.equal(list.state.busy, false);
+});
+
+test('lista recente vazia é distinta de erro e não executa utilização', async () => {
+  const calls = []; const list = createRecentVoucherList(nextResult([recentResponse()], calls));
+  assert.equal((await list.load()).kind, 'loaded'); assert.equal(list.state.total, 0);
+  assert.deepEqual(list.state.items, []); assert.equal(calls.length, 1);
+});
+
+test('falha, falta de permissão e limite limpam a lista sem conservar dados antigos', async () => {
+  for (const [failure, kind] of [[new Error('offline'), 'failed'], [{ data: null, error: { code: '42501' } }, 'denied'], [{ data: { ok: false, reason: 'rate_limited' } }, 'rate_limited']]) {
+    const list = createRecentVoucherList(nextResult([recentResponse([recentItem]), failure], []));
+    await list.load(); assert.equal(list.state.items.length, 1);
+    assert.equal((await list.load()).kind, kind); assert.deepEqual(list.state.items, []); assert.equal(list.state.busy, false);
+  }
+});
+
+test('atualização após validação prevalece sobre consulta anterior ainda em andamento', async () => {
+  const pending = []; const list = createRecentVoucherList(() => new Promise(resolve => pending.push(resolve)));
+  const older = list.load(20), newer = list.load(0);
+  pending[1](recentResponse([recentItem])); assert.equal((await newer).kind, 'loaded');
+  pending[0](recentResponse([], 21)); assert.equal((await older).kind, 'superseded');
+  assert.equal(list.state.offset, 0); assert.deepEqual(list.state.items, [recentItem]); assert.equal(list.state.busy, false);
+});
+
+test('respostas incompletas e páginas inválidas não viram histórico válido', async () => {
+  for (const response of [recentResponse([null]), recentResponse([{ ...recentItem, used_at: null }]), recentResponse([{ ...recentItem, code: 'INVÁLIDO' }]), recentResponse([recentItem], -1)]) {
+    const list = createRecentVoucherList(async () => response);
+    assert.equal((await list.load()).kind, 'failed'); assert.deepEqual(list.state.items, []);
+  }
+  const list = createRecentVoucherList(() => assert.fail('não deve consultar página inválida'));
+  assert.equal((await list.load(-1)).kind, 'invalid_page'); assert.equal((await list.load(1.5)).kind, 'invalid_page');
+});
 
 test('aceita código legível colado e rejeita dados incompletos/URL', () => {
   assert.equal(normalizeVoucherCode(' sf 0123 abcd wxyz '), base.code);

@@ -74,6 +74,49 @@ function readVoucher(payload) {
   };
 }
 
+export const RECENT_VOUCHERS_PAGE_SIZE = 20;
+
+export function createRecentVoucherList(rpc) {
+  const state = { items: [], total: 0, offset: 0, busy: false };
+  let serial = 0;
+  return {
+    state,
+    async load(offset = 0) {
+      if (!Number.isSafeInteger(offset) || offset < 0) return { kind: 'invalid_page' };
+      const request = ++serial;
+      state.busy = true;
+      try {
+        const { data, error } = await rpc('benefit_voucher_recent', { p_offset: offset, p_limit: RECENT_VOUCHERS_PAGE_SIZE });
+        if (error) throw error;
+        if (data?.ok !== true) {
+          if (data?.reason === 'rate_limited') throw Object.assign(new Error(), { code: 'rate_limited' });
+          throw new Error('Invalid recent response');
+        }
+        if (!Array.isArray(data.items) || data.items.length > RECENT_VOUCHERS_PAGE_SIZE
+          || !Number.isSafeInteger(data.total) || data.total < data.items.length) throw new Error('Invalid recent response');
+        const items = data.items.map((item) => {
+          const code = normalizeVoucherCode(item?.code);
+          if (!code || !SHORT_CODE_PATTERN.test(code) || typeof item.beneficiary_name !== 'string'
+            || !['fixed', 'percent'].includes(item.benefit_type) || !Number.isFinite(Number(item.benefit_value))
+            || Number(item.benefit_value) <= 0 || !item.used_at || !Number.isFinite(new Date(item.used_at).getTime())
+            || typeof item.used_by_name !== 'string') throw new Error('Invalid recent item');
+          return { code, beneficiary_name: item.beneficiary_name, benefit_type: item.benefit_type,
+            benefit_value: Number(item.benefit_value), used_at: item.used_at, used_by_name: item.used_by_name };
+        });
+        if (request !== serial) return { kind: 'superseded' };
+        Object.assign(state, { items, total: data.total, offset });
+        return { kind: 'loaded' };
+      } catch (error) {
+        if (request !== serial) return { kind: 'superseded' };
+        Object.assign(state, { items: [], total: 0, offset: 0 });
+        return { kind: error?.code === '42501' ? 'denied' : error?.code === 'rate_limited' ? 'rate_limited' : 'failed' };
+      } finally {
+        if (request === serial) state.busy = false;
+      }
+    },
+  };
+}
+
 export function createVoucherSession(rpc) {
   const state = { voucher: null, busy: false, needsRefresh: false };
 

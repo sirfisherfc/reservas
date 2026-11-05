@@ -1,17 +1,18 @@
 import { supabase } from './supabaseClient.js';
 import { requireStaff, mountLayout } from './adminGuard.js';
 import {
-  createVoucherSession, voucherBenefit, voucherDate, voucherEventTime, voucherStatus,
-} from './benefit-vouchers.mjs?v=20261105-short';
+  createVoucherSession, createRecentVoucherList, RECENT_VOUCHERS_PAGE_SIZE, voucherBenefit, voucherDate, voucherEventTime, voucherStatus,
+} from './benefit-vouchers.mjs?v=20261105-recent';
 
 const byId = (id) => document.getElementById(id);
 const session = createVoucherSession((name, args) => supabase.rpc(name, args));
+const recent = createRecentVoucherList((name, args) => supabase.rpc(name, args));
 const feedback = byId('voucher-feedback');
 const dialog = byId('voucher-confirm-dialog');
 let operation = false;
 
 const messages = {
-  invalid_code: 'Confira os 6 caracteres do código. Os códigos antigos também podem ser consultados. Não foi feita nenhuma utilização.',
+  invalid_code: 'Confira os 6 caracteres do código. Não foi feita nenhuma utilização.',
   not_found: 'Voucher não encontrado. Confira o código apresentado pelo cliente.',
   rate_limited: 'Muitas consultas em pouco tempo. Aguarde um minuto antes de consultar novamente.',
   denied: 'Seu acesso não permite esta operação. Entre novamente ou fale com um administrador.',
@@ -23,6 +24,45 @@ const messages = {
 function setFeedback(message = '', type = '') {
   feedback.textContent = message;
   feedback.className = `voucher-feedback${type ? ` voucher-feedback--${type}` : ''}`;
+}
+
+function recentControls() {
+  const { busy, offset, items, total } = recent.state;
+  byId('voucher-recent').setAttribute('aria-busy', String(busy));
+  byId('voucher-recent-refresh').disabled = busy;
+  byId('voucher-recent-prev').disabled = busy || offset === 0;
+  byId('voucher-recent-next').disabled = busy || offset + items.length >= total;
+}
+
+async function loadRecent(offset = 0) {
+  const request = recent.load(offset);
+  recentControls();
+  byId('voucher-recent-message').textContent = 'Carregando validações…';
+  const result = await request;
+  if (result.kind === 'superseded') return;
+  recentControls();
+  const { items, total } = recent.state;
+  const list = byId('voucher-recent-list');
+  list.replaceChildren();
+  byId('voucher-recent-pager').hidden = result.kind !== 'loaded' || total <= RECENT_VOUCHERS_PAGE_SIZE;
+  if (result.kind !== 'loaded') {
+    byId('voucher-recent-message').textContent = result.kind === 'denied' ? messages.denied
+      : result.kind === 'rate_limited' ? 'Muitas atualizações. Aguarde um minuto antes de atualizar a lista.'
+      : 'Não foi possível carregar as validações. Tente atualizar a lista.';
+    return;
+  }
+  byId('voucher-recent-message').textContent = total ? `${total} voucher${total === 1 ? '' : 's'} validado${total === 1 ? '' : 's'} neste período.` : 'Nenhum voucher validado neste período.';
+  byId('voucher-recent-count').textContent = items.length ? `${offset + 1}–${offset + items.length} de ${total}` : `0 de ${total}`;
+  for (const item of items) {
+    const row = document.createElement('article'); row.className = 'voucher-recent__item';
+    const details = document.createElement('div');
+    const name = document.createElement('h3'); name.textContent = item.beneficiary_name;
+    const code = document.createElement('p'); code.className = 'voucher-code'; code.textContent = item.code;
+    const validation = document.createElement('p'); validation.className = 'hint';
+    validation.textContent = `${voucherEventTime(item.used_at)} · ${item.used_by_name}`;
+    const benefit = document.createElement('strong'); benefit.textContent = voucherBenefit(item);
+    details.append(name, code, validation); row.append(details, benefit); list.append(row);
+  }
 }
 
 function setBusy(busy, label = 'Consultando…') {
@@ -128,6 +168,7 @@ async function confirmUse(event) {
     }
   } finally {
     setBusy(false);
+    loadRecent();
   }
 }
 
@@ -150,6 +191,10 @@ async function init() {
   byId('voucher-use-button').addEventListener('click', openConfirmation);
   byId('voucher-confirm-form').addEventListener('submit', confirmUse);
   byId('voucher-confirm-cancel').addEventListener('click', () => dialog.close());
+  byId('voucher-recent-refresh').addEventListener('click', () => loadRecent());
+  byId('voucher-recent-prev').addEventListener('click', () => loadRecent(Math.max(0, recent.state.offset - RECENT_VOUCHERS_PAGE_SIZE)));
+  byId('voucher-recent-next').addEventListener('click', () => loadRecent(recent.state.offset + RECENT_VOUCHERS_PAGE_SIZE));
+  loadRecent();
 }
 
 init().catch(() => {

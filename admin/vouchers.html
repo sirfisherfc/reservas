@@ -8,7 +8,7 @@
   <title>Vouchers — Painel Sir Fisher Praia</title>
   <link rel="icon" type="image/png" href="https://www.sirfisher.com.br/assets/img/favicon.png" />
   <link rel="stylesheet" href="../assets/css/admin.css" />
-  <link rel="stylesheet" href="../assets/css/admin-vouchers.css" />
+  <link rel="stylesheet" href="../assets/css/admin-vouchers.css?v=20261105-recent" />
 </head>
 <body>
   <div class="app-shell">
@@ -18,7 +18,7 @@
       <p class="voucher-intro">Confira o voucher apresentado pelo cliente e registre o uso ao aplicar o benefício.</p>
       <form class="card voucher-search" id="voucher-search-form">
         <label for="voucher-code">Código do voucher</label>
-        <p class="hint" id="voucher-code-hint">Digite os 6 caracteres do voucher. Os códigos antigos também continuam válidos.</p>
+        <p class="hint" id="voucher-code-hint">Digite os 6 caracteres do voucher.</p>
         <div class="voucher-search__row">
           <input id="voucher-code" name="code" type="text" placeholder="Ex.: A1B2C3" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="voucher-code-hint" required />
           <button class="btn btn--primary" id="voucher-search-button" type="submit">Consultar voucher</button>
@@ -43,6 +43,15 @@
           <button class="btn btn--outline" id="voucher-refresh-button" type="button">Consultar novamente</button>
         </div>
       </section>
+      <section class="card voucher-recent" id="voucher-recent" aria-labelledby="voucher-recent-title" aria-busy="true">
+        <div class="voucher-recent__header"><h2 id="voucher-recent-title">Validados nos últimos 3 dias</h2><button class="btn btn--outline" id="voucher-recent-refresh" type="button">Atualizar lista</button></div>
+        <p class="hint">Hoje e os dois dias anteriores, no horário de Fortaleza.</p>
+        <p id="voucher-recent-message" role="status" aria-live="polite">Carregando validações…</p>
+        <div id="voucher-recent-list" class="voucher-recent__list"></div>
+        <nav class="voucher-recent__pager" id="voucher-recent-pager" aria-label="Paginação de vouchers validados" hidden>
+          <button class="btn btn--outline" id="voucher-recent-prev" type="button">Anterior</button><span id="voucher-recent-count"></span><button class="btn btn--outline" id="voucher-recent-next" type="button">Próxima</button>
+        </nav>
+      </section>
       <p class="voucher-footnote">Este fluxo é exclusivo dos vouchers de benefício emitidos pelos sócios. Reservas e pagamentos do Réveillon são consultados na área Réveillon.</p>
     </main>
   </div>
@@ -59,6 +68,6 @@
       </div>
     </form>
   </dialog>
-  <script type="module" src="../assets/js/adminVouchers.js?v=20261105-short"></script>
+  <script type="module" src="../assets/js/adminVouchers.js?v=20261105-recent"></script>
 </body>
 </html>

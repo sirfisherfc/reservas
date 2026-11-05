@@ -43,6 +43,21 @@ Os códigos curtos e a compatibilidade com os antigos são versionados em
 `gestao/supabase/migrations/20261105130459_benefit_voucher_short_codes.sql`.
 As duas migrations foram aplicadas e conferidas no `portal` em 05/11/2026.
 
+`benefit_voucher_recent(p_offset integer default 0, p_limit integer default 20)`
+lista os vouchers utilizados hoje e nos dois dias anteriores, no horário de
+Fortaleza, do início do primeiro dia até o instante da consulta. Ordena pela
+utilização mais recente e permite paginação. Retorna `{ok, from_date,
+through_date, total, items}`; cada item contém apenas código curto,
+beneficiário, tipo/valor do benefício, data e responsável pela utilização.
+Exige o mesmo cadastro ativo `admin/operator` do resgate; sócio sem esse
+cadastro não ganha acesso pela RPC. Permissões e índice parcial de `used_at`
+ficam em `gestao/supabase/migrations/20261105141504_benefit_voucher_recent.sql`.
+Não altera vouchers nem utilizações; usa o limitador privado de consultas.
+Na página, a lista tem atualização manual e é recarregada após uma tentativa
+de utilização, inclusive quando a resposta exige reconsulta. Consulta antiga
+em andamento não pode substituir uma atualização mais recente. Falha não é
+mostrada como ausência de utilizações e remove os registros anteriores.
+
 O objeto de consulta contém código, beneficiário, tipo e valor do benefício,
 validade, unidade, condições, situação, revisão e os dados necessários à conferência
 da utilização/cancelamento. Telefone, motivo da emissão e observação interna

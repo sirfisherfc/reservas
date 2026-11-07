@@ -80,7 +80,7 @@
 .rv-table--negociacao .rv-table__shape { opacity: .6; }
 .rv-table--reservada .rv-table__shape,
 .rv-table--bloqueada .rv-table__shape { fill: #c7c0b4; stroke: #b0a898; }
-.rv-table--reservada .rv-table__label,
+.rv-table--reservada .rv-table__label { fill: #a69e90; }
 .rv-table--bloqueada .rv-table__label { fill: #7c7468; }
 .rv-table--bloqueada .rv-table__shape { stroke-dasharray: 8 6; stroke-width: 3; }
 

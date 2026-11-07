@@ -10,11 +10,11 @@ Módulo separado da reserva comum para vender as mesas da noite de 31/12. Ele su
 
 1. O cliente escolhe uma mesa livre no mapa, informa quantas pessoas vão e vê o valor calculado na hora.
 2. Ao enviar, vira uma **pré-reserva**: a mesa fica "em negociação" por 48h (configurável) e o cliente recebe a chave Pix e o botão para mandar o comprovante pelo WhatsApp.
-3. Quando você registra o pagamento do **sinal** (30%, configurável), a reserva vira **sinal pago** sozinha. Quando o total é pago, vira **quitada**.
-4. Se o sinal não chegar no prazo, a pré-reserva **expira sozinha** e a mesa volta a ficar livre. Se houver pagamento parcial, ela **não** expira: aparece como "prazo vencido" para você decidir.
+3. Quando você registra um pagamento de **R$ 0,01 ou mais**, a reserva vira **sinal pago**. O formulário sugere 30% (configurável) e aceita o valor que você combinou com o cliente. Quando o total positivo é pago, a reserva vira **quitada**.
+4. Se nenhum pagamento for registrado no prazo, a pré-reserva **expira sozinha** e a mesa volta a ficar livre.
 
 ```
-pré-reserva ──(pago ≥ sinal)──▶ sinal pago ──(pago ≥ total, ou "marcar quitada")──▶ quitada
+pré-reserva ──(pagamento ≥ R$ 0,01)──▶ sinal pago ──(pago ≥ total positivo, ou "marcar quitada")──▶ quitada
      │
      ├── prazo vencido e nenhum pagamento ──▶ expirada  (automático, a cada 15 min)
      └── qualquer status ativo ──▶ cancelada  (admin, com motivo)
@@ -64,9 +64,12 @@ O mapa se atualiza sozinho quando alguém reserva, inclusive pelo site.
 
 1. Toque na mesa.
 2. Toque em **Registrar pagamento**. O valor já vem preenchido com o que falta para o sinal (ou o saldo), no Pix. Trocar para Débito/Crédito ajusta o valor sem o desconto do Pix. A data, o pagador e a observação podem ficar como estão.
-3. Toque em **Salvar pagamento**.
+3. Confira o valor recebido e toque em **Salvar pagamento**. Qualquer valor a partir de R$ 0,01 confirma o sinal, inclusive abaixo do percentual sugerido.
 
 O status muda sozinho e o cliente recebe o e-mail de "sinal recebido" ou de "quitada".
+Depois da confirmação, a ficha mostra **Sinal: Pago** e o saldo restante.
+Se todos os pagamentos forem estornados, a reserva volta para pré-reserva;
+um estorno parcial mantém o sinal pago enquanto restar pagamento ativo.
 
 > **Pix com desconto:** cada Pix de R$ X abate X ÷ 0,95 do valor cheio. Exemplo: mesa de R$ 2.800 com sinal de R$ 798 no Pix. Abate R$ 840 e o saldo fica R$ 1.960 no cartão, ou R$ 1.862 se também for pago no Pix.
 
@@ -124,7 +127,7 @@ Pela fila `notification_queue` e pela Edge Function `send-notifications` (a mesm
 |---|---|
 | `rv_prebooking` | ao criar a pré-reserva: chave Pix, valor do sinal e prazo |
 | `rv_expiry_warning` | 12h antes de expirar, se ainda não houver pagamento |
-| `rv_deposit_received` | quando o sinal é atingido |
+| `rv_deposit_received` | ao registrar o primeiro pagamento positivo |
 | `rv_paid_in_full` | quando fica quitada |
 
 Liga e desliga em Configurar → Vendas e integrações ("Enviar e-mails automáticos").
@@ -150,6 +153,31 @@ Todos já foram aplicados no projeto `lucpxoynpvogkvzepagi`. Para um projeto nov
 5. `supabase/reveillon-integration.sql`: bloqueio de 31/12 e aviso na reserva comum.
 
 `supabase/reveillon-tests.sql` roda todos os testes dentro de uma transação com ROLLBACK (nada fica gravado): preços, anti-colisão, expiração e permissões de anon e operador. O resultado esperado é `TODOS OS TESTES PASSARAM`.
+
+### Sinal aceito abaixo do percentual sugerido (07/11/2026)
+
+A migration `20261107175623_reveillon_any_positive_deposit.sql`, no repositório
+`gestao`, foi aplicada no `portal` em 07/11/2026 e atualiza `rv_recalc_booking`
+e `rv_admin_register_payment`. A regra
+aceita pagamentos finitos a partir de R$ 0,01. Os cálculos de 30%, desconto Pix
+e saldo continuam usando `rv_calc_price`. A quitação do total positivo e as
+permissões administrativas mantêm suas regras.
+
+A migration ajusta pré-reservas que já têm pagamento ativo, preserva os
+lançamentos e registra a mudança de status no histórico. Essa correção de
+registros antigos não enfileira e-mail retroativo. Em instalações sem o módulo
+de Réveillon, a migration encerra sem criar objetos. Os arquivos SQL de
+instalação deste repositório já contêm a regra atualizada.
+
+`supabase/reveillon-deposit-tests.sql` testa as três formas de pagamento,
+R$ 0,01, sugestão de 30%, estornos, desconto, total zero, quitação e permissões
+em transação com ROLLBACK. O resultado esperado é `TESTES DO SINAL PASSARAM`.
+O teste local do formulário simula as RPCs, bloqueia a rede externa e confere
+390px e 1366px, incluindo o retorno de um pagamento de R$ 0,01:
+
+```text
+python tools/reveillon_payment_browser_test.py
+```
 
 ### Garantias
 

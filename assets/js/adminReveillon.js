@@ -354,7 +354,9 @@ function renderBookingSheet(d) {
   html += `<div class="rv-money">
       <div><span>Total</span><strong>${money(p.total)}</strong><small>Pix ${money(p.total_pix)}</small></div>
       <div><span>Recebido</span><strong>${money(p.paid_net)}</strong><small>abate ${money(p.paid_gross)}</small></div>
-      <div class="${Number(p.deposit_remaining) > 0 && active ? 'is-due' : ''}"><span>Falta p/ sinal</span><strong>${money(p.deposit_remaining_pix)}</strong><small>Pix · cartão ${money(p.deposit_remaining)}</small></div>
+      ${d.status === 'sinal_pago' || d.status === 'quitada'
+        ? '<div><span>Sinal</span><strong>Pago</strong></div>'
+        : `<div class="${Number(p.deposit_remaining) > 0 && active ? 'is-due' : ''}"><span>Falta p/ sinal</span><strong>${money(p.deposit_remaining_pix)}</strong><small>Pix · cartão ${money(p.deposit_remaining)}</small></div>`}
       <div class="${Number(p.balance) > 0 && active ? 'is-due' : ''}"><span>Saldo</span><strong>${money(p.balance_pix)}</strong><small>Pix · cartão ${money(p.balance)}</small></div>
     </div>`;
 
@@ -499,7 +501,8 @@ function openPaymentForm(d) {
       <button type="button" data-m="credito">Crédito</button>
     </div>
     <div class="form-field"><label for="pay-amount">Valor recebido (R$)</label>
-      <input id="pay-amount" class="rv-amount" type="number" inputmode="decimal" step="0.01" min="0.01" value="${Number(suggest('pix')).toFixed(2)}" required /></div>
+      <input id="pay-amount" class="rv-amount" type="number" inputmode="decimal" step="0.01" min="0.01" value="${Number(suggest('pix')).toFixed(2)}" required />
+      <small>Pagamentos a partir de R$ 0,01 confirmam o sinal.</small></div>
     <div class="rv-seg" id="amount-seg">
       <button type="button" data-a="deposit" class="${useDeposit ? 'is-active' : ''}">Sinal</button>
       <button type="button" data-a="balance" class="${useDeposit ? '' : 'is-active'}">Saldo total</button>

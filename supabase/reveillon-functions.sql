@@ -509,7 +509,6 @@ declare
   v_total numeric;
   v_balance numeric;
   v_dep numeric;
-  v_dep_rem numeric;
   v_paid numeric;
   v_new text;
   v_hold_hours int;
@@ -523,14 +522,15 @@ begin
   v_total := (v_price->>'total')::numeric;
   v_balance := (v_price->>'balance')::numeric;
   v_dep := (v_price->>'deposit_min')::numeric;
-  v_dep_rem := (v_price->>'deposit_remaining')::numeric;
   v_paid := (v_price->>'paid_gross')::numeric;
 
   v_new := b.status;
   if b.status in ('pre_reserva', 'sinal_pago', 'quitada') then
     if v_total > 0 and v_balance = 0 then
       v_new := 'quitada';
-    elsif v_paid > 0 and v_dep_rem = 0 then
+    -- O admin confirma o sinal ao registrar qualquer pagamento positivo.
+    -- O percentual do evento continua sendo a sugestão de valor.
+    elsif v_paid > 0 then
       v_new := 'sinal_pago';
     else
       v_new := 'pre_reserva';
@@ -1244,8 +1244,9 @@ declare
   v_payment_id uuid;
 begin
   v_actor := public.rv_require_admin();
-  if p_amount is null or p_amount <= 0 then
-    raise exception 'INVALID_INPUT: Informe um valor maior que zero.';
+  if p_amount is null or p_amount < 0.01
+     or p_amount::text in ('NaN', 'Infinity', '-Infinity') then
+    raise exception 'INVALID_INPUT: Informe um valor a partir de R$ 0,01.';
   end if;
   if p_method not in ('pix', 'debito', 'credito') then
     raise exception 'INVALID_INPUT: Forma de pagamento inválida.';

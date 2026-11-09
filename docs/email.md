@@ -47,7 +47,7 @@ supabase functions deploy send-notifications
 supabase secrets set \
   RESEND_API_KEY="re_sua_chave_aqui" \
   NOTIFY_SECRET="um-segredo-longo-e-aleatorio" \
-  RESEND_FROM="Sir Fisher Praia <reservas@sirfisher.com.br>" \
+  RESEND_FROM="Sir Fisher <reservas@sirfisher.com.br>" \
   PUBLIC_SITE_URL="https://reservas.sirfisher.com.br"
 ```
 

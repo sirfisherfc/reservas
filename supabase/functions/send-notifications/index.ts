@@ -14,7 +14,7 @@
 // Variáveis de ambiente (Supabase secrets):
 //   RESEND_API_KEY   — chave do Resend (re_...)                       [obrigatório]
 //   NOTIFY_SECRET    — segredo compartilhado com quem dispara a função [obrigatório]
-//   RESEND_FROM      — remetente. Padrão: "Sir Fisher Praia <reservas@sirfisher.com.br>"
+//   RESEND_FROM      — remetente. Padrão: "Sir Fisher <reservas@sirfisher.com.br>"
 //   PUBLIC_SITE_URL  — URL pública do site (ex.: https://reservas.sirfisher.com.br)
 //                      usada para montar o link de cancelamento. Se vazia, o e-mail
 //                      sai sem o botão de cancelar.
@@ -27,7 +27,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const NOTIFY_SECRET = Deno.env.get("NOTIFY_SECRET") ?? "";
-const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? "Sir Fisher Praia <reservas@sirfisher.com.br>";
+const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? "Sir Fisher <reservas@sirfisher.com.br>";
 const SITE_URL = (Deno.env.get("PUBLIC_SITE_URL") ?? "").replace(/\/+$/, "");
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
@@ -112,7 +112,7 @@ interface Payload {
 const EMAIL_TEXT = {
   pt: {
     htmlLang: "pt-BR",
-    brand: "Sir Fisher Praia",
+    brand: "Sir Fisher",
     subtitle: "Confirmação de reserva",
     reminderTitle: "<strong>Sua reserva é amanhã.</strong> Pode confirmar que vem?",
     hello: (name: string) => `Olá${name ? ", " + name : ""}! 👋`,
@@ -127,8 +127,8 @@ const EMAIL_TEXT = {
     cantGo: "Não vou poder ir",
     reminderHint: (tol: number) => `Se não puder vir, avisar libera a mesa para outra pessoa — leva 10 segundos e ajuda muito.
           Guardamos a mesa por ${tol} minutos após o horário.`,
-    footerReminder: "Sir Fisher Praia — Av. Beira Mar 3421, Meireles. Responder pelo WhatsApp é o caminho mais rápido.",
-    footerConfirmation: "Sir Fisher Praia — este é um e-mail automático de confirmação, não é necessário respondê-lo.",
+    footerReminder: "Sir Fisher — Av. Beira Mar 3421, Meireles. Responder pelo WhatsApp é o caminho mais rápido.",
+    footerConfirmation: "Sir Fisher — este é um e-mail automático de confirmação, não é necessário respondê-lo.",
     waConfirm: (code: string, date: string, time: string) => `Ola! Confirmo a reserva ${code} de ${date} as ${time}.`,
     waChange: (code: string, date: string) => `Ola! Preciso alterar ou cancelar a reserva ${code} de ${date}.`,
     subjectReminder: "Sua reserva é amanhã — pode confirmar?",
@@ -170,7 +170,7 @@ function emailText(p: Payload) {
 
 function buildEmailSubject(p: Payload): string {
   const t = emailText(p);
-  const brand = p.lang === "en" ? "Sir Fisher" : "Sir Fisher Praia";
+  const brand = "Sir Fisher";
   return `${p.type === "reservation_reminder" ? t.subjectReminder : t.subjectConfirmation} — ${p.public_code ?? brand}`;
 }
 
@@ -396,11 +396,11 @@ function buildReveillonEmailHtml(type: string, p: RvPayload): string {
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);">
         <tr><td align="center" style="background:#ffffff;padding:22px 32px 18px;">
-          <img src="https://www.sirfisher.com.br/assets/img/logo-horizontal.png" alt="Sir Fisher Praia" width="210" style="display:block;width:210px;max-width:100%;height:auto;margin:0;border:0;" />
+          <img src="https://www.sirfisher.com.br/assets/img/logo-horizontal.png" alt="Sir Fisher" width="210" style="display:block;width:210px;max-width:100%;height:auto;margin:0;border:0;" />
         </td></tr>
         <tr><td style="background:#0f3d3e;padding:20px 32px;">
           <div style="color:#ffffff;font-size:20px;font-weight:700;">${escapeHtml(p.event_name ?? "Réveillon")}</div>
-          <div style="color:#9fc6c2;font-size:13px;margin-top:2px;">${escapeHtml(rvDateTime(p.event_starts_at, tz))} · Sir Fisher Praia</div>
+          <div style="color:#9fc6c2;font-size:13px;margin-top:2px;">${escapeHtml(rvDateTime(p.event_starts_at, tz))} · Sir Fisher</div>
         </td></tr>
         <tr><td style="padding:24px 32px 8px;">
           <p style="margin:0 0 12px;font-size:16px;">Olá${name ? ", " + name : ""}!</p>
@@ -415,7 +415,7 @@ function buildReveillonEmailHtml(type: string, p: RvPayload): string {
         ${eventInfo}
         ${waButton}
         <tr><td style="padding:20px 32px 28px;border-top:1px solid #eee;color:#999;font-size:12px;line-height:1.6;">
-          Sir Fisher Praia — Av. Beira Mar 3421, Meireles. Este é um e-mail automático; para falar com a gente, use o WhatsApp.
+          Sir Fisher — Av. Beira Mar 3421, Meireles. Este é um e-mail automático; para falar com a gente, use o WhatsApp.
         </td></tr>
       </table>
     </td></tr>
@@ -458,7 +458,7 @@ Deno.serve(async (req) => {
           from: RESEND_FROM,
           to: [p.email],
           subject: row.type.startsWith("rv_")
-            ? (RV_SUBJECTS[row.type]?.(p as RvPayload) ?? "Réveillon — Sir Fisher Praia")
+            ? (RV_SUBJECTS[row.type]?.(p as RvPayload) ?? "Réveillon — Sir Fisher")
             : buildEmailSubject(p),
           html: row.type.startsWith("rv_") ? buildReveillonEmailHtml(row.type, p as RvPayload) : buildEmailHtml(p),
         }),

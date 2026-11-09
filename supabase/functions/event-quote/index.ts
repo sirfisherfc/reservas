@@ -16,7 +16,7 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const RESEND_FROM = Deno.env.get("RESEND_FROM") ??
-  "Sir Fisher Praia <reservas@sirfisher.com.br>";
+  "Sir Fisher <reservas@sirfisher.com.br>";
 const EVENT_NOTIFICATION_EMAIL = Deno.env.get("EVENT_NOTIFICATION_EMAIL") ?? "";
 const EVENT_WHATSAPP_NUMBER = (Deno.env.get("EVENT_WHATSAPP_NUMBER") ??
   Deno.env.get("WHATSAPP_NUMBER") ?? "5585988544274").replace(/\D/g, "");

@@ -659,7 +659,7 @@ export async function buildProposalPdf(
       "CONVIDADOS",
       `${guests} pessoas${children ? ` (${children} crianças)` : ""}`,
     ],
-    ["LOCAL", "Sir Fisher Praia · Av. Beira-Mar, 3421"],
+    ["LOCAL", "Sir Fisher · Av. Beira-Mar, 3421"],
   ];
   const cardW = (CW - 10) / 2;
   const cardH = 48;
@@ -1409,7 +1409,7 @@ export async function buildProposalPdf(
       thickness: 0.5,
       color: C.line,
     });
-    p.drawText(safe(`Sir Fisher Praia · ${COMPANY.address}`), {
+    p.drawText(safe(`Sir Fisher · ${COMPANY.address}`), {
       x: M,
       y: 32,
       size: 7,

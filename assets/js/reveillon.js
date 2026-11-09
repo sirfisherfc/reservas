@@ -59,7 +59,7 @@ function fillList(sel, items) {
 function renderStatic() {
   const e = data.event;
   const t = e.texts || {};
-  const venue = e.venue_name || 'Sir Fisher Praia';
+  const venue = e.venue_name || 'Sir Fisher';
   // Título da busca: edição + lugar + casa (ver o <title> do HTML).
   document.title = `${e.name} na Beira-Mar de Fortaleza | ${venue}`;
   setText('#hero-kicker', t.hero_kicker);
@@ -140,7 +140,7 @@ function renderFaq(e, t) {
   const items = [
     ['Que horas começa e termina?', para(`Das ${hourBR(e.starts_at, e.timezone)} às ${hourBR(e.ends_at, e.timezone)}.`)],
     ['O valor é por pessoa ou por mesa?', priceFaq()],
-    ['Onde fica?', e.address ? para(`No ${e.venue_name || 'Sir Fisher Praia'}: ${e.address}, em frente ao Jardim Japonês.`) : ''],
+    ['Onde fica?', e.address ? para(`No ${e.venue_name || 'Sir Fisher'}: ${e.address}, em frente ao Jardim Japonês.`) : ''],
     ...custom,
     ['Como funciona a consumação?', para(t.menu_note)],
     ['Como faço o pagamento?', [t.pix_note, t.card_note, t.guarantee_note, t.balance_note].map(para).join('')],

@@ -23,14 +23,14 @@ insert into public.rv_events (
   '2026-12-31 20:00:00-03',
   '2027-01-01 02:00:00-03',
   'America/Fortaleza',
-  'Sir Fisher Praia',
+  'Sir Fisher',
   'Av. Beira Mar, 3421 — Meireles, Fortaleza/CE',
   'https://www.sirfisher.com.br',
   '["1 Chandon por mesa", "Welcome kit", "Brindes do patrocinador"]'::jsonb,
   jsonb_build_object(
     'hero_kicker', 'Réveillon 2027 na Beira-Mar de Fortaleza',
     'hero_title', 'Vire o ano de frente para o mar',
-    'hero_subtitle', 'Das 20h às 2h, no Sir Fisher Praia. Escolha sua mesa no mapa e veja o valor na hora.',
+    'hero_subtitle', 'Das 20h às 2h, no Sir Fisher. Escolha sua mesa no mapa e veja o valor na hora.',
     'included_title', 'Incluso em todas as mesas',
     'menu_note', 'Durante a noite servimos os pratos e bebidas do nosso cardápio, abatidos da consumação da mesa.',
     'pix_note', 'Pix: {pix_discount_pct}% de desconto sobre o valor final.',
@@ -55,7 +55,7 @@ insert into public.rv_events (
   ),
   jsonb_build_object(
     'comprovante', E'Olá! Segue o comprovante do sinal do {evento}.\nReserva: {codigo}\nMesa: {mesa} ({tipo})\nResponsável: {nome}\nPessoas: {pessoas}\nTotal: {total} (no Pix: {total_pix})\nSinal: {sinal_pix} no Pix',
-    'cobranca_sinal', E'Olá, {nome}! Aqui é do Sir Fisher Praia. Sua pré-reserva {codigo} da mesa {mesa} para o {evento} está aguardando o sinal: {sinal_pix} no Pix (ou {sinal} no cartão, presencial) até {prazo}.\nChave Pix: {pix_chave}\nDepois é só mandar o comprovante por aqui.',
+    'cobranca_sinal', E'Olá, {nome}! Aqui é do Sir Fisher. Sua pré-reserva {codigo} da mesa {mesa} para o {evento} está aguardando o sinal: {sinal_pix} no Pix (ou {sinal} no cartão, presencial) até {prazo}.\nChave Pix: {pix_chave}\nDepois é só mandar o comprovante por aqui.',
     'sinal_recebido', E'Olá, {nome}! Recebemos seu sinal e a mesa {mesa} está garantida para o {evento}. 🎉\nSaldo: {saldo_pix} no Pix ou {saldo} no cartão (presencial), até {data_saldo}.',
     'lembrete_saldo', E'Olá, {nome}! Passando para lembrar do saldo da mesa {mesa} no {evento}: {saldo_pix} no Pix ou {saldo} no cartão (presencial), até {data_saldo}.\nChave Pix: {pix_chave}',
     'confirmacao_final', E'Olá, {nome}! Tudo certo: a mesa {mesa} está quitada para o {evento}. 🥂\nPessoas: {pessoas} · Consumação: {consumacao}\nEndereço: {endereco}\nAté lá!'

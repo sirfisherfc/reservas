@@ -54,10 +54,17 @@ supabase secrets set \
 - **RESEND_API_KEY** — a chave do passo 1.
 - **NOTIFY_SECRET** — invente uma string longa (ex.: saída de `openssl rand -hex 24`).
   É o que protege a função; o webhook precisa mandar o mesmo valor.
-- **RESEND_FROM** — precisa usar o domínio verificado no Resend.
+- **RESEND_FROM** — precisa usar o domínio verificado no Resend. Desde 10/11/2026
+  é `Sir Fisher <reservas@sirfisher.com.br>`, porque o nome público é só "Sir Fisher".
+  Vale também para os e-mails da `event-quote`.
 - **PUBLIC_SITE_URL** — URL pública do site (sem barra no fim). Usada só para montar
   o link de cancelamento. Se ficar vazia, o e-mail sai sem o botão de cancelar.
   Ajuste quando o site for publicado / ganhar domínio próprio.
+
+Trocar qualquer segredo reinicia todas as Edge Functions do projeto, e cada uma
+ganha uma versão nova. Em 10/11/2026, a troca de `RESEND_FROM` levou as seis
+funções uma versão adiante, sem mudar código nem `verify_jwt`. Conferir a lista
+de funções depois de trocar um segredo.
 
 ## 4. Disparar a função a cada reserva (gatilho pg_net)
 

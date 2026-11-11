@@ -190,6 +190,8 @@
     tag('consent', 'update', consent(value));
     tag('set', 'allow_ad_personalization_signals', value === 'granted');
     tag('set', 'allow_google_signals', value === 'granted');
+    // Contagem estatistica da escolha, sem comprovante nem dado pessoal.
+    tag('event', value === 'granted' ? 'publicidade_aceita' : 'publicidade_recusada');
     providers();
     banner.hidden = true;
     d.body.style.paddingBottom = previousPadding;
@@ -234,7 +236,10 @@
     allow.addEventListener('click', function () { choose('granted'); });
     deny.addEventListener('click', function () { choose('denied'); });
     text();
-    if (!state) show(false);
+    if (!state) {
+      show(false);
+      tag('event', 'publicidade_aviso_exibido');
+    }
     w.addEventListener('resize', size);
     if (w.MutationObserver) new w.MutationObserver(text).observe(d.documentElement, { attributes: true, attributeFilter: ['lang'] });
   }

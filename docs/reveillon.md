@@ -71,6 +71,49 @@ Depois da confirmação, a ficha mostra **Sinal: Pago** e o saldo restante.
 Se todos os pagamentos forem estornados, a reserva volta para pré-reserva;
 um estorno parcial mantém o sinal pago enquanto restar pagamento ativo.
 
+### PDF único para encaminhar ao cliente
+
+Após registrar o sinal, abra a ficha e toque em **Baixar PDF completo**, na
+seção **Confirmação para o cliente**. Encaminhe esse arquivo pelo WhatsApp.
+O botão também atende reservas já confirmadas, inclusive as anteriores à
+publicação do recurso. Disponível somente para administradores, em reservas
+com status sinal pago/quitada e pelo menos um pagamento ativo. Cortesia sem
+pagamento não habilita a emissão.
+
+O PDF reúne responsável, código, tipo/número da mesa, pessoas, data, horários,
+endereço, itens incluídos, programação cadastrada, consumação, valor contratado,
+desconto Pix original, pagamentos por forma, saldo e vencimento. Inclui a chave
+Pix cadastrada quando há saldo, contato oficial e as condições integrais da
+versão vinculada à reserva. Sem versão vinculada, usa a mais recente do evento
+e informa a ausência de aceite quando não registrado. Os preços são os da
+própria reserva, mesmo que o desconto atual do evento tenha mudado.
+
+É um documento para enviar após o sinal. Não há envio automático, anexos a
+e-mails ou nova emissão no pagamento do saldo. O botão permite baixar novamente
+se necessário, sempre consultando a situação e os valores atuais. O documento
+informa a data de emissão. Reserva cancelada/expirada ou com todos os pagamentos
+estornados não pode gerar confirmação, mesmo que a ficha tenha ficado aberta.
+
+O arquivo é criado localmente no navegador com a biblioteca `pdf-lib` 1.17.1
+(mesma versão dos eventos, cópia local com licença MIT). Não cria link público,
+não armazena PDFs no Supabase e não envia dados a serviços de PDF. Usa a RPC
+administrativa `rv_booking_detail` e as leituras já autorizadas de `rv_events`
+e `rv_terms`; sem migration, novas permissões ou alterações no envio de e-mails.
+Observações internas, contatos do cliente, motivos de desconto, nomes de
+pagadores/funcionários e notas dos pagamentos ficam fora do documento.
+
+Verificação com dados fictícios e rede externa bloqueada:
+
+```text
+deno test --allow-read tools/reveillon_confirmation_test.mjs
+python tools/reveillon_confirmation_browser_test.py
+```
+
+O teste de navegador gera PDFs reais, confere conteúdo e limites das páginas,
+salva renderizações em `output/pdf/reveillon-confirmation/` (ignorado pelo Git)
+e exercita 390px/1366px, clique repetido, cancelamento após abrir a ficha e falha
+na leitura das regras. O teste de pagamentos existente continua independente.
+
 > **Pix com desconto:** cada Pix de R$ X abate X ÷ 0,95 do valor cheio. Exemplo: mesa de R$ 2.800 com sinal de R$ 798 no Pix. Abate R$ 840 e o saldo fica R$ 1.960 no cartão, ou R$ 1.862 se também for pago no Pix.
 
 ### Outras ações (na folha da mesa)

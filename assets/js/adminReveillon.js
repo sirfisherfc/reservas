@@ -5,6 +5,7 @@
 // valor não têm leitura para o operador.
 import { supabase } from './supabaseClient.js';
 import { requireStaff, mountLayout } from './adminGuard.js';
+import { canDownloadConfirmation, loadReveillonConfirmation } from './reveillonConfirmation.js';
 import { qs, qsa, showToast, toCSV, downloadTextFile, maskPhoneBR, debounce } from './utils.js';
 import {
   esc, money, pct, dateBR, dateTimeBR, countdown, fillTemplate, bookingMessageVars,
@@ -364,6 +365,12 @@ function renderBookingSheet(d) {
     html += `<div class="rv-actions"><button class="btn btn--primary rv-wide rv-big" id="pay-btn" type="button">Registrar pagamento</button></div>`;
   }
 
+  if (isAdmin && canDownloadConfirmation(d)) {
+    html += `<p class="rv-subhead">Confirmação para o cliente</p>
+      <div class="rv-actions"><button class="btn btn--success rv-wide" id="confirmation-pdf-btn" type="button">Baixar PDF completo</button></div>
+      <p class="text-soft">Mesa, pagamentos, consumação e regras em um único PDF para encaminhar pelo WhatsApp.</p>`;
+  }
+
   html += kv([
     ['Responsável', d.customer_name],
     ['WhatsApp', `<a href="tel:+${esc(phone)}">${esc(d.customer_phone)}</a>`, true],
@@ -414,6 +421,7 @@ function renderBookingSheet(d) {
 
   const root = openSheet(html, { mode: 'detail', bookingId: d.id, tableId: d.table_id });
   qs('#pay-btn', root)?.addEventListener('click', () => openPaymentForm(d));
+  qs('#confirmation-pdf-btn', root)?.addEventListener('click', (event) => downloadConfirmation(d.id, event.currentTarget));
   qsa('[data-act]', root).forEach((b) => b.addEventListener('click', () => {
     const act = b.dataset.act;
     if (act === 'discount') openDiscountForm(d);
@@ -431,6 +439,34 @@ function renderBookingSheet(d) {
     showToast('Pagamento estornado.');
     renderBookingSheet(data);
   }));
+}
+
+async function downloadConfirmation(bookingId, button) {
+  if (!isAdmin || button.disabled) return;
+  const label = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Preparando PDF…';
+  let url;
+  try {
+    // Reconsulta status e pagamentos: a ficha aberta pode ter ficado desatualizada.
+    const { booking, event, terms } = await loadReveillonConfirmation(supabase, bookingId);
+    const { buildReveillonConfirmationPdf } = await import('./reveillonConfirmationPdf.js');
+    const bytes = await buildReveillonConfirmationPdf(booking, event, terms);
+    url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `reveillon-${booking.public_code.replace(/[^a-zA-Z0-9-]/g, '')}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    showToast('PDF baixado. Encaminhe o arquivo pelo WhatsApp.');
+  } catch (error) {
+    showToast(error.message || 'Não foi possível gerar o PDF. Tente novamente.', 'danger');
+  } finally {
+    if (url) setTimeout(() => URL.revokeObjectURL(url), 60000);
+    button.disabled = false;
+    button.textContent = label;
+  }
 }
 
 function historyLabel(h) {

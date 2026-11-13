@@ -177,7 +177,7 @@ Liga e desliga em Configurar → Vendas e integrações ("Enviar e-mails automá
 
 ## Conversões de Ads
 
-Estão preparadas no site (GA4 `reveillon_prebooking`, Meta `Lead` com `eventID sf-rv-<id>`, ChatGPT Ads `lead_submitted`) e **desligadas**. Para ligar, use Configurar → Vendas e integrações. A parte servidor (CAPI) não foi ligada à fila `ad_conversion_events`; veja `future-roadmap.md`.
+Estão preparadas no site (GA4 `reveillon_prebooking`, Meta `Lead` com `eventID sf-rv-<id>`, ChatGPT Ads `lead_submitted`). Desde 13/11/2026 só o **GA4 está ligado**, para contar as pré-reservas por origem da visita. O evento leva o valor da mesa e o código da pré-reserva; esse valor é estimado e não é faturamento. Meta e ChatGPT Ads seguem **desligados**. Para mudar, use Configurar → Vendas e integrações. A parte servidor (CAPI) não foi ligada à fila `ad_conversion_events`; veja `future-roadmap.md`.
 
 ## Reserva comum em 31/12
 

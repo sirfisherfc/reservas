@@ -5,7 +5,7 @@ Atualizado em 30/09/2026 (página indexável movida para o www). Este documento 
 ## Estado atual (em produção)
 
 - O módulo está publicado e **as vendas estão abertas desde 01/10/2026** (data confirmada pelo Rogério em 06/10/2026; `rv_events.sales_open = true`, Lote 1).
-- E-mails automáticos do réveillon **ligados** (`emails_enabled = true`). Conversões de Ads **desligadas** (`tracking` todo `false`).
+- E-mails automáticos do réveillon **ligados** (`emails_enabled = true`). Desde 13/11/2026, a pedido do Rogério, `tracking.ga4 = true`: o navegador envia `reveillon_prebooking` só ao GA4 (o `google-ads.js` força `send_to` do GA4). Meta e ChatGPT Ads continuam **desligados** e nenhum anúncio recebe esse evento. O evento não está marcado como evento principal no GA4.
 - Chave Pix: CNPJ `37889047000168` (tipo `cnpj`). WhatsApp `5585988544274`.
 - Evento: Réveillon 2027, 31/12/2026 20h → 01/01/2027 2h, slug `reveillon-2027`.
 - Nenhuma reserva real ainda. Todas as reservas de teste foram apagadas.

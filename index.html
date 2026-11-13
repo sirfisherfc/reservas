@@ -34,7 +34,7 @@
   })();
   </script>
   <link rel="icon" type="image/png" href="https://www.sirfisher.com.br/assets/img/favicon.png" />
-  <link rel="stylesheet" href="./assets/css/style.css?v=20261007" />
+  <link rel="stylesheet" href="./assets/css/style.css?v=20261113" />
   <!-- Google tag (gtag.js). Mesma propriedade do site institucional. O linker
        preserva a sessao quando o visitante salta de www.sirfisher.com.br para
        este subdominio, para que a reserva seja creditada ao canal de origem. -->
@@ -67,11 +67,17 @@
     </div>
   </div>
 
-  <header class="hero">
+  <header class="hero hero--foto">
+    <picture class="hero__foto">
+      <source type="image/avif" srcset="https://www.sirfisher.com.br/assets/img/amigos-orla-sir-fisher-960.avif 960w, https://www.sirfisher.com.br/assets/img/amigos-orla-sir-fisher-1600.avif 1600w" sizes="100vw" />
+      <source type="image/webp" srcset="https://www.sirfisher.com.br/assets/img/amigos-orla-sir-fisher-960.webp 960w, https://www.sirfisher.com.br/assets/img/amigos-orla-sir-fisher-1600.webp 1600w" sizes="100vw" />
+      <img src="https://www.sirfisher.com.br/assets/img/amigos-orla-sir-fisher-960.jpg" srcset="https://www.sirfisher.com.br/assets/img/amigos-orla-sir-fisher-960.jpg 960w, https://www.sirfisher.com.br/assets/img/amigos-orla-sir-fisher-1600.jpg 1600w" sizes="100vw" alt="" width="960" height="640" decoding="async" />
+    </picture>
     <div class="container">
       <h1 data-i18n="heroTitle">Reserve sua mesa no Sir Fisher</h1>
       <p data-i18n="heroText">Garanta sua reserva e aproveite nosso clima à beira-mar. A posição das mesas é organizada conforme disponibilidade no momento da chegada.</p>
     </div>
+    <span class="hero__credito" data-i18n="photoCredit">Foto: Luisa Dörr</span>
   </header>
 
   <main>
@@ -189,7 +195,7 @@
   </footer>
 
   <script type="module">
-    import { applyTranslations } from './assets/js/i18n.js?v=b9b0b7f227';
+    import { applyTranslations } from './assets/js/i18n.js?v=bbe19cefd4';
     applyTranslations('reserva');
   </script>
   <script type="module" src="./assets/js/reservations.js?v=79d9422ee0"></script>

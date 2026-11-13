@@ -4,7 +4,7 @@ import {
   qs, qsa, todayISO, addDaysISO, maskPhone, waLink,
   setLoading, debounce, formatDateLong, formatTimeLocal,
 } from './utils.js?v=20261007';
-import { LANG, t, friendlyError, applyTranslations } from './i18n.js?v=b9b0b7f227';
+import { LANG, t, friendlyError, applyTranslations } from './i18n.js?v=bbe19cefd4';
 import { WHATSAPP_NUMBER, RESTAURANT_NAME } from './config.js';
 import {
   initOpenAIAdsPixel, measureReservationPageViewed, measureReservationConfirmed,

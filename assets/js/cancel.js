@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient.js';
 import { getQueryParam, formatDateLong, formatTimeLocal, setLoading, statusLabel } from './utils.js?v=20261007';
-import { LANG, t, friendlyError, applyTranslations } from './i18n.js?v=b9b0b7f227';
+import { LANG, t, friendlyError, applyTranslations } from './i18n.js?v=bbe19cefd4';
 
 const card = document.getElementById('cancel-card');
 

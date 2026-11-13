@@ -26,6 +26,7 @@ export const LANG = detectLang();
 const EN_HTML = {
   heroTitle: 'Book a table at Sir Fisher',
   heroText: 'Reserve your table and enjoy the seafront. Tables are assigned on arrival, according to availability.',
+  photoCredit: 'Photo: Luisa Dörr',
   formTitle: 'Make a booking',
   honeypot: 'Leave this field empty',
   labelName: 'Name',

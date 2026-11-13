@@ -23,6 +23,8 @@ export interface PdfOptions {
 }
 
 const SITE_IMG = "https://www.sirfisher.com.br/assets/img/";
+// Faixa "O cenário do seu evento": grupo à mesa com a orla (Luisa Dörr).
+const AMBIENTE = "amigos-orla-sir-fisher-960.jpg";
 const W = 595.28;
 const H = 841.89;
 const M = 56;
@@ -277,7 +279,7 @@ export async function buildProposalPdf(
   const wanted = new Set<string>([
     "pordosol-1200.jpg",
     "mesa-cheia-vista-mar-sir-fisher-660.jpg",
-    "clientes-fim-de-tarde-sir-fisher-660.jpg",
+    AMBIENTE,
     "logo-horizontal.png",
   ]);
   for (const key of Object.keys(portions)) {
@@ -859,11 +861,11 @@ export async function buildProposalPdf(
 
   // Foto de ambiente para fechar a página, quando houver espaço
   const room = y - bottom - 10;
-  if (room > 170 && images.has("clientes-fim-de-tarde-sir-fisher-660.jpg")) {
+  if (room > 170 && images.has(AMBIENTE)) {
     const bandH = Math.min(room, 300);
     photo(
       page,
-      "clientes-fim-de-tarde-sir-fisher-660.jpg",
+      AMBIENTE,
       M,
       y - bandH,
       CW,
@@ -894,6 +896,15 @@ export async function buildProposalPdf(
       C.goldSoft,
       2,
     );
+    const credito = "Foto: Luisa Dörr";
+    page.drawText(credito, {
+      x: M + CW - 12 - sans.widthOfTextAtSize(credito, 6.5),
+      y: y - bandH + 18,
+      size: 6.5,
+      font: sans,
+      color: C.white,
+      opacity: 0.85,
+    });
     y -= bandH + 10;
   }
 

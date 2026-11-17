@@ -4,7 +4,8 @@ Atualizado em 30/09/2026 (página indexável movida para o www). Este documento 
 
 ## Estado atual (em produção)
 
-- O módulo está publicado e **as vendas estão abertas desde 01/10/2026** (data confirmada pelo Rogério em 06/10/2026; `rv_events.sales_open = true`, Lote 1).
+- O módulo está publicado e **as vendas estão abertas desde 01/10/2026** (data confirmada pelo Rogério em 06/10/2026; `rv_events.sales_open = true`).
+- **Lote 2 vigente desde 17/11/2026, 11h07 de Fortaleza**, a pedido do Rogério (12 mesas vendidas no Lote 1, 10 delas entre 07 e 17/11). O Lote 1 ficou inativo, com `ends_at` nessa hora, e as reservas dele mantêm os preços gravados.
 - E-mails automáticos do réveillon **ligados** (`emails_enabled = true`). Desde 13/11/2026, a pedido do Rogério, `tracking.ga4 = true`: o navegador envia `reveillon_prebooking` só ao GA4 (o `google-ads.js` força `send_to` do GA4). Meta e ChatGPT Ads continuam **desligados** e nenhum anúncio recebe esse evento. O evento não está marcado como evento principal no GA4.
 - Chave Pix: CNPJ `37889047000168` (tipo `cnpj`). WhatsApp `5585988544274`.
 - Evento: Réveillon 2027, 31/12/2026 20h → 01/01/2027 2h, slug `reveillon-2027`.
@@ -19,15 +20,15 @@ Atualizado em 30/09/2026 (página indexável movida para o www). Este documento 
   - Fileira do meio: B09, B10 (bistrôs), 11 a 14 (centrais).
   - Fileira de trás, rente à cerca da entrada: B15, B16 (bistrôs), 17 a 20 (centrais).
   - B21: bistrô entre a 11 e a 17, com cadeiras para os lados.
-- **Tipos e preços (Lote 1):**
+- **Tipos e preços:**
 
-  | Tipo | Valor | Consumação | Pessoas |
-  |---|---|---|---|
-  | Lateral (azul, 2 mesas unidas) | R$ 2.800 | R$ 800 | mínimo 8, máximo 16 (cadeira extra a partir da 9ª) |
-  | Central (verde) | R$ 1.500 | R$ 400 | cobre 4, mínimo 1 (paga as 4), máximo 8 |
-  | Bistrô (roxo) | R$ 800 | R$ 200 | exatamente 2 |
+  | Tipo | Lote 1 (até 17/11) | Lote 2 (desde 17/11) | Consumação | Pessoas |
+  |---|---|---|---|---|
+  | Lateral (azul, 2 mesas unidas) | R$ 2.800 | R$ 3.200 | R$ 800 | mínimo 8, máximo 16 (cadeira extra a partir da 9ª) |
+  | Central (verde) | R$ 1.500 | R$ 1.700 | R$ 400 | cobre 4, mínimo 1 (paga as 4), máximo 8 |
+  | Bistrô (roxo) | R$ 800 | R$ 900 | R$ 200 | exatamente 2 |
 
-  Cadeira extra: R$ 350 com R$ 100 de consumação.
+  Cadeira extra: R$ 350 no Lote 1 e R$ 400 no Lote 2, sempre com R$ 100 de consumação. O Lote 2 soma R$ 50 por pessoa em todos os tipos e mantém a consumação; a mesa maior continua mais barata por pessoa (R$ 400, 425 e 450). Se o ritmo seguir, a sugestão dada ao Rogério foi um Lote 3 em dezembro, nas últimas 2 ou 3 mesas.
 - **Limite do evento: 96 pessoas somando laterais e centrais** (`rv_events.seat_limit`). A base é de 92 cadeiras (7×8 + 9×4) e a folga serve para extras. Bistrôs ficam fora dessa conta (`rv_table_types.counts_toward_limit = false`).
 - **Sinal de 30%** em até 48h. Sem sinal, a pré-reserva expira. Com pagamento parcial, **não expira**: o painel mostra "prazo vencido".
 - **Pix com desconto** (`rv_events.pix_discount_pct`: 8% em 30/09/2026; era 5% no lançamento): cada Pix de R$ X abate X ÷ (1 − desconto) do valor cheio. Cartão só presencial. Não há gateway nem link de pagamento.
@@ -135,7 +136,7 @@ Peças-chave do banco:
 - Perfil da Empresa: post padrão com botão "Reservar" publicado em 30/09/2026 (texto sem preço, foto da pista 2025, link com `utm_campaign=gbp_post&utm_content=reveillon_2027`). As visitas dele aparecem no GA4 com essa UTM.
 
 **Manutenção (a cada troca de lote, esgotamento ou edição):**
-1. Troca de lote ou de desconto do Pix: atualizar no `reveillon.html` os preços do JSON-LD e dos fallbacks (cartões e FAQ) e subir o `?v=`. **E também em `site/reveillon/index.html`**: tabela de valores, lista de consumação, quadro do Pix ("Valores do 1º lote"), FAQ visível, `FAQPage`, `offers` do `Event` e a meta description ("a partir de R$ 800").
+1. Troca de lote ou de desconto do Pix: atualizar no `reveillon.html` os preços do JSON-LD e dos fallbacks (cartões e FAQ); subir o `?v=` só se CSS ou JS mudarem. **E também em `site/reveillon/index.html`**: tabela de valores, lista de consumação, quadro do Pix ("Valores do 2º lote"), FAQ visível, `FAQPage`, `offers` do `Event` (preço e `validFrom`) e a meta description ("a partir de R$ 900"). Para trocar de lote pelo banco, criar o novo e desativar o anterior na mesma transação, conferindo `rv_current_lot` antes e depois (feito assim em 17/11/2026).
 2. Esgotou: no subdomínio o JS marca `SoldOut`. Em `site/reveillon/index.html`, trocar à mão as `offers` para `SoldOut` e ajustar os textos e botões.
 3. Depois de 01/01/2027: em `site/reveillon/` e em `reveillon.html`, trocar o texto para "Réveillon 2027 encerrado · lista de interesse para 2028" e manter a URL (não apagar a página); tirar o JSON-LD `Event` ou atualizar para a edição seguinte assim que as datas estiverem definidas.
 4. Nova edição: mesmas URLs (`/reveillon/` indexável e `reveillon.html` de venda), novo `rv_events` e revisão de title, description, JSON-LD e fallbacks nas duas.

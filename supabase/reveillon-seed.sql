@@ -160,9 +160,9 @@ join public.rv_table_types tt on tt.event_id = e.id and tt.code = v.type_code
 where e.slug = 'reveillon-2027'
 on conflict (event_id, label) do nothing;
 
--- ---- Lote 1 (ativo, sem vigência definida) ----
-insert into public.rv_lots (event_id, name, active, sort_order)
-select e.id, 'Lote 1', true, 1 from public.rv_events e where e.slug = 'reveillon-2027'
+-- ---- Lote 1 (vendido de 01/10 a 17/11/2026; inativo desde a troca) ----
+insert into public.rv_lots (event_id, name, active, sort_order, ends_at)
+select e.id, 'Lote 1', false, 1, '2026-11-17 14:07:33+00' from public.rv_events e where e.slug = 'reveillon-2027'
 on conflict (event_id, name) do nothing;
 
 insert into public.rv_lot_prices (lot_id, table_type_id, table_price, table_consumption, extra_chair_price, extra_chair_consumption)
@@ -173,6 +173,24 @@ join (values
   ('lateral', 2800.00, 800.00, 350.00, 100.00),
   ('central', 1500.00, 400.00, 350.00, 100.00),
   ('bistro',   800.00, 200.00,   0.00,   0.00)
+) as v(type_code, price, consumption, extra_price, extra_consumption) on true
+join public.rv_table_types tt on tt.event_id = e.id and tt.code = v.type_code
+where e.slug = 'reveillon-2027'
+on conflict (lot_id, table_type_id) do nothing;
+
+-- ---- Lote 2 (ativo desde 17/11/2026: +R$ 50 por pessoa, mesma consumação) ----
+insert into public.rv_lots (event_id, name, active, sort_order, starts_at)
+select e.id, 'Lote 2', true, 2, '2026-11-17 14:07:33+00' from public.rv_events e where e.slug = 'reveillon-2027'
+on conflict (event_id, name) do nothing;
+
+insert into public.rv_lot_prices (lot_id, table_type_id, table_price, table_consumption, extra_chair_price, extra_chair_consumption)
+select l.id, tt.id, v.price, v.consumption, v.extra_price, v.extra_consumption
+from public.rv_events e
+join public.rv_lots l on l.event_id = e.id and l.name = 'Lote 2'
+join (values
+  ('lateral', 3200.00, 800.00, 400.00, 100.00),
+  ('central', 1700.00, 400.00, 400.00, 100.00),
+  ('bistro',   900.00, 200.00,   0.00,   0.00)
 ) as v(type_code, price, consumption, extra_price, extra_consumption) on true
 join public.rv_table_types tt on tt.event_id = e.id and tt.code = v.type_code
 where e.slug = 'reveillon-2027'

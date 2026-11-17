@@ -17,8 +17,8 @@
   <meta property="og:title" content="Réveillon 2027 na Beira-Mar de Fortaleza | Sir Fisher" />
   <meta property="og:description" content="31/12/2026, das 20h às 2h, de frente para o mar. DJ e cantor ao vivo e consumação inclusa. Escolha sua mesa no mapa." />
   <meta property="og:image" content="https://www.sirfisher.com.br/assets/img/pordosol-1200.jpg" />
-  <!-- Evento (Google Search Central: structured-data/event). Preços = rv_table_types
-       do Lote 1; o reveillon.js reescreve offers (preço e SoldOut) com o banco. -->
+  <!-- Evento (Google Search Central: structured-data/event). Preços = rv_lot_prices
+       do Lote 2 (desde 17/11/2026); o reveillon.js reescreve offers (preço e SoldOut) com o banco. -->
   <script type="application/ld+json" id="event-jsonld">
   {
     "@context": "https://schema.org",
@@ -58,9 +58,9 @@
       "name": "DJ e Cantor"
     },
     "offers": [
-      { "@type": "Offer", "name": "Mesa lateral (valor da mesa, cobre 8 pessoas)", "price": "2800.00", "priceCurrency": "BRL", "availability": "https://schema.org/InStock", "validFrom": "2026-10-01", "url": "https://reservas.sirfisher.com.br/reveillon.html" },
-      { "@type": "Offer", "name": "Mesa central (valor da mesa, cobre 4 pessoas)", "price": "1500.00", "priceCurrency": "BRL", "availability": "https://schema.org/InStock", "validFrom": "2026-10-01", "url": "https://reservas.sirfisher.com.br/reveillon.html" },
-      { "@type": "Offer", "name": "Bistrô (valor da mesa, 2 pessoas)", "price": "800.00", "priceCurrency": "BRL", "availability": "https://schema.org/InStock", "validFrom": "2026-10-01", "url": "https://reservas.sirfisher.com.br/reveillon.html" }
+      { "@type": "Offer", "name": "Mesa lateral (valor da mesa, cobre 8 pessoas)", "price": "3200.00", "priceCurrency": "BRL", "availability": "https://schema.org/InStock", "validFrom": "2026-11-17", "url": "https://reservas.sirfisher.com.br/reveillon.html" },
+      { "@type": "Offer", "name": "Mesa central (valor da mesa, cobre 4 pessoas)", "price": "1700.00", "priceCurrency": "BRL", "availability": "https://schema.org/InStock", "validFrom": "2026-11-17", "url": "https://reservas.sirfisher.com.br/reveillon.html" },
+      { "@type": "Offer", "name": "Bistrô (valor da mesa, 2 pessoas)", "price": "900.00", "priceCurrency": "BRL", "availability": "https://schema.org/InStock", "validFrom": "2026-11-17", "url": "https://reservas.sirfisher.com.br/reveillon.html" }
     ]
   }
   </script>
@@ -188,12 +188,12 @@
         <p class="rv-eyebrow">As mesas</p>
         <h2 class="rv-h2">Escolha o seu lugar</h2>
         <div class="rv-types" id="types-cards">
-          <!-- Fallback do Lote 1 (rv_table_types); o JS troca pelos valores e pela disponibilidade do banco. -->
+          <!-- Fallback do Lote 2 (rv_lot_prices); o JS troca pelos valores e pela disponibilidade do banco. -->
           <article class="rv-type" style="--rv-type:#2f6fb3">
             <h3><i aria-hidden="true"></i>Mesa lateral</h3>
             <p class="rv-type__desc">Junto à mureta, de frente para a praia. Duas mesas unidas, 8 cadeiras.</p>
             <p class="rv-type__people">Valor da mesa para até 8 pessoas · até 16 com cadeiras extras</p>
-            <p class="rv-type__price">R$&nbsp;2.800,00</p>
+            <p class="rv-type__price">R$&nbsp;3.200,00</p>
             <p class="rv-type__cons">R$&nbsp;800,00 de consumação inclusa</p>
             <a href="#mapa" class="rv-link">Ver no mapa →</a>
           </article>
@@ -201,7 +201,7 @@
             <h3><i aria-hidden="true"></i>Mesa central</h3>
             <p class="rv-type__desc">No centro do salão. O valor cobre até 4 pessoas.</p>
             <p class="rv-type__people">Valor da mesa para até 4 pessoas · até 8 com cadeiras extras</p>
-            <p class="rv-type__price">R$&nbsp;1.500,00</p>
+            <p class="rv-type__price">R$&nbsp;1.700,00</p>
             <p class="rv-type__cons">R$&nbsp;400,00 de consumação inclusa</p>
             <a href="#mapa" class="rv-link">Ver no mapa →</a>
           </article>
@@ -209,7 +209,7 @@
             <h3><i aria-hidden="true"></i>Bistrô</h3>
             <p class="rv-type__desc">Mesa alta para 2 pessoas.</p>
             <p class="rv-type__people">Valor da mesa para até 2 pessoas</p>
-            <p class="rv-type__price">R$&nbsp;800,00</p>
+            <p class="rv-type__price">R$&nbsp;900,00</p>
             <p class="rv-type__cons">R$&nbsp;200,00 de consumação inclusa</p>
             <a href="#mapa" class="rv-link">Ver no mapa →</a>
           </article>
@@ -370,7 +370,7 @@
         <div class="rv-faq" id="faq-list">
           <!-- Fallback igual ao que o JS monta a partir do banco. -->
           <details class="rv-faq__item"><summary>Que horas começa e termina?</summary><div class="rv-faq__a"><p>Das 20h às 2h.</p></div></details>
-          <details class="rv-faq__item"><summary>O valor é por pessoa ou por mesa?</summary><div class="rv-faq__a"><p>Por mesa. Cada tipo tem um valor fixo, que cobre um número de pessoas e já inclui um crédito de consumação:</p><ul><li>Mesa lateral: R$&nbsp;2.800,00 para até 8 pessoas, com R$&nbsp;800,00 de consumação.</li><li>Mesa central: R$&nbsp;1.500,00 para até 4 pessoas, com R$&nbsp;400,00 de consumação.</li><li>Bistrô: R$&nbsp;800,00 para 2 pessoas, com R$&nbsp;200,00 de consumação.</li><li>Cadeira extra (mesa lateral ou central): R$&nbsp;350,00, com R$&nbsp;100,00 de consumação.</li></ul></div></details>
+          <details class="rv-faq__item"><summary>O valor é por pessoa ou por mesa?</summary><div class="rv-faq__a"><p>Por mesa. Cada tipo tem um valor fixo, que cobre um número de pessoas e já inclui um crédito de consumação:</p><ul><li>Mesa lateral: R$&nbsp;3.200,00 para até 8 pessoas, com R$&nbsp;800,00 de consumação.</li><li>Mesa central: R$&nbsp;1.700,00 para até 4 pessoas, com R$&nbsp;400,00 de consumação.</li><li>Bistrô: R$&nbsp;900,00 para 2 pessoas, com R$&nbsp;200,00 de consumação.</li><li>Cadeira extra (mesa lateral ou central): R$&nbsp;400,00, com R$&nbsp;100,00 de consumação.</li></ul></div></details>
           <details class="rv-faq__item"><summary>Onde fica?</summary><div class="rv-faq__a"><p>No Sir Fisher: Av. Beira Mar, 3421 — Meireles, Fortaleza/CE, em frente ao Jardim Japonês.</p></div></details>
           <details class="rv-faq__item"><summary>Dá para ver a queima de fogos?</summary><div class="rv-faq__a"><p>Sim. Da nossa orla dá para ver a queima oficial do Aterro e também as de vários clubes e hotéis da Beira-Mar.</p></div></details>
           <details class="rv-faq__item"><summary>Tem música?</summary><div class="rv-faq__a"><p>DJ e cantor ao vivo durante toda a noite.</p></div></details>

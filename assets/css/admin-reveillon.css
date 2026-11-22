@@ -80,6 +80,23 @@
 
 .rv-row-link { cursor: pointer; }
 
+/* Títulos da lista de reservas: clicar ordena, clicar de novo inverte */
+.rv-sort {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+.rv-sort::after { content: '↕'; opacity: .35; }
+.rv-sort:hover { color: var(--color-text); }
+.rv-sort:focus-visible { outline: 2px solid var(--color-secondary); outline-offset: 2px; border-radius: 4px; }
+th[aria-sort="ascending"] .rv-sort,
+th[aria-sort="descending"] .rv-sort { color: var(--color-text); }
+th[aria-sort="ascending"] .rv-sort::after { content: '▲'; opacity: 1; }
+th[aria-sort="descending"] .rv-sort::after { content: '▼'; opacity: 1; }
+
 /* Folha (modal) — no celular ocupa a largura toda e cola embaixo */
 .rv-sheet-backdrop {
   position: fixed;

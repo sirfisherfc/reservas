@@ -11,12 +11,13 @@ Módulo separado da reserva comum para vender as mesas da noite de 31/12. Ele su
 1. O cliente escolhe uma mesa livre no mapa, informa quantas pessoas vão e vê o valor calculado na hora.
 2. Ao enviar, vira uma **pré-reserva**: a mesa fica "em negociação" por 48h (configurável) e o cliente recebe a chave Pix e o botão para mandar o comprovante pelo WhatsApp.
 3. Quando você registra um pagamento de **R$ 0,01 ou mais**, a reserva vira **sinal pago**. O formulário sugere 30% (configurável) e aceita o valor que você combinou com o cliente. Quando o total positivo é pago, a reserva vira **quitada**.
-4. Se nenhum pagamento for registrado no prazo, a pré-reserva **expira sozinha** e a mesa volta a ficar livre.
+4. Se nenhum pagamento for registrado no prazo, a pré-reserva **expira sozinha** e a mesa volta a ficar livre. Se o cliente pagar depois, toque em **Reativar reserva** na ficha e registre o pagamento.
 
 ```
 pré-reserva ──(pagamento ≥ R$ 0,01)──▶ sinal pago ──(pago ≥ total positivo, ou "marcar quitada")──▶ quitada
      │
      ├── prazo vencido e nenhum pagamento ──▶ expirada  (automático, a cada 15 min)
+     │                                          └──(admin: "Reativar reserva")──▶ pré-reserva
      └── qualquer status ativo ──▶ cancelada  (admin, com motivo)
 ```
 
@@ -122,6 +123,7 @@ na leitura das regras. O teste de pagamentos existente continua independente.
 - **Desconto:** em % ou R$, com motivo obrigatório. Fica registrado quem aplicou.
 - **Marcar quitada:** se ainda houver saldo, pede uma justificativa.
 - **Alterar prazo:** qualquer data e hora até o início do evento; os botões +12h, +24h e +48h só preenchem o campo (só em pré-reserva). RPC `rv_admin_set_hold`.
+- **Reativar reserva** (só em reserva expirada): para o cliente que pagou depois do prazo. A reserva volta a ser pré-reserva na **mesma mesa**, com o **valor original** e um prazo novo (atalhos +12h/+24h/+48h). Em seguida, toque em **Registrar pagamento**. Se você bloqueou a mesa para segurá-la, a ficha avisa e o bloqueio é retirado ao reativar; a marcação "em negociação" também sai. Se outra reserva já ocupa a mesa, ou se o limite de cadeiras não comportar o grupo, o painel recusa: crie uma reserva manual em outra mesa. Fica no histórico como "Reativada". RPC `rv_admin_reactivate` (migration `20261122180000` no `gestao`).
 - **Marcar em negociação** (mesa livre): tira a mesa do site sem cliente e sem prazo, com uma observação opcional. Some com **Liberar mesa** ou ao **Criar reserva manual** nela. RPC `rv_admin_set_table_negotiating`.
 - **Mover de mesa:** mostra o valor novo antes de confirmar se o tipo de mesa mudar.
 - **Editar dados:** nome, WhatsApp, e-mail, pessoas e observações. O valor é recalculado.
@@ -141,6 +143,8 @@ Toque numa mesa livre → **Bloquear mesa** (ex.: patrocinador). No site ela apa
 A aba **Portaria** lista as mesas com reserva: responsável, pessoas e observações, **sem valores**. Tem busca, **Imprimir** (com coluna "Chegou" para marcar à mão) e CSV.
 
 ### Resumo e exportação (só admin)
+
+A lista **Reservas**, no fim da aba **Resumo**, mostra a data e a hora em que cada reserva foi feita. Toque no título de qualquer coluna para ordenar; toque de novo para inverter. **Data** começa pelas mais recentes. A ordem escolhida fica salva no navegador.
 
 A aba **Resumo** mostra: mesas vendidas por tipo, pessoas, cadeiras usadas contra o limite de 96 (laterais + centrais) e a ocupação dos bistrôs, total vendido, recebido (por forma), a receber, consumação comprometida e descontos (crianças, manuais e Pix). **Exportar CSV** gera a planilha completa para o Excel (separador `;`, vírgula decimal).
 
@@ -196,6 +200,36 @@ Todos já foram aplicados no projeto `lucpxoynpvogkvzepagi`. Para um projeto nov
 5. `supabase/reveillon-integration.sql`: bloqueio de 31/12 e aviso na reserva comum.
 
 `supabase/reveillon-tests.sql` roda todos os testes dentro de uma transação com ROLLBACK (nada fica gravado): preços, anti-colisão, expiração e permissões de anon e operador. O resultado esperado é `TODOS OS TESTES PASSARAM`.
+
+### Reativar reserva expirada (22/11/2026)
+
+A migration `20261122180000_reveillon_reativar_expirada.sql`, no repositório
+`gestao`, cria `rv_admin_reactivate(p_booking_id, p_until, p_unblock)`, só para
+administradores (`authenticated`, sem `anon`). Foi aplicada no `portal` em
+22/11/2026, com a versão registrada na mesma transação. Ela não altera dados existentes.
+
+- Aceita só reservas `expirada`. O prazo tem de ficar entre 5 minutos a partir
+  de agora e o início do evento.
+- Mantém mesa, lote e preços gravados na reserva (`snap_*`). Volta para
+  `pre_reserva`, limpa `expired_at` e apaga o aviso de expiração já enviado,
+  para o cron poder avisar de novo.
+- Trava mesa, reserva e evento nessa ordem. Recusa se outra reserva ativa ocupa a
+  mesa (`TABLE_TAKEN`), se a mesa está desativada ou se passa do limite de
+  cadeiras (`SEAT_LIMIT`).
+- Mesa bloqueada só é liberada com `p_unblock = true` (`TABLE_BLOCKED` sem ele).
+  O painel envia `true` apenas quando mostrou o aviso do bloqueio. A marcação
+  "em negociação" sai sem confirmação, como na reserva manual.
+- Registra `reativada` no histórico, com prazo, mesa, data da expiração e
+  bloqueio retirado. Não envia e-mail; o pagamento segue o fluxo normal.
+
+`supabase/reveillon-reactivate-tests.sql` usa um evento fictício e termina em
+ROLLBACK. O resultado esperado é `TESTES DA REATIVACAO PASSARAM`. O teste de
+navegador simula as RPCs, bloqueia a rede externa e confere em 390px e 1366px
+a reativação e a ordenação da lista:
+
+```text
+python tools/reveillon_reactivate_browser_test.py
+```
 
 ### Sinal aceito abaixo do percentual sugerido (07/11/2026)
 

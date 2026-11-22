@@ -8,7 +8,7 @@ import { requireStaff, mountLayout } from './adminGuard.js';
 import { canDownloadConfirmation, loadReveillonConfirmation } from './reveillonConfirmation.js';
 import { qs, qsa, showToast, toCSV, downloadTextFile, maskPhoneBR, debounce } from './utils.js';
 import {
-  esc, money, pct, dateBR, dateTimeBR, countdown, fillTemplate, bookingMessageVars,
+  esc, money, pct, dateBR, dateTimeBR, timeBR, countdown, fillTemplate, bookingMessageVars,
   waHref, parseDbError, renderMap, stateLabel, centerMapScroll,
 } from './reveillonCommon.js';
 
@@ -25,6 +25,21 @@ let doorRows = [];
 
 const METHOD_LABELS = { pix: 'Pix', debito: 'Débito', credito: 'Crédito' };
 const ACTIVE = ['pre_reserva', 'sinal_pago', 'quitada'];
+
+// Ordenação da lista de reservas pelo título da coluna. "Mesa" é a ordem
+// do mapa (como vem do banco); data e valores começam do maior/mais recente.
+const STATUS_ORDER = ['pre_reserva', 'sinal_pago', 'quitada', 'cancelada', 'expirada'];
+const LIST_SORTS = {
+  mesa: { dir: 1, val: (r) => r.ordem },
+  responsavel: { dir: 1, val: (r) => r.responsavel || '' },
+  data: { dir: -1, val: (r) => new Date(r.criada_em).getTime() || 0 },
+  status: { dir: 1, val: (r) => STATUS_ORDER.indexOf(r.status) },
+  total: { dir: -1, val: (r) => Number(r.total) || 0 },
+  recebido: { dir: -1, val: (r) => Number(r.recebido) || 0 },
+  saldo: { dir: -1, val: (r) => Number(r.saldo) || 0 },
+};
+const LIST_SORT_STORAGE = 'rv-admin-list-sort';
+let listSort = readListSort();
 
 const nowMs = () => Date.now() + serverOffset;
 
@@ -364,6 +379,10 @@ function renderBookingSheet(d) {
   if (active) {
     html += `<div class="rv-actions"><button class="btn btn--primary rv-wide rv-big" id="pay-btn" type="button">Registrar pagamento</button></div>`;
   }
+  if (d.status === 'expirada') {
+    html += `<div class="rv-actions"><button class="btn btn--primary rv-wide rv-big" id="reactivate-btn" type="button">Reativar reserva</button></div>
+      <p class="text-soft">Volta a pré-reserva na mesma mesa e com o mesmo valor. Depois, registre o pagamento.</p>`;
+  }
 
   if (isAdmin && canDownloadConfirmation(d)) {
     html += `<p class="rv-subhead">Confirmação para o cliente</p>
@@ -421,6 +440,7 @@ function renderBookingSheet(d) {
 
   const root = openSheet(html, { mode: 'detail', bookingId: d.id, tableId: d.table_id });
   qs('#pay-btn', root)?.addEventListener('click', () => openPaymentForm(d));
+  qs('#reactivate-btn', root)?.addEventListener('click', () => openReactivateForm(d));
   qs('#confirmation-pdf-btn', root)?.addEventListener('click', (event) => downloadConfirmation(d.id, event.currentTarget));
   qsa('[data-act]', root).forEach((b) => b.addEventListener('click', () => {
     const act = b.dataset.act;
@@ -478,7 +498,8 @@ function historyLabel(h) {
     case 'status_automatico': return `Status: ${stateLabel(h.old_status)} → ${stateLabel(h.new_status)}`;
     case 'desconto': return `Desconto ${d.tipo === 'pct' ? pct(d.valor) + '%' : money(d.valor)} · ${d.motivo || ''}`;
     case 'marcada_quitada': return `Marcada como quitada${d.nota ? ' · ' + d.nota : ''}`;
-    case 'prazo_estendido': return `Prazo estendido em ${d.horas}h`;
+    case 'prazo_estendido': return d.horas ? `Prazo estendido em ${d.horas}h` : `Prazo alterado para ${dateTimeBR(d.para, board.event.timezone)}`;
+    case 'reativada': return `Reativada · prazo até ${dateTimeBR(d.prazo, board.event.timezone)}${d.desbloqueou ? ' · mesa desbloqueada' : ''}`;
     case 'movida': return `Movida da mesa ${d.de} para ${d.para} (${money(d.total_antes)} → ${money(d.total_depois)})`;
     case 'editada': return 'Dados editados';
     case 'cancelada': return `Cancelada · ${d.motivo || ''}`;
@@ -612,31 +633,70 @@ function openMarkPaidForm(d) {
   }));
 }
 
-function openExtendForm(d) {
+// Campo de prazo com atalhos +12h/+24h/+48h. Os atalhos somam a partir de
+// baseMs e só preenchem o campo; o admin pode escolher qualquer data e hora.
+function holdPickerHtml(id, label, baseMs) {
   const tz = board.event.timezone;
-  // Os atalhos somam a partir do prazo atual (ou de agora, se já venceu) e
-  // só preenchem o campo; o admin pode escolher qualquer data e hora.
-  const base = Math.max(new Date(d.hold_expires_at || Date.now()).getTime(), Date.now());
-  const plus = (h) => toLocalInput(new Date(base + h * 3600e3).toISOString(), tz);
-  const inner = `<p class="text-soft">Prazo atual: ${esc(dateTimeBR(d.hold_expires_at, tz))}</p>
-    <div class="rv-seg" id="ext-seg">
+  const plus = (h) => toLocalInput(new Date(baseMs + h * 3600e3).toISOString(), tz);
+  return `<div class="rv-seg" id="${id}-seg">
       <button type="button" data-h="12">+12h</button>
       <button type="button" data-h="24" class="is-active">+24h</button>
       <button type="button" data-h="48">+48h</button>
     </div>
-    <div class="form-field"><label for="ext-until">Novo prazo</label>
-      <input id="ext-until" type="datetime-local" value="${plus(24)}" max="${toLocalInput(board.event.starts_at, tz)}" required /></div>`;
-  const root = mountForm(d, formShell(d, 'Alterar prazo do sinal', inner, 'Salvar prazo'), (r) => {
-    const until = fromLocalInput(qs('#ext-until', r).value, tz);
-    if (!until) return { data: null, error: { message: 'INVALID_INPUT: Escolha a data e a hora.' } };
-    return supabase.rpc('rv_admin_set_hold', { p_booking_id: d.id, p_until: until });
-  });
-  const input = qs('#ext-until', root);
-  qsa('#ext-seg button', root).forEach((b) => b.addEventListener('click', () => {
-    input.value = plus(Number(b.dataset.h));
-    qsa('#ext-seg button', root).forEach((x) => x.classList.toggle('is-active', x === b));
+    <div class="form-field"><label for="${id}">${esc(label)}</label>
+      <input id="${id}" type="datetime-local" value="${plus(24)}" max="${toLocalInput(board.event.starts_at, tz)}" required /></div>`;
+}
+
+function wireHoldPicker(root, id, baseMs) {
+  const tz = board.event.timezone;
+  const input = qs(`#${id}`, root);
+  const buttons = qsa(`#${id}-seg button`, root);
+  buttons.forEach((b) => b.addEventListener('click', () => {
+    input.value = toLocalInput(new Date(baseMs + Number(b.dataset.h) * 3600e3).toISOString(), tz);
+    buttons.forEach((x) => x.classList.toggle('is-active', x === b));
   }));
-  input.addEventListener('input', () => qsa('#ext-seg button', root).forEach((x) => x.classList.remove('is-active')));
+  input.addEventListener('input', () => buttons.forEach((x) => x.classList.remove('is-active')));
+}
+
+function holdPickerValue(root, id) {
+  const until = fromLocalInput(qs(`#${id}`, root).value, board.event.timezone);
+  return until ? { until } : { error: { message: 'INVALID_INPUT: Escolha a data e a hora.' } };
+}
+
+function openExtendForm(d) {
+  const tz = board.event.timezone;
+  // A partir do prazo atual, ou de agora se já venceu.
+  const base = Math.max(new Date(d.hold_expires_at || Date.now()).getTime(), Date.now());
+  const inner = `<p class="text-soft">Prazo atual: ${esc(dateTimeBR(d.hold_expires_at, tz))}</p>
+    ${holdPickerHtml('ext-until', 'Novo prazo', base)}`;
+  const root = mountForm(d, formShell(d, 'Alterar prazo do sinal', inner, 'Salvar prazo'), (r) => {
+    const v = holdPickerValue(r, 'ext-until');
+    if (v.error) return { data: null, error: v.error };
+    return supabase.rpc('rv_admin_set_hold', { p_booking_id: d.id, p_until: v.until });
+  });
+  wireHoldPicker(root, 'ext-until', base);
+}
+
+function openReactivateForm(d) {
+  const t = tableById(d.table_id);
+  // Bloqueio só é retirado se o admin viu o aviso; o banco recusa sem ele.
+  const unblock = Boolean(t?.blocked);
+  const notice = unblock
+    ? `A mesa ${esc(d.table_label)} está bloqueada${t.block_reason ? ` (${esc(t.block_reason)})` : ''}. Ao reativar, o bloqueio é retirado.`
+    : t?.negotiating ? `A mesa ${esc(d.table_label)} está marcada em negociação. Ao reativar, a marcação é retirada.` : '';
+  const base = Date.now();
+  const inner = `<p>A reserva volta a ser pré-reserva na mesa ${esc(d.table_label)}, com o valor original
+      (${money(d.price.total)}). Em seguida, registre o pagamento.</p>
+    ${notice ? `<div class="alert alert--info">${notice}</div>` : ''}
+    ${holdPickerHtml('re-until', 'Prazo para o sinal', base)}`;
+  const root = mountForm(d, formShell(d, 'Reativar reserva', inner, 'Reativar reserva'), async (r) => {
+    const v = holdPickerValue(r, 're-until');
+    if (v.error) return { data: null, error: v.error };
+    const res = await supabase.rpc('rv_admin_reactivate', { p_booking_id: d.id, p_until: v.until, p_unblock: unblock });
+    if (!res.error) showToast('Reserva reativada. Agora registre o pagamento.');
+    return res;
+  });
+  wireHoldPicker(root, 're-until', base);
 }
 
 function openMoveForm(d) {
@@ -836,6 +896,30 @@ function wireSummary() {
   qs('#export-csv')?.addEventListener('click', exportCSV);
   qs('#list-status')?.addEventListener('change', renderList);
   qs('#list-search')?.addEventListener('input', renderList);
+  qsa('#list-head [data-sort]').forEach((b) => b.addEventListener('click', () => {
+    const key = b.dataset.sort;
+    listSort = listSort.key === key ? { key, dir: -listSort.dir } : { key, dir: LIST_SORTS[key].dir };
+    try { localStorage.setItem(LIST_SORT_STORAGE, JSON.stringify(listSort)); } catch { /* sem armazenamento: vale só nesta visita */ }
+    renderList();
+  }));
+}
+
+function readListSort() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LIST_SORT_STORAGE) || 'null');
+    if (saved && LIST_SORTS[saved.key] && (saved.dir === 1 || saved.dir === -1)) return saved;
+  } catch { /* armazenamento indisponível ou valor inválido */ }
+  return { key: 'mesa', dir: 1 };
+}
+
+function compareListRows(a, b) {
+  const { val } = LIST_SORTS[listSort.key];
+  const x = val(a);
+  const y = val(b);
+  const diff = typeof x === 'string'
+    ? x.localeCompare(y, 'pt-BR', { sensitivity: 'base', numeric: true })
+    : x - y;
+  return diff * listSort.dir || a.ordem - b.ordem;
 }
 
 async function loadSummary() {
@@ -845,7 +929,8 @@ async function loadSummary() {
     supabase.rpc('rv_admin_export', { p_slug: null }),
   ]);
   if (s.error || x.error) { alertPage(rpcError(s.error || x.error)); return; }
-  exportRows = x.data || [];
+  // "ordem" guarda a ordem do mapa, usada na coluna Mesa e para desempatar.
+  exportRows = (x.data || []).map((r, i) => ({ ...r, ordem: i }));
   const t = s.data.totals;
   const occ = t.capacity ? Math.round((t.people_all / t.capacity) * 100) : 0;
   const stat = (k, v, small = '') => `<div class="rv-stat"><span>${esc(k)}</span><strong>${v}</strong>${small ? `<small>${small}</small>` : ''}</div>`;
@@ -876,15 +961,22 @@ async function loadSummary() {
 function renderList() {
   const st = qs('#list-status').value;
   const q = qs('#list-search').value.trim().toLowerCase();
+  const tz = board.event.timezone;
   const rows = exportRows.filter((r) => (st === 'ativas' ? ACTIVE.includes(r.status) : (!st || r.status === st))
-    && (!q || `${r.mesa} ${r.responsavel} ${r.codigo} ${r.whatsapp}`.toLowerCase().includes(q)));
+    && (!q || `${r.mesa} ${r.responsavel} ${r.codigo} ${r.whatsapp}`.toLowerCase().includes(q)))
+    .sort(compareListRows);
+  qsa('#list-head th').forEach((th) => {
+    const key = qs('[data-sort]', th)?.dataset.sort;
+    th.setAttribute('aria-sort', key === listSort.key ? (listSort.dir === 1 ? 'ascending' : 'descending') : 'none');
+  });
   qs('#list-tbody').innerHTML = rows.length ? rows.map((r) => `
     <tr class="rv-row-link" data-id="${esc(r.id)}" data-table="${esc(r.table_id)}">
       <td><strong>${esc(r.mesa)}</strong><br><small class="text-soft">${esc(r.codigo)}</small></td>
       <td>${esc(r.responsavel)}<br><small class="text-soft">${Number(r.adultos) + Number(r.criancas)} pessoas</small></td>
+      <td>${r.criada_em ? `${esc(new Date(r.criada_em).toLocaleDateString('pt-BR', { timeZone: tz }))}<br><small class="text-soft">${esc(timeBR(r.criada_em, tz))}</small>` : '—'}</td>
       <td>${statusBadge(r.status, r.prazo_sinal)}</td>
       <td>${money(r.total)}</td><td>${money(r.recebido)}</td><td>${money(r.saldo)}</td></tr>`).join('')
-    : '<tr><td colspan="6" class="empty-state">Nenhuma reserva.</td></tr>';
+    : '<tr><td colspan="7" class="empty-state">Nenhuma reserva.</td></tr>';
   qsa('#list-tbody tr[data-id]').forEach((tr) => tr.addEventListener('click', () => openBookingSheet(tr.dataset.id)));
 }
 

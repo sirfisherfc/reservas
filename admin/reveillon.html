@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="https://www.sirfisher.com.br/assets/img/favicon.png" />
   <link rel="stylesheet" href="../assets/css/admin.css" />
   <link rel="stylesheet" href="../assets/css/reveillon-map.css" />
-  <link rel="stylesheet" href="../assets/css/admin-reveillon.css" />
+  <link rel="stylesheet" href="../assets/css/admin-reveillon.css?v=20261122-reativar" />
 </head>
 <body>
   <div class="app-shell">
@@ -99,7 +99,15 @@
             </select>
             <input type="search" id="list-search" placeholder="Buscar nome, código ou mesa" />
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Mesa</th><th>Responsável</th><th>Status</th><th>Total</th><th>Recebido</th><th>Saldo</th></tr></thead><tbody id="list-tbody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr id="list-head">
+            <th><button type="button" class="rv-sort" data-sort="mesa">Mesa</button></th>
+            <th><button type="button" class="rv-sort" data-sort="responsavel">Responsável</button></th>
+            <th><button type="button" class="rv-sort" data-sort="data">Data</button></th>
+            <th><button type="button" class="rv-sort" data-sort="status">Status</button></th>
+            <th><button type="button" class="rv-sort" data-sort="total">Total</button></th>
+            <th><button type="button" class="rv-sort" data-sort="recebido">Recebido</button></th>
+            <th><button type="button" class="rv-sort" data-sort="saldo">Saldo</button></th>
+          </tr></thead><tbody id="list-tbody"></tbody></table></div>
         </div>
       </section>
 
@@ -112,6 +120,6 @@
 
   <div id="sheet-mount"></div>
 
-  <script type="module" src="../assets/js/adminReveillon.js?v=20261112-pdf"></script>
+  <script type="module" src="../assets/js/adminReveillon.js?v=20261122-reativar"></script>
 </body>
 </html>

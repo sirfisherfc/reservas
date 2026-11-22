@@ -22,13 +22,14 @@ DETAIL = {
 ROWS = [
     {'id': 'a', 'table_id': 't1', 'mesa': '01', 'codigo': 'RV-A', 'responsavel': 'Bruna',
      'adultos': 8, 'criancas': 0, 'status': 'expirada', 'criada_em': '2026-10-12T18:33:00Z',
-     'total': 5300, 'recebido': 0, 'saldo': 5300},
+     'total': 5300, 'total_pix': 4876, 'recebido': 0, 'abatido': 0, 'saldo': 5300, 'saldo_pix': 4876},
+    # quitada no Pix: recebeu 3.680 e abateu os 4.000 do total
     {'id': 'b', 'table_id': 't2', 'mesa': '02', 'codigo': 'RV-B', 'responsavel': 'Ana',
      'adultos': 4, 'criancas': 0, 'status': 'quitada', 'criada_em': '2026-11-20T16:39:00Z',
-     'total': 1500, 'recebido': 1500, 'saldo': 0},
+     'total': 4000, 'total_pix': 3680, 'recebido': 3680, 'abatido': 4000, 'saldo': 0, 'saldo_pix': 0},
     {'id': 'c', 'table_id': 't3', 'mesa': '10', 'codigo': 'RV-C', 'responsavel': 'Carla',
      'adultos': 9, 'criancas': 0, 'status': 'sinal_pago', 'criada_em': '2026-11-01T12:00:00Z',
-     'total': 3150, 'recebido': 869.4, 'saldo': 2205},
+     'total': 3150, 'total_pix': 2898, 'recebido': 869.4, 'abatido': 945, 'saldo': 2205, 'saldo_pix': 2028.6},
 ]
 STUB = """
 export const supabase = { async rpc(name, args) {
@@ -104,6 +105,13 @@ def run():
                 # --- reativação ---
                 page.evaluate('(d) => { window.fixtureDetail=d; fixtureRender(d); }', DETAIL)
                 expect(page.locator('.rv-sheet .rv-status')).to_have_text('expirada')
+                # cartões: valor cheio em destaque e o Pix como alternativa, sempre nessa ordem
+                money_cards = page.locator('.rv-money > div')
+                expect(money_cards.nth(0)).to_contain_text('R$ 3.200,00ou R$ 3.040,00 no Pix')
+                expect(money_cards.nth(2)).to_contain_text('R$ 960,00ou R$ 883,20 no Pix')
+                expect(money_cards.nth(3)).to_contain_text('R$ 3.200,00ou R$ 2.944,00 no Pix')
+                expect(page.locator('.rv-money')).not_to_contain_text('Pix · cartão')
+                expect(money_cards.nth(1)).not_to_contain_text('abateu')
                 expect(page.get_by_role('button', name='Registrar pagamento', exact=True)).to_have_count(0)
                 page.get_by_role('button', name='Reativar reserva', exact=True).click()
                 form = page.locator('#sheet-form')
@@ -130,6 +138,12 @@ def run():
                 assert first_column(page) == ['01', '02', '10'], first_column(page)
                 expect(page.locator('#list-tbody tr').nth(1)).to_contain_text('20/11/2026')
                 expect(page.locator('#list-tbody tr').nth(1)).to_contain_text('13:39')
+                # quitada no Pix: a conta fecha (4.000 − 4.000 abatidos = 0)
+                quitada = page.locator('#list-tbody tr').nth(1).locator('td')
+                expect(quitada.nth(4)).to_contain_text('ou R$ 3.680,00 no Pix')
+                expect(quitada.nth(5)).to_contain_text('abateu R$ 4.000,00 do total')
+                expect(quitada.nth(6)).to_have_text('R$ 0,00')
+                expect(page.locator('#list-tbody tr').nth(2).locator('td').nth(6)).to_contain_text('ou R$ 2.028,60 no Pix')
                 head = page.locator('#list-head')
                 head.get_by_role('button', name='Data').click()
                 assert first_column(page) == ['02', '10', '01'], first_column(page)

@@ -43,6 +43,19 @@ let listSort = readListSort();
 
 const nowMs = () => Date.now() + serverOffset;
 
+// Valores: o número principal é sempre o valor cheio (cartão); o Pix vem
+// embaixo como alternativa. Em "Recebido", o Pix vale mais que o recebido
+// (desconto), então mostramos quanto abateu: total − abateu = saldo.
+function orPix(card, pix, tag = 'small') {
+  if (!(Number(card) > 0) || Number(pix) === Number(card)) return '';
+  return tag === 'small' ? `<small>ou ${money(pix)} no Pix</small>` : `ou ${money(pix)} no Pix`;
+}
+
+function pixAbated(received, abated, tag = 'small') {
+  if (Math.abs(Number(abated) - Number(received)) < 0.01) return '';
+  return tag === 'small' ? `<small>abateu ${money(abated)} do total</small>` : `abateu ${money(abated)} do total`;
+}
+
 function rpcError(error) {
   return parseDbError(error).text;
 }
@@ -368,12 +381,12 @@ function renderBookingSheet(d) {
   }
 
   html += `<div class="rv-money">
-      <div><span>Total</span><strong>${money(p.total)}</strong><small>Pix ${money(p.total_pix)}</small></div>
-      <div><span>Recebido</span><strong>${money(p.paid_net)}</strong><small>abate ${money(p.paid_gross)}</small></div>
+      <div><span>Total</span><strong>${money(p.total)}</strong>${orPix(p.total, p.total_pix, 'small')}</div>
+      <div><span>Recebido</span><strong>${money(p.paid_net)}</strong>${pixAbated(p.paid_net, p.paid_gross, 'small')}</div>
       ${d.status === 'sinal_pago' || d.status === 'quitada'
         ? '<div><span>Sinal</span><strong>Pago</strong></div>'
-        : `<div class="${Number(p.deposit_remaining) > 0 && active ? 'is-due' : ''}"><span>Falta p/ sinal</span><strong>${money(p.deposit_remaining_pix)}</strong><small>Pix · cartão ${money(p.deposit_remaining)}</small></div>`}
-      <div class="${Number(p.balance) > 0 && active ? 'is-due' : ''}"><span>Saldo</span><strong>${money(p.balance_pix)}</strong><small>Pix · cartão ${money(p.balance)}</small></div>
+        : `<div class="${Number(p.deposit_remaining) > 0 && active ? 'is-due' : ''}"><span>Falta p/ sinal</span><strong>${money(p.deposit_remaining)}</strong>${orPix(p.deposit_remaining, p.deposit_remaining_pix, 'small')}</div>`}
+      <div class="${Number(p.balance) > 0 && active ? 'is-due' : ''}"><span>Saldo</span><strong>${money(p.balance)}</strong>${orPix(p.balance, p.balance_pix, 'small')}</div>
     </div>`;
 
   if (active) {
@@ -807,7 +820,7 @@ function openManualForm(t) {
     if (error) { box.textContent = rpcError(error); return; }
     const pr = data.price;
     const below = qs('#mn-below', root).checked && data.error_code === 'PARTY_TOO_SMALL';
-    box.innerHTML = `Total <strong>${money(pr.total)}</strong> · Pix ${money(pr.total_pix)}<br>Sinal ${money(pr.deposit_min_pix)} Pix / ${money(pr.deposit_min)} cartão · consumação ${money(pr.consumption_total)}
+    box.innerHTML = `Total <strong>${money(pr.total)}</strong> ${orPix(pr.total, pr.total_pix, 'text')}<br>Sinal ${money(pr.deposit_min)} ${orPix(pr.deposit_min, pr.deposit_min_pix, 'text')} · consumação ${money(pr.consumption_total)}
       ${!data.valid && !below ? `<br><span style="color:var(--color-danger)">${esc(data.message)}</span>` : ''}`;
   }, 250);
   ['#mn-adults', '#mn-children', '#mn-infants', '#mn-below'].forEach((s) => qs(s, root).addEventListener('input', sim));
@@ -912,6 +925,10 @@ function readListSort() {
   return { key: 'mesa', dir: 1 };
 }
 
+function listSub(text) {
+  return text ? `<br><small class="text-soft">${text}</small>` : '';
+}
+
 function compareListRows(a, b) {
   const { val } = LIST_SORTS[listSort.key];
   const x = val(a);
@@ -943,7 +960,7 @@ async function loadSummary() {
       : stat('Ocupação', `${occ}%`, `${t.people_all} de ${t.capacity} lugares`),
     stat('Total vendido', money(t.total_sold), `+ ${money(t.total_negotiating)} em negociação`),
     stat('Recebido', money(t.received), Object.entries(t.by_method || {}).map(([m, v]) => `${METHOD_LABELS[m] || m} ${money(v)}`).join(' · ')),
-    stat('A receber', money(t.to_receive), `Pix ${money(t.to_receive_pix)}`),
+    stat('A receber', money(t.to_receive), orPix(t.to_receive, t.to_receive_pix, 'text')),
     stat('Consumação comprometida', money(t.consumption_committed), `+ ${money(t.consumption_negotiating)} em negociação`),
     stat('Descontos', money(Number(t.children_discounts) + Number(t.manual_discounts) + Number(t.pix_discounts)),
       `crianças ${money(t.children_discounts)} · manual ${money(t.manual_discounts)} · Pix ${money(t.pix_discounts)}`),
@@ -975,7 +992,9 @@ function renderList() {
       <td>${esc(r.responsavel)}<br><small class="text-soft">${Number(r.adultos) + Number(r.criancas)} pessoas</small></td>
       <td>${r.criada_em ? `${esc(new Date(r.criada_em).toLocaleDateString('pt-BR', { timeZone: tz }))}<br><small class="text-soft">${esc(timeBR(r.criada_em, tz))}</small>` : '—'}</td>
       <td>${statusBadge(r.status, r.prazo_sinal)}</td>
-      <td>${money(r.total)}</td><td>${money(r.recebido)}</td><td>${money(r.saldo)}</td></tr>`).join('')
+      <td>${money(r.total)}${listSub(orPix(r.total, r.total_pix, 'text'))}</td>
+      <td>${money(r.recebido)}${listSub(pixAbated(r.recebido, r.abatido, 'text'))}</td>
+      <td>${money(r.saldo)}${listSub(orPix(r.saldo, r.saldo_pix, 'text'))}</td></tr>`).join('')
     : '<tr><td colspan="7" class="empty-state">Nenhuma reserva.</td></tr>';
   qsa('#list-tbody tr[data-id]').forEach((tr) => tr.addEventListener('click', () => openBookingSheet(tr.dataset.id)));
 }

@@ -117,6 +117,8 @@ na leitura das regras. O teste de pagamentos existente continua independente.
 
 > **Pix com desconto:** cada Pix de R$ X abate X ÷ 0,95 do valor cheio. Exemplo: mesa de R$ 2.800 com sinal de R$ 798 no Pix. Abate R$ 840 e o saldo fica R$ 1.960 no cartão, ou R$ 1.862 se também for pago no Pix.
 
+**Como ler os valores na ficha e na lista:** o número em destaque é sempre o valor cheio (cartão). Embaixo, "ou R$ X no Pix" mostra quanto fica pagando no Pix. Em **Recebido**, "abateu R$ Y do total" aparece quando houve pagamento no Pix: o dinheiro recebido é menor que o valor que ele quitou. A conta é sempre **total − abateu = saldo**. Exemplo: total R$ 4.000,00, recebido R$ 3.680,00 no Pix, que abateu R$ 4.000,00, e saldo R$ 0,00.
+
 ### Outras ações (na folha da mesa)
 
 - **WhatsApp:** quatro botões com mensagem pronta para o cliente: cobrar sinal, sinal recebido, lembrar saldo e confirmação final. Os textos são editáveis em Configurar → Mensagens de WhatsApp.
